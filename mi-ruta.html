@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Ruta">
+<meta name="theme-color" content="#17181c">
+<title>Mi Ruta — Comisiones Mauri</title>
+<style>
+  :root{
+    --bg: #17181c;
+    --card: #212328;
+    --card-border: #34363c;
+    --text: #ededea;
+    --muted: #8b8d93;
+    --amber: #f2a93b;
+    --green: #4e9f6e;
+    --blue: #6c93c7;
+    --danger: #c96a5a;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--sans); }
+  body{
+    padding-bottom: 92px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header{
+    position: sticky; top:0; z-index:10;
+    background: linear-gradient(180deg, var(--bg) 80%, transparent);
+    padding: 18px 16px 10px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    display:flex; justify-content:space-between; align-items:baseline;
+  }
+  h1{
+    font-size: 22px;
+    margin: 4px 0 2px;
+    letter-spacing: -0.01em;
+    font-weight: 800;
+  }
+  .sub{
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .stats{
+    display:flex; gap:14px; margin-top:10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .stats b{ color: var(--text); font-size: 14px; }
+
+  .addbar{
+    display:flex; gap:8px; padding: 12px 16px 4px;
+  }
+  .addbar input{
+    flex:1;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    padding: 12px 12px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+  .addbar input:focus{ outline: none; border-color: var(--amber); }
+  .addbar button{
+    background: var(--amber);
+    color: #1a1300;
+    border: none;
+    border-radius: 10px;
+    padding: 0 18px;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .addbar button:active{ transform: scale(0.97); }
+
+  .frequent{
+    padding: 6px 16px 4px;
+    display:flex; gap:8px; overflow-x:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .frequent::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex: none;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--blue);
+    background: rgba(108,147,199,0.1);
+    border: 1px solid rgba(108,147,199,0.35);
+    padding: 6px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip:active{ opacity:.7; }
+
+  main{ padding: 16px; }
+  .empty{
+    text-align:center;
+    color: var(--muted);
+    padding: 60px 20px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .empty b{ color: var(--text); display:block; font-size: 16px; margin-bottom:6px; }
+
+  .route{
+    position: relative;
+    padding-left: 34px;
+  }
+  .route::before{
+    content:"";
+    position:absolute;
+    left: 12px; top: 8px; bottom: 8px;
+    width: 2px;
+    background-image: linear-gradient(var(--card-border) 60%, transparent 40%);
+    background-size: 2px 10px;
+    background-repeat: repeat-y;
+  }
+  .stop{
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 12px 12px 10px;
+    margin-bottom: 10px;
+  }
+  .stop.done{ opacity: 0.55; }
+  .stop-num{
+    position:absolute;
+    left: -34px; top: 14px;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+  .stop.done .stop-num{ border-color: var(--green); color: var(--green); }
+  .stop-top{
+    display:flex; justify-content: space-between; gap:8px;
+  }
+  .stop-addr{
+    font-size: 15px;
+    line-height: 1.35;
+    flex:1;
+    word-break: break-word;
+  }
+  .stop.done .stop-addr{ text-decoration: line-through; text-decoration-color: var(--muted); }
+  .stop-actions-row{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--card-border);
+  }
+  .toggles{ display:flex; gap: 8px; }
+  .tgl{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .04em;
+    padding: 6px 9px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    color: var(--muted);
+    background: transparent;
+  }
+  .tgl.on-done{ border-color: var(--green); color: var(--green); background: rgba(78,159,110,0.12); }
+  .tgl.on-paid{ border-color: var(--blue); color: var(--blue); background: rgba(108,147,199,0.12); }
+
+  .detail-row{
+    display:flex; gap:8px; margin-top:10px;
+  }
+  .detail-field{
+    flex:1;
+    display:flex; flex-direction:column; gap:3px;
+  }
+  .detail-field label{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .detail-field input{
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    padding: 8px 9px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: var(--mono);
+    width: 100%;
+  }
+  .detail-field input:focus{ outline:none; border-color: var(--amber); }
+
+  .move-del{ display:flex; gap: 4px; }
+  .icon-btn{
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn.del{ color: var(--danger); border-color: rgba(201,106,90,0.4); }
+  .icon-btn:active{ transform: scale(0.92); }
+
+  footer{
+    position: fixed; left:0; right:0; bottom:0;
+    background: rgba(23,24,28,0.92);
+    backdrop-filter: blur(6px);
+    border-top: 1px solid var(--card-border);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    display:flex; gap: 8px;
+  }
+  .btn-maps{
+    flex: 2;
+    background: var(--blue);
+    color: #0e1520;
+    border:none;
+    border-radius: 10px;
+    padding: 13px;
+    font-weight: 800;
+    font-size: 14.5px;
+    text-align:center;
+  }
+  .btn-clear{
+    flex: 1;
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid rgba(201,106,90,0.4);
+    border-radius: 10px;
+    padding: 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn-share{
+    flex: 1;
+    background: transparent;
+    color: var(--green);
+    border: 1px solid rgba(78,159,110,0.4);
+    border-radius: 10px;
+    padding: 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn-maps:active, .btn-clear:active, .btn-share:active{ opacity:.75; }
+  .note{
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-align:center;
+    padding: 6px 16px 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow"><span>Comisiones Mauri</span><span id="fecha"></span></div>
+  <h1>Mi Ruta</h1>
+  <div class="sub">Paradas ilimitadas — sin plan pago</div>
+  <div class="stats">
+    <div><b id="statTotal">0</b> paradas</div>
+    <div><b id="statDone">0</b> retiradas</div>
+    <div><b id="statPaid">0</b> pagadas</div>
+    <div><b id="statMonto">$0</b> hoy</div>
+  </div>
+</header>
+
+<div class="addbar">
+  <input id="inputAddr" list="freqList" type="text" placeholder="Agregar dirección o cliente…" autocomplete="off">
+  <button id="btnAdd">Agregar</button>
+</div>
+<datalist id="freqList"></datalist>
+
+<div class="frequent" id="freqChips"></div>
+
+<main>
+  <div class="route" id="routeList"></div>
+  <div class="empty" id="emptyState">
+    <b>Sin paradas todavía</b>
+    Agregá direcciones arriba — no hay límite.<br>Tocá un chip de arriba para agregar rápido tus clientes frecuentes.
+  </div>
+</main>
+
+<footer>
+  <button class="btn-clear" id="btnClear">Vaciar</button>
+  <button class="btn-share" id="btnShare">Compartir resumen</button>
+  <button class="btn-maps" id="btnMaps">Ver en Maps →</button>
+</footer>
+<div class="note" id="mapsNote"></div>
+
+<script>
+const FREQUENT = [
+  "Altagro — Av. Presidente Perón 3697",
+  "De Crédito — Colón 1545",
+  "Embrague Alem — Liniers 1343 area",
+  "Distribuidora Motor Metal — Av. San Martín 1978",
+  "SUMA CELULARES — Av. San Martín 2202",
+  "Copyprint — Jujuy 2550",
+  "Telas DR — Av. Ovidio Lagos 3279",
+  "Roca Distribuciones — Corrientes 2734",
+  "Química del Norte — Colón 3287",
+  "Hospital Italiano Rosario — Virasoro 1249"
+];
+
+let stops = [];
+const STORAGE_KEY = "miruta:hoy";
+
+function fmtFecha(){
+  const d = new Date();
+  const dias = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+  const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  return `${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+}
+document.getElementById("fecha").textContent = fmtFecha();
+
+function renderFrequent(){
+  const wrap = document.getElementById("freqChips");
+  wrap.innerHTML = "";
+  FREQUENT.forEach(f=>{
+    const c = document.createElement("div");
+    c.className = "chip";
+    c.textContent = f.split(" — ")[0];
+    c.onclick = ()=> addStop(f);
+    wrap.appendChild(c);
+  });
+  const dl = document.getElementById("freqList");
+  dl.innerHTML = FREQUENT.map(f=>`<option value="${f}">`).join("");
+}
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function addStop(text){
+  const t = (text ?? document.getElementById("inputAddr").value).trim();
+  if(!t) return;
+  stops.push({ id: uid(), text: t, done:false, paid:false, monto:"", bultos:"" });
+  document.getElementById("inputAddr").value = "";
+  save();
+  render();
+}
+
+function removeStop(id){
+  stops = stops.filter(s=>s.id!==id);
+  save(); render();
+}
+function toggleDone(id){
+  stops = stops.map(s=> s.id===id ? {...s, done:!s.done} : s);
+  save(); render();
+}
+function togglePaid(id){
+  stops = stops.map(s=> s.id===id ? {...s, paid:!s.paid} : s);
+  save(); render();
+}
+function updateField(id, field, value){
+  stops = stops.map(s=> s.id===id ? {...s, [field]: value} : s);
+  save();
+}
+function moveStop(id, dir){
+  const i = stops.findIndex(s=>s.id===id);
+  const j = i+dir;
+  if(j<0 || j>=stops.length) return;
+  [stops[i], stops[j]] = [stops[j], stops[i]];
+  save(); render();
+}
+function clearAll(){
+  if(stops.length && !confirm("¿Vaciar toda la ruta de hoy?")) return;
+  stops = [];
+  save(); render();
+}
+
+function render(){
+  const list = document.getElementById("routeList");
+  const empty = document.getElementById("emptyState");
+  list.innerHTML = "";
+  if(stops.length===0){
+    empty.style.display = "block";
+  } else {
+    empty.style.display = "none";
+    stops.forEach((s, idx)=>{
+      const el = document.createElement("div");
+      el.className = "stop" + (s.done ? " done" : "");
+      el.innerHTML = `
+        <div class="stop-top">
+          <div class="stop-num">${String(idx+1).padStart(2,"0")}</div>
+          <div class="stop-addr">${escapeHtml(s.text)}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field">
+            <label>Monto $</label>
+            <input type="number" inputmode="numeric" placeholder="0" data-field="monto" data-id="${s.id}" value="${s.monto ?? ''}">
+          </div>
+          <div class="detail-field">
+            <label>Bultos</label>
+            <input type="number" inputmode="numeric" placeholder="1" data-field="bultos" data-id="${s.id}" value="${s.bultos ?? ''}">
+          </div>
+        </div>
+        <div class="stop-actions-row">
+          <div class="toggles">
+            <button class="tgl ${s.done?'on-done':''}" data-act="done" data-id="${s.id}">✓ RETIRADO</button>
+            <button class="tgl ${s.paid?'on-paid':''}" data-act="paid" data-id="${s.id}">$ PAGADO</button>
+          </div>
+          <div class="move-del">
+            <button class="icon-btn" data-act="up" data-id="${s.id}">↑</button>
+            <button class="icon-btn" data-act="down" data-id="${s.id}">↓</button>
+            <button class="icon-btn del" data-act="del" data-id="${s.id}">✕</button>
+          </div>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+  document.getElementById("statTotal").textContent = stops.length;
+  document.getElementById("statDone").textContent = stops.filter(s=>s.done).length;
+  document.getElementById("statPaid").textContent = stops.filter(s=>s.paid).length;
+  const totalMonto = stops.reduce((acc,s)=> acc + (parseFloat(s.monto)||0), 0);
+  document.getElementById("statMonto").textContent = "$" + totalMonto.toLocaleString("es-AR");
+
+  const note = document.getElementById("mapsNote");
+  note.textContent = stops.length > 9
+    ? "Maps puede tardar en trazar rutas muy largas — probá abrirla igual, si no anda dividila en dos tandas."
+    : "";
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+document.getElementById("routeList").addEventListener("click", (e)=>{
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const act = btn.dataset.act;
+  if(act==="done") toggleDone(id);
+  if(act==="paid") togglePaid(id);
+  if(act==="up") moveStop(id,-1);
+  if(act==="down") moveStop(id,1);
+  if(act==="del") removeStop(id);
+});
+
+document.getElementById("routeList").addEventListener("input", (e)=>{
+  const inp = e.target.closest("input[data-field]");
+  if(!inp) return;
+  updateField(inp.dataset.id, inp.dataset.field, inp.value);
+  const totalMonto = stops.reduce((acc,s)=> acc + (parseFloat(s.monto)||0), 0);
+  document.getElementById("statMonto").textContent = "$" + totalMonto.toLocaleString("es-AR");
+});
+
+document.getElementById("btnAdd").onclick = ()=> addStop();
+document.getElementById("inputAddr").addEventListener("keydown", (e)=>{
+  if(e.key==="Enter") addStop();
+});
+document.getElementById("btnClear").onclick = clearAll;
+
+document.getElementById("btnMaps").onclick = ()=>{
+  if(stops.length===0){ alert("Agregá al menos una parada primero."); return; }
+  const parts = stops.map(s=> encodeURIComponent(s.text + ", Rosario, Santa Fe"));
+  const url = "https://www.google.com/maps/dir/" + parts.join("/");
+  window.open(url, "_blank");
+};
+
+document.getElementById("btnShare").onclick = ()=>{
+  if(stops.length===0){ alert("Agregá al menos una parada primero."); return; }
+  const fecha = fmtFecha();
+  let totalMonto = 0, totalBultos = 0;
+  const lineas = stops.map((s,i)=>{
+    const monto = parseFloat(s.monto)||0;
+    const bultos = parseFloat(s.bultos)||0;
+    totalMonto += monto;
+    totalBultos += bultos;
+    const estado = s.done ? "✓ retirado" : "pendiente";
+    const pago = s.paid ? "pagado" : "a cobrar";
+    const montoTxt = monto ? `$${monto.toLocaleString("es-AR")}` : "-";
+    const bultosTxt = bultos ? `${bultos} bulto(s)` : "";
+    return `${i+1}. ${s.text} — ${montoTxt} ${bultosTxt} (${estado}, ${pago})`;
+  }).join("\n");
+  const resumen = `RUTA ${fecha}\n${lineas}\n\nTotal: $${totalMonto.toLocaleString("es-AR")} — ${totalBultos} bultos — ${stops.filter(s=>s.done).length}/${stops.length} retirados`;
+  const url = "https://wa.me/?text=" + encodeURIComponent(resumen);
+  window.open(url, "_blank");
+};
+
+function save(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stops));
+  }catch(err){ console.error("No se pudo guardar", err); }
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ stops = JSON.parse(raw); }
+  }catch(err){ /* nada guardado todavía */ }
+  render();
+}
+
+renderFrequent();
+load();
+</script>
+</body>
+</html>
