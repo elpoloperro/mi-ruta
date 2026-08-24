@@ -164,6 +164,7 @@
   }
   .freqhead{
     display:flex; justify-content:space-between; align-items:center;
+    flex-wrap: wrap; gap: 2px 0;
     padding: 4px 16px 0;
   }
   .freqhead b{
@@ -173,6 +174,9 @@
   .freqhead button{
     background:none; border:none; color: var(--blue);
     font-size: 12px; font-family: var(--mono); padding: 4px 6px;
+  }
+  .freqhead button#btnClearLocales{
+    color: var(--danger);
   }
 
   .toolbar2{ padding: 10px 16px 0; }
@@ -391,7 +395,6 @@
   .kmStartBar{
     display:flex; align-items:center; justify-content:space-between;
     gap:8px; padding: 8px 12px;
-    margin-bottom: calc(92px + env(safe-area-inset-bottom));
     font-family: var(--mono); font-size: 12px;
     color: var(--muted);
   }
@@ -605,6 +608,7 @@
   <b>Locales frecuentes</b>
   <button id="btnImportLocales">⇩ Importar</button>
   <button id="btnEditChips">✎ Editar</button>
+  <button id="btnClearLocales" title="Borrar todos los locales agregados/importados">🗑 Vaciar todos</button>
 </div>
 <div class="frequent" id="freqChips"></div>
 
@@ -1123,6 +1127,19 @@ document.getElementById("btnEditChips").onclick = ()=>{
   editingChips = !editingChips;
   document.getElementById("btnEditChips").textContent = editingChips ? "✓ Listo" : "✎ Editar";
   renderFrequent();
+};
+
+document.getElementById("btnClearLocales").onclick = ()=>{
+  const custom = loadCustom();
+  if(custom.length === 0){
+    alert("No hay locales agregados o importados para borrar.");
+    return;
+  }
+  const ok = confirm(`Esto va a borrar los ${custom.length} locales agregados o importados (no afecta los de fábrica de la app). ¿Confirmás?`);
+  if(!ok) return;
+  saveJSON(CUSTOM_KEY, []);
+  renderFrequent();
+  alert("Listo, se vaciaron los locales agregados/importados.");
 };
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
@@ -1920,7 +1937,7 @@ function switchDate(newDateStr){
   kmInicioDia = loadAllKmStart()[selectedDate] ?? null;
   expandedIds.clear();
   updateDateLabel();
-  render();
+  try{ render(); }catch(err){ console.error("Error en render():", err); }
   renderFuel();
 }
 function shiftDate(delta){
@@ -1962,7 +1979,7 @@ function load(){
   fuelLoads = loadAllFuel()[selectedDate] || [];
   kmInicioDia = loadAllKmStart()[selectedDate] ?? null;
   updateDateLabel();
-  render();
+  try{ render(); }catch(err){ console.error("Error en render():", err); }
   renderFuel();
 }
 
