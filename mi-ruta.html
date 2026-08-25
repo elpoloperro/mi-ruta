@@ -1632,7 +1632,7 @@ document.getElementById("btnMaps").onclick = ()=>{
   const originText = (origin.mode === "fixed" && origin.addr && origin.addr.trim())
     ? (origin.addr.trim() + ", " + (origin.ciudad || "Rosario") + ", Santa Fe")
     : "Mi ubicación";
-  const stopTexts = stops.map(s=> s.text + ", " + (s.localidad || "Rosario") + ", Santa Fe");
+  const stopTexts = stops.map(s=> buildFullAddress(s.text, s.localidad));
 
   if(stopTexts.length <= MAX_DEST_PER_LEG){
     const url = "https://www.google.com/maps/dir/" + encodeURIComponent(originText) + "/" + stopTexts.map(encodeURIComponent).join("/");
@@ -1767,9 +1767,53 @@ function dist(a,b){
   const dx = a.lat-b.lat, dy = a.lon-b.lon;
   return Math.sqrt(dx*dx+dy*dy);
 }
+
+// Mejora el orden armado por "vecino más cercano" deshaciendo cruces/zigzags,
+// sin volver a geocodificar nada. La parada 0 siempre queda fija (es el
+// arranque elegido); la última queda fija solo si hay parada fija de cierre.
+function twoOptImprove(route, lockLast){
+  const n = route.length;
+  if(n < 4) return route;
+  function d(a,b){
+    if(!a.lat || !a.lon || !b.lat || !b.lon) return 0;
+    return dist(a,b);
+  }
+  const jMax = lockLast ? n-2 : n-1;
+  let improved = true, guard = 0;
+  while(improved && guard < 500){
+    improved = false;
+    guard++;
+    for(let i=1; i<jMax; i++){
+      for(let j=i+1; j<=jMax; j++){
+        const a = route[i-1], b = route[i], c = route[j], e = (j+1 < n) ? route[j+1] : null;
+        const before = d(a,b) + (e ? d(c,e) : 0);
+        const after = d(a,c) + (e ? d(b,e) : 0);
+        if(after < before - 1e-9){
+          let lo=i, hi=j;
+          while(lo<hi){ const tmp=route[lo]; route[lo]=route[hi]; route[hi]=tmp; lo++; hi--; }
+          improved = true;
+        }
+      }
+    }
+  }
+  return route;
+}
+
 function addressForGeocode(text){
   const idx = text.indexOf(" — ");
   return idx >= 0 ? text.slice(idx + 3) : text;
+}
+
+// Arma la dirección completa para Maps/geocoding evitando pegar dos localidades
+// contradictorias cuando el texto ya trae una localidad escrita a mano
+// (ej: "Ayacucho 2531, Casilda") y el campo "Localidad" quedó en el valor
+// por defecto "Rosario" sin que el usuario lo haya tocado para esa parada.
+function buildFullAddress(text, localidad){
+  const loc = localidad || "Rosario";
+  if(loc === "Rosario" && text.includes(",")){
+    return text + ", Santa Fe";
+  }
+  return text + ", " + loc + ", Santa Fe";
 }
 function waLink(telefono){
   let digits = (telefono||"").replace(/\D/g,"");
@@ -1787,7 +1831,7 @@ document.getElementById("btnOptimize").onclick = async ()=>{
     btn.textContent = "Ubicando direcciones…";
     for(const s of stops){
       if(s.lat && s.lon) continue;
-      const q = encodeURIComponent(addressForGeocode(s.text) + ", " + (s.localidad || "Rosario") + ", Santa Fe, Argentina");
+      const q = encodeURIComponent(buildFullAddress(addressForGeocode(s.text), s.localidad) + ", Argentina");
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}`);
       const data = await res.json();
       if(data && data[0]){ s.lat = parseFloat(data[0].lat); s.lon = parseFloat(data[0].lon); }
@@ -1820,6 +1864,7 @@ document.getElementById("btnOptimize").onclick = async ()=>{
       current = nearest;
     }
     if(pinLast) ordered.push(pinLast);
+    ordered = twoOptImprove(ordered, !!pinLast);
     stops = ordered;
     save(); render();
     alert("Ruta optimizada por cercanía.");
