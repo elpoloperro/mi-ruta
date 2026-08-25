@@ -28,9 +28,11 @@
   body{
     padding-bottom: calc(92px + env(safe-area-inset-bottom));
     -webkit-tap-highlight-color: transparent;
+  }
+  .filteredContent, footer{
     transition: filter .2s ease;
   }
-  body.night{
+  body.night .filteredContent, body.night footer{
     filter: brightness(.62) sepia(.35) hue-rotate(-40deg) saturate(1.35);
   }
   header{
@@ -574,6 +576,7 @@
 <body>
 
 <div id="mainView">
+<div class="filteredContent">
 <header>
   <div class="eyebrow"><span>Comisiones Mauri</span><span id="fecha"></span></div>
   <h1>Mi Ruta</h1>
@@ -598,7 +601,7 @@
 </header>
 
 <div class="addbar">
-  <input id="inputAddr" list="freqList" type="text" placeholder="Agregar dirección o cliente…" autocomplete="off">
+  <input id="inputAddr" type="text" placeholder="Agregar dirección o cliente…" autocomplete="off">
   <button id="btnAdd">Agregar</button>
 </div>
 <div class="toolbar2" style="padding-top:6px">
@@ -622,6 +625,7 @@
   <button id="btnEditClientChips">✎ Editar</button>
 </div>
 <div class="frequent" id="clientChips"></div>
+</div>
 
 <div id="importModal" class="modalOverlay" style="display:none">
   <div class="modalBox">
@@ -650,10 +654,13 @@ Copyprint -> Jujuy 2550 -> 3411234567"></textarea>
 <div id="routeImportModal" class="modalOverlay" style="display:none">
   <div class="modalBox">
     <h3>Cargar varias direcciones</h3>
-    <p class="importHint">Pegá una dirección por línea. Cada línea se agrega como una parada nueva a la ruta de hoy.</p>
-    <textarea id="routeImportTextarea" rows="10" placeholder="Av. Francia 1177
+    <p class="importHint">Pegá una dirección por línea. Cada línea se agrega como una parada nueva a la ruta de hoy. Mientras escribís, te sugiere direcciones que ya usaste antes.</p>
+    <div style="position:relative;">
+      <textarea id="routeImportTextarea" rows="10" placeholder="Av. Francia 1177
 Jujuy 2550
 Pellegrini 1400"></textarea>
+      <div class="clienteSuggestBox" id="routeImportSuggestBox" style="display:none;"></div>
+    </div>
     <div class="importActions">
       <button id="btnRouteImportCancel" class="secondaryBtn">Cancelar</button>
       <button id="btnRouteImportConfirm">Agregar todas</button>
@@ -710,6 +717,7 @@ Pellegrini 1400"></textarea>
   </div>
 </div>
 
+<div class="filteredContent">
 <div class="toolbar2">
   <button id="btnToggleOptions" class="linklike">⚙ Opciones de ruta (buscar, primera/última parada, optimizar)</button>
 </div>
@@ -756,6 +764,7 @@ Pellegrini 1400"></textarea>
 <div class="kmStartBar" id="kmStartBar" style="display:none">
   <span id="kmStartText"></span>
   <button id="btnSetKmStart" class="linklike">📍 Cargar km inicial del día</button>
+</div>
 </div>
 <footer>
   <button class="btn-clear" id="btnClear">Vaciar</button>
@@ -1185,6 +1194,8 @@ function addStop(text, telefonoLocal){
 
 function openRouteImportModal(){
   document.getElementById("routeImportTextarea").value = "";
+  document.getElementById("routeImportSuggestBox").style.display = "none";
+  document.getElementById("routeImportSuggestBox").innerHTML = "";
   document.getElementById("routeImportModal").style.display = "flex";
 }
 function closeRouteImportModal(){
@@ -1207,6 +1218,77 @@ function runRouteImport(){
 document.getElementById("btnImportRoute").onclick = openRouteImportModal;
 document.getElementById("btnRouteImportCancel").onclick = closeRouteImportModal;
 document.getElementById("btnRouteImportConfirm").onclick = runRouteImport;
+
+function getRouteAddressPool(){
+  // Solo locales: direcciones ya usadas como paradas + locales frecuentes (base, agregados y aprendidos)
+  const counts = loadJSON(COUNTS_KEY, {});
+  const fromCounts = Object.keys(counts);
+  const fromChips = getVisibleChips().map(c=>c.text);
+  const all = [...fromCounts, ...fromChips];
+  return [...new Set(all.filter(t=> t && t.trim().length>0))];
+}
+
+function currentLineBounds(textarea){
+  const val = textarea.value;
+  const pos = textarea.selectionStart;
+  const lineStart = val.lastIndexOf("\n", pos-1) + 1;
+  let lineEnd = val.indexOf("\n", pos);
+  if(lineEnd === -1) lineEnd = val.length;
+  return { lineStart, lineEnd };
+}
+
+function onRouteImportInput(){
+  const textarea = document.getElementById("routeImportTextarea");
+  const box = document.getElementById("routeImportSuggestBox");
+  const { lineStart, lineEnd } = currentLineBounds(textarea);
+  const lineText = textarea.value.slice(lineStart, lineEnd);
+  const query = normalizeText(lineText);
+  if(query.length < 2){
+    box.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+  const pool = getRouteAddressPool();
+  const matches = pool.filter(t=> normalizeText(t).includes(query)).slice(0, 6);
+  if(matches.length === 0){
+    box.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+  box.innerHTML = "";
+  matches.forEach(text=>{
+    const item = document.createElement("div");
+    item.className = "clienteSuggestItem";
+    item.textContent = text;
+    item.onclick = ()=> pickRouteImportSuggest(text);
+    box.appendChild(item);
+  });
+  box.style.display = "block";
+}
+
+function pickRouteImportSuggest(text){
+  const textarea = document.getElementById("routeImportTextarea");
+  const { lineStart, lineEnd } = currentLineBounds(textarea);
+  const before = textarea.value.slice(0, lineStart);
+  const after = textarea.value.slice(lineEnd);
+  textarea.value = before + text + after;
+  const newPos = (before + text).length;
+  textarea.focus();
+  textarea.setSelectionRange(newPos, newPos);
+  document.getElementById("routeImportSuggestBox").style.display = "none";
+}
+
+const routeImportTextareaEl = document.getElementById("routeImportTextarea");
+routeImportTextareaEl.addEventListener("input", onRouteImportInput);
+routeImportTextareaEl.addEventListener("click", onRouteImportInput);
+routeImportTextareaEl.addEventListener("keyup", (e)=>{
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) onRouteImportInput();
+});
+routeImportTextareaEl.addEventListener("blur", ()=>{
+  setTimeout(()=>{
+    document.getElementById("routeImportSuggestBox").style.display = "none";
+  }, 150);
+});
 
 function removeStop(id){
   stops = stops.filter(s=>s.id!==id);
@@ -2069,6 +2151,18 @@ applyNightMode();
 renderFrequent();
 renderClientChips();
 load();
+
+function syncFooterPadding(){
+  const footer = document.querySelector("footer");
+  if(!footer) return;
+  document.body.style.paddingBottom = `calc(${footer.offsetHeight}px + env(safe-area-inset-bottom))`;
+}
+syncFooterPadding();
+window.addEventListener("resize", syncFooterPadding);
+window.addEventListener("orientationchange", syncFooterPadding);
+if(window.ResizeObserver){
+  new ResizeObserver(syncFooterPadding).observe(document.querySelector("footer"));
+}
 </script>
 </body>
 </html>
