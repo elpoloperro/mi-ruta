@@ -1632,7 +1632,7 @@ document.getElementById("btnMaps").onclick = ()=>{
   const originText = (origin.mode === "fixed" && origin.addr && origin.addr.trim())
     ? (origin.addr.trim() + ", " + (origin.ciudad || "Rosario") + ", Santa Fe")
     : "Mi ubicación";
-  const stopTexts = stops.map(s=> buildFullAddress(s.text, s.localidad));
+  const stopTexts = stops.map(s=> buildFullAddress(addressForGeocode(s.text), s.localidad));
 
   if(stopTexts.length <= MAX_DEST_PER_LEG){
     const url = "https://www.google.com/maps/dir/" + encodeURIComponent(originText) + "/" + stopTexts.map(encodeURIComponent).join("/");
@@ -1805,13 +1805,16 @@ function addressForGeocode(text){
 }
 
 // Arma la dirección completa para Maps/geocoding evitando pegar dos localidades
-// contradictorias cuando el texto ya trae una localidad escrita a mano
-// (ej: "Ayacucho 2531, Casilda") y el campo "Localidad" quedó en el valor
-// por defecto "Rosario" sin que el usuario lo haya tocado para esa parada.
+// contradictorias cuando el texto ya trae una localidad conocida escrita a mano
+// al final (ej: "Ayacucho 2531, Casilda") y el campo "Localidad" quedó en el
+// valor por defecto "Rosario" sin que el usuario lo haya tocado para esa parada.
+const KNOWN_LOCALIDADES = ["Rosario","Venado Tuerto","Casilda","Bombal","Vigán","Miguel Torres"];
 function buildFullAddress(text, localidad){
   const loc = localidad || "Rosario";
-  if(loc === "Rosario" && text.includes(",")){
-    return text + ", Santa Fe";
+  if(loc === "Rosario"){
+    const lastPart = text.split(",").pop().trim().toLowerCase();
+    const yaTieneLocalidad = KNOWN_LOCALIDADES.some(l=> l.toLowerCase() === lastPart);
+    if(yaTieneLocalidad) return text + ", Santa Fe";
   }
   return text + ", " + loc + ", Santa Fe";
 }
