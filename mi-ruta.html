@@ -601,6 +601,9 @@
   <input id="inputAddr" list="freqList" type="text" placeholder="Agregar dirección o cliente…" autocomplete="off">
   <button id="btnAdd">Agregar</button>
 </div>
+<div class="toolbar2" style="padding-top:6px">
+  <button id="btnImportRoute" class="linklike">⇩ Cargar varias direcciones de una</button>
+</div>
 <datalist id="freqList"></datalist>
 
 <div class="freqhead" id="freqheadLocales">
@@ -629,6 +632,31 @@ Copyprint -> Jujuy 2550 -> 3411234567"></textarea>
     <div class="importActions">
       <button id="btnImportCancel" class="secondaryBtn">Cancelar</button>
       <button id="btnImportConfirm">Importar</button>
+    </div>
+  </div>
+</div>
+
+<div id="routeLegsModal" class="modalOverlay" style="display:none">
+  <div class="modalBox">
+    <h3>Ruta en varios tramos</h3>
+    <p class="importHint">Google Maps solo admite hasta 9 paradas por link. Tu ruta se dividió en tramos — abrí el tramo 1 primero, y cuando lo termines, volvé y abrí el siguiente.</p>
+    <div id="routeLegsList"></div>
+    <div class="importActions">
+      <button id="btnRouteLegsClose" class="secondaryBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="routeImportModal" class="modalOverlay" style="display:none">
+  <div class="modalBox">
+    <h3>Cargar varias direcciones</h3>
+    <p class="importHint">Pegá una dirección por línea. Cada línea se agrega como una parada nueva a la ruta de hoy.</p>
+    <textarea id="routeImportTextarea" rows="10" placeholder="Av. Francia 1177
+Jujuy 2550
+Pellegrini 1400"></textarea>
+    <div class="importActions">
+      <button id="btnRouteImportCancel" class="secondaryBtn">Cancelar</button>
+      <button id="btnRouteImportConfirm">Agregar todas</button>
     </div>
   </div>
 </div>
@@ -1155,6 +1183,31 @@ function addStop(text, telefonoLocal){
   renderFrequent();
 }
 
+function openRouteImportModal(){
+  document.getElementById("routeImportTextarea").value = "";
+  document.getElementById("routeImportModal").style.display = "flex";
+}
+function closeRouteImportModal(){
+  document.getElementById("routeImportModal").style.display = "none";
+}
+function runRouteImport(){
+  const raw = document.getElementById("routeImportTextarea").value;
+  const lines = raw.split("\n").map(l=>l.trim()).filter(l=>l.length>0);
+  if(lines.length === 0){ closeRouteImportModal(); return; }
+  lines.forEach(line=>{
+    stops.push({ id: uid(), text: line, done:false, paid:false, monto:"", bultos:"", nota:"", cliente:"", telefono:"", telefonoLocal:"", tipo:"", paquete:"", tamano:"", foto:"", pin:null, lat:null, lon:null, localidad:"Rosario" });
+    bumpCount(line);
+  });
+  save();
+  render();
+  renderFrequent();
+  closeRouteImportModal();
+  alert(lines.length + " " + (lines.length===1 ? "dirección agregada." : "direcciones agregadas."));
+}
+document.getElementById("btnImportRoute").onclick = openRouteImportModal;
+document.getElementById("btnRouteImportCancel").onclick = closeRouteImportModal;
+document.getElementById("btnRouteImportConfirm").onclick = runRouteImport;
+
 function removeStop(id){
   stops = stops.filter(s=>s.id!==id);
   expandedIds.delete(id);
@@ -1492,14 +1545,43 @@ document.getElementById("btnClear").onclick = clearAll;
 
 document.getElementById("btnMaps").onclick = ()=>{
   if(stops.length===0){ alert("Agregá al menos una parada primero."); return; }
-  const parts = stops.map(s=> encodeURIComponent(s.text + ", " + (s.localidad || "Rosario") + ", Santa Fe"));
+  const MAX_DEST_PER_LEG = 9;
   const origin = loadJSON(ORIGIN_KEY, {mode:"gps", addr:"", ciudad:"Rosario"});
-  let originPart = "";
-  if(origin.mode === "fixed" && origin.addr && origin.addr.trim()){
-    originPart = encodeURIComponent(origin.addr.trim() + ", " + (origin.ciudad || "Rosario") + ", Santa Fe") + "/";
+  const originText = (origin.mode === "fixed" && origin.addr && origin.addr.trim())
+    ? (origin.addr.trim() + ", " + (origin.ciudad || "Rosario") + ", Santa Fe")
+    : "Mi ubicación";
+  const stopTexts = stops.map(s=> s.text + ", " + (s.localidad || "Rosario") + ", Santa Fe");
+
+  if(stopTexts.length <= MAX_DEST_PER_LEG){
+    const url = "https://www.google.com/maps/dir/" + encodeURIComponent(originText) + "/" + stopTexts.map(encodeURIComponent).join("/");
+    window.open(url, "_blank");
+    return;
   }
-  const url = "https://www.google.com/maps/dir/" + originPart + parts.join("/");
-  window.open(url, "_blank");
+
+  // Más de 9 paradas: partir en varios tramos, cada uno arrancando donde terminó el anterior
+  const legs = [];
+  let legOrigin = originText;
+  for(let i=0; i<stopTexts.length; i+=MAX_DEST_PER_LEG){
+    const chunk = stopTexts.slice(i, i+MAX_DEST_PER_LEG);
+    const url = "https://www.google.com/maps/dir/" + encodeURIComponent(legOrigin) + "/" + chunk.map(encodeURIComponent).join("/");
+    legs.push({ url, from: i+1, to: i+chunk.length });
+    legOrigin = chunk[chunk.length-1];
+  }
+
+  const list = document.getElementById("routeLegsList");
+  list.innerHTML = "";
+  legs.forEach((leg, idx)=>{
+    const btn = document.createElement("button");
+    btn.className = "btn-optimize";
+    btn.style.marginTop = "8px";
+    btn.textContent = `Tramo ${idx+1} — paradas ${leg.from} a ${leg.to}`;
+    btn.onclick = ()=> window.open(leg.url, "_blank");
+    list.appendChild(btn);
+  });
+  document.getElementById("routeLegsModal").style.display = "flex";
+};
+document.getElementById("btnRouteLegsClose").onclick = ()=>{
+  document.getElementById("routeLegsModal").style.display = "none";
 };
 
 const ORIGIN_KEY = "miruta:origen";
