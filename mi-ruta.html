@@ -1880,7 +1880,7 @@ document.getElementById("btnOptimize").onclick = async ()=>{
     for(const s of stops){
       if(s.lat && s.lon) continue;
       const q = encodeURIComponent(buildFullAddress(addressForGeocode(s.text), s.localidad) + ", Argentina");
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ar&addressdetails=1&q=${q}`);
       const data = await res.json();
       if(data && data[0]){ s.lat = parseFloat(data[0].lat); s.lon = parseFloat(data[0].lon); }
       await new Promise(r=>setTimeout(r, 1100));
