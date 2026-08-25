@@ -114,6 +114,7 @@
   }
   .addbar input{
     flex:1;
+    width:100%; box-sizing:border-box;
     background: var(--card);
     border: 1px solid var(--card-border);
     color: var(--text);
@@ -601,7 +602,10 @@
 </header>
 
 <div class="addbar">
-  <input id="inputAddr" type="text" placeholder="Agregar dirección o cliente…" autocomplete="off">
+  <div style="position:relative; flex:1;">
+    <input id="inputAddr" type="text" placeholder="Agregar dirección o cliente…" autocomplete="off">
+    <div class="clienteSuggestBox" id="inputAddrSuggestBox" style="display:none;"></div>
+  </div>
   <button id="btnAdd">Agregar</button>
 </div>
 <div class="toolbar2" style="padding-top:6px">
@@ -1186,6 +1190,8 @@ function addStop(text, telefonoLocal){
   if(!t) return;
   stops.push({ id: uid(), text: t, done:false, paid:false, monto:"", bultos:"", nota:"", cliente:"", telefono:"", telefonoLocal: telefonoLocal||"", tipo:"", paquete:"", tamano:"", foto:"", pin:null, lat:null, lon:null, localidad:"Rosario" });
   document.getElementById("inputAddr").value = "";
+  const suggestBox = document.getElementById("inputAddrSuggestBox");
+  if(suggestBox){ suggestBox.style.display = "none"; suggestBox.innerHTML = ""; }
   bumpCount(t);
   save();
   render();
@@ -1621,8 +1627,44 @@ document.getElementById("routeList").addEventListener("pointerdown", (e)=>{
 
 document.getElementById("btnAdd").onclick = ()=> addStop();
 document.getElementById("inputAddr").addEventListener("keydown", (e)=>{
-  if(e.key==="Enter") addStop();
+  if(e.key==="Enter"){ document.getElementById("inputAddrSuggestBox").style.display = "none"; addStop(); }
 });
+
+function onInputAddrInput(){
+  const input = document.getElementById("inputAddr");
+  const box = document.getElementById("inputAddrSuggestBox");
+  const query = normalizeText(input.value);
+  if(query.length < 2){
+    box.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+  const pool = getRouteAddressPool();
+  const matches = pool.filter(t=> normalizeText(t).includes(query)).slice(0, 6);
+  if(matches.length === 0){
+    box.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+  box.innerHTML = "";
+  matches.forEach(text=>{
+    const item = document.createElement("div");
+    item.className = "clienteSuggestItem";
+    item.textContent = text;
+    item.onclick = ()=>{
+      input.value = text;
+      box.style.display = "none";
+      input.focus();
+    };
+    box.appendChild(item);
+  });
+  box.style.display = "block";
+}
+document.getElementById("inputAddr").addEventListener("input", onInputAddrInput);
+document.getElementById("inputAddr").addEventListener("blur", ()=>{
+  setTimeout(()=>{ document.getElementById("inputAddrSuggestBox").style.display = "none"; }, 150);
+});
+
 document.getElementById("btnClear").onclick = clearAll;
 
 document.getElementById("btnMaps").onclick = ()=>{
@@ -1631,7 +1673,7 @@ document.getElementById("btnMaps").onclick = ()=>{
   const origin = loadJSON(ORIGIN_KEY, {mode:"gps", addr:"", ciudad:"Rosario"});
   const originText = (origin.mode === "fixed" && origin.addr && origin.addr.trim())
     ? (origin.addr.trim() + ", " + (origin.ciudad || "Rosario") + ", Santa Fe")
-    : "Mi ubicación";
+    : "Current Location";
   const stopTexts = stops.map(s=> buildFullAddress(addressForGeocode(s.text), s.localidad));
 
   if(stopTexts.length <= MAX_DEST_PER_LEG){
