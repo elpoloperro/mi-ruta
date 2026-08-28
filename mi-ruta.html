@@ -1516,15 +1516,31 @@ document.getElementById("btnOptimize").onclick = async ()=>{
       return ordered;
     }
 
-    // Ordenar las localidades entre sí por cercanía (arrancando de la parada fija, si hay)
+    // Ordenar las localidades entre sí por cercanía (arrancando de la parada fija, si hay,
+    // y dejando la localidad de la parada final fija para el final, para no volver dos veces)
     let groupKeys = Object.keys(groups).sort((a,b)=> groups[b].length - groups[a].length);
     let orderedGroups = [];
     if(groupKeys.length){
       const startPoint = (pinFirst && pinFirst.lat && pinFirst.lon) ? pinFirst : null;
-      let startKey = startPoint && groups[startPoint.localidad || "Rosario"] ? (startPoint.localidad || "Rosario") : groupKeys[0];
+      const endLocality = pinLast ? (pinLast.localidad || "Rosario") : null;
+
+      let startKey;
+      if(startPoint && groups[startPoint.localidad || "Rosario"]){
+        startKey = startPoint.localidad || "Rosario";
+      } else if(endLocality && groups[endLocality] && groupKeys.length > 1){
+        // Sin parada de arranque fija: evitamos empezar por la localidad de la parada final
+        startKey = groupKeys.find(k=>k!==endLocality) || groupKeys[0];
+      } else {
+        startKey = groupKeys[0];
+      }
+
       let remainingGroups = groupKeys.filter(k=>k!==startKey);
       orderedGroups.push(startKey);
       let currentCentroid = startPoint ? {lat:startPoint.lat, lon:startPoint.lon} : centroid(groups[startKey]);
+
+      const forcedLastKey = (endLocality && remainingGroups.includes(endLocality)) ? endLocality : null;
+      if(forcedLastKey) remainingGroups = remainingGroups.filter(k=>k!==forcedLastKey);
+
       while(remainingGroups.length){
         let nearestKey = null, nearestD = Infinity;
         for(const k of remainingGroups){
@@ -1538,6 +1554,7 @@ document.getElementById("btnOptimize").onclick = async ()=>{
         remainingGroups = remainingGroups.filter(k=>k!==nearestKey);
         currentCentroid = centroid(groups[nearestKey]) || currentCentroid;
       }
+      if(forcedLastKey) orderedGroups.push(forcedLastKey);
     }
 
     let ordered = [];
