@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Ruta">
+<meta name="theme-color" content="#17181c">
+<title>Mi Ruta — Comisiones Mauri</title>
+<style>
+  :root{
+    --bg: #17181c;
+    --card: #212328;
+    --card-border: #34363c;
+    --text: #ededea;
+    --muted: #8b8d93;
+    --amber: #f2a93b;
+    --green: #4e9f6e;
+    --blue: #6c93c7;
+    --danger: #c96a5a;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--sans); }
+  body{
+    padding-bottom: 92px;
+    -webkit-tap-highlight-color: transparent;
+    transition: filter .2s ease;
+  }
+  body.night{
+    filter: brightness(.62) sepia(.35) hue-rotate(-40deg) saturate(1.35);
+  }
+  header{
+    position: sticky; top:0; z-index:10;
+    background: linear-gradient(180deg, var(--bg) 80%, transparent);
+    padding: 18px 16px 10px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    display:flex; justify-content:space-between; align-items:baseline;
+  }
+  h1{
+    font-size: 22px;
+    margin: 4px 0 2px;
+    letter-spacing: -0.01em;
+    font-weight: 800;
+  }
+  .sub{
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .stats{
+    display:flex; gap:14px; margin-top:10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .stats b{ color: var(--text); font-size: 14px; }
+
+  .headerActions{ display:flex; gap:8px; margin-top:12px; }
+  .dateNav{ display:flex; align-items:center; gap:8px; margin-top:12px; }
+  .dateArrow{
+    flex:none;
+    width: 34px; height: 34px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 17px;
+    line-height: 1;
+  }
+  .dateArrow:active{ opacity:.7; }
+  .dateLabel{
+    flex:1;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    text-align:center;
+    text-transform: capitalize;
+    font-family: var(--sans);
+  }
+  .dateLabel:active{ opacity:.8; }
+  #dateInput{ position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; }
+  .ghostbtn{
+    background:transparent;
+    border:1px solid var(--card-border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .ghostbtn.active{ color: var(--amber); border-color: var(--amber); }
+  .ghostbtn:active{ opacity:.7; }
+  .filelabel{ cursor:pointer; }
+
+  .addbar{
+    display:flex; gap:8px; padding: 12px 16px 4px;
+  }
+  .addbar input{
+    flex:1;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    padding: 12px 12px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+  .addbar input:focus{ outline: none; border-color: var(--amber); }
+  .addbar button{
+    background: var(--amber);
+    color: #1a1300;
+    border: none;
+    border-radius: 10px;
+    padding: 0 18px;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .addbar button:active{ transform: scale(0.97); }
+
+  .frequent{
+    padding: 6px 16px 4px;
+    display:flex; gap:8px; overflow-x:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .frequent::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex: none;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--blue);
+    background: rgba(108,147,199,0.1);
+    border: 1px solid rgba(108,147,199,0.35);
+    padding: 6px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    position: relative;
+    display:flex; align-items:center; gap:6px;
+  }
+  .chip:active{ opacity:.7; }
+  .chip .x{
+    color: var(--danger);
+    font-weight: 900;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .chip.add{
+    color: var(--text);
+    border-style: dashed;
+    font-weight: 700;
+  }
+  .freqhead{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 4px 16px 0;
+  }
+  .freqhead b{
+    font-size: 11px; color: var(--muted); font-weight:600;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .freqhead button{
+    background:none; border:none; color: var(--blue);
+    font-size: 12px; font-family: var(--mono); padding: 4px 6px;
+  }
+
+  .toolbar2{ padding: 10px 16px 0; }
+  .linklike{
+    background:none; border:none; color: var(--blue);
+    font-family: var(--mono); font-size: 12px; padding: 4px 0;
+  }
+  .optionsPanel{
+    margin: 8px 16px 0;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+  }
+  .optionsPanel input[type="text"]{
+    width:100%;
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    padding: 10px 11px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  .optionsPanel input:focus{ outline:none; border-color: var(--amber); }
+  .pinRow{ display:flex; gap:8px; margin-bottom: 10px; }
+  .btn-optimize{
+    width:100%;
+    background: rgba(78,159,110,0.14);
+    color: var(--green);
+    border: 1px solid rgba(78,159,110,0.4);
+    border-radius: 8px;
+    padding: 11px;
+    font-weight: 700;
+    font-size: 13.5px;
+  }
+  .btn-optimize:disabled{ opacity:.5; }
+
+  main{ padding: 16px; }
+  .empty{
+    text-align:center;
+    color: var(--muted);
+    padding: 60px 20px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .empty b{ color: var(--text); display:block; font-size: 16px; margin-bottom:6px; }
+
+  .route{
+    position: relative;
+    padding-left: 34px;
+  }
+  .route::before{
+    content:"";
+    position:absolute;
+    left: 12px; top: 8px; bottom: 8px;
+    width: 2px;
+    background-image: linear-gradient(var(--card-border) 60%, transparent 40%);
+    background-size: 2px 10px;
+    background-repeat: repeat-y;
+  }
+  .stop{
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 12px 12px 10px;
+    margin-bottom: 10px;
+    touch-action: pan-y;
+  }
+  .stop.dragging{
+    z-index: 50;
+    box-shadow: 0 10px 24px rgba(0,0,0,.5);
+    border-color: var(--amber);
+  }
+  .stop.done{ opacity: 0.55; }
+  .stop-num{
+    position:absolute;
+    left: -34px; top: 14px;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+  .stop.done .stop-num{ border-color: var(--green); color: var(--green); }
+  .stop-top{
+    display:flex; justify-content: space-between; gap:8px; align-items:flex-start;
+  }
+  .drag-handle{
+    flex: none;
+    width: 26px; height: 30px;
+    display:flex; align-items:center; justify-content:center;
+    background: none; border:none;
+    color: var(--muted);
+    font-size: 15px;
+    cursor: grab;
+    touch-action: none;
+    margin-left: -6px;
+  }
+  .drag-handle:active{ cursor: grabbing; }
+  .stop-main{ flex:1; min-width:0; }
+  .stop-addr{
+    font-size: 15px;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .stop.done .stop-addr{ text-decoration: line-through; text-decoration-color: var(--muted); }
+  .badge-line{
+    margin-top: 4px;
+    font-size: 11.5px;
+    color: var(--muted);
+    font-family: var(--mono);
+    word-break: break-word;
+  }
+  .stop-actions-row{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--card-border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toggles{ display:flex; gap: 8px; flex-wrap: wrap; }
+  .tgl{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .04em;
+    padding: 6px 9px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    color: var(--muted);
+    background: transparent;
+  }
+  .tgl.on-done{ border-color: var(--green); color: var(--green); background: rgba(78,159,110,0.12); }
+  .tgl.on-paid{ border-color: var(--blue); color: var(--blue); background: rgba(108,147,199,0.12); }
+  .expand-toggle{
+    background:none; border:none; color: var(--blue);
+    font-family: var(--mono); font-size: 11px;
+  }
+
+  .detail-row{
+    display:flex; gap:8px; margin-top:10px;
+  }
+  .detail-field{
+    flex:1;
+    display:flex; flex-direction:column; gap:3px;
+    min-width: 0;
+  }
+  .detail-field.wide{ flex: 1 1 100%; }
+  .detail-field label{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .detail-field input, .detail-field select{
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    padding: 8px 9px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: var(--mono);
+    width: 100%;
+  }
+  .detail-field input:focus, .detail-field select:focus{ outline:none; border-color: var(--amber); }
+
+  .foto-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .foto-thumb{
+    width:44px; height:44px; border-radius:8px; object-fit:cover;
+    border:1px solid var(--card-border); cursor:pointer; flex:none;
+  }
+  .foto-btn{
+    font-family: var(--mono); font-size: 11.5px; color: var(--blue);
+    border: 1px solid rgba(108,147,199,0.35); background: rgba(108,147,199,0.08);
+    padding: 9px 10px; border-radius: 8px; cursor:pointer; display:inline-block;
+  }
+  .phone-row{ display:flex; align-items:center; gap:6px; }
+  .phone-row input{ flex:1; width:auto; }
+
+  .move-del{ display:flex; gap: 4px; }
+  .icon-btn{
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn.del{ color: var(--danger); border-color: rgba(201,106,90,0.4); }
+  .icon-btn.call{ color: var(--green); border-color: rgba(78,159,110,0.4); text-decoration:none; }
+  .icon-btn.whatsapp{ color: var(--green); border-color: rgba(78,159,110,0.4); text-decoration:none; }
+  .icon-btn:active{ transform: scale(0.92); }
+
+  .fuelList{ margin: 10px 0; display:flex; flex-direction:column; gap:6px; }
+  .fuelRow{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:8px; padding:8px 10px;
+    border:1px solid var(--card-border); border-radius:8px;
+  }
+  .fuelRow .fuelRowInfo{ font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .fuelRow .fuelRowInfo b{ color: #d98c2b; }
+  .fuelRow .fuelRowHora{ color: var(--muted); font-size: 11px; }
+  .fuelTotalRow{
+    display:flex; justify-content:space-between;
+    font-size: 12px; color: var(--muted);
+    padding: 4px 2px 0;
+  }
+  .kmStartBar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:8px; padding: 8px 12px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--muted);
+  }
+  .kmStartBar #btnSetKmStart{
+    background:none; border:none; color: #d98c2b;
+    font-size: 12px; font-weight:600; padding:4px 0;
+  }
+
+  footer{
+    position: fixed; left:0; right:0; bottom:0;
+    background: rgba(23,24,28,0.92);
+    backdrop-filter: blur(6px);
+    border-top: 1px solid var(--card-border);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    display:flex; gap: 8px;
+  }
+  .btn-maps{
+    flex: 2;
+    background: var(--blue);
+    color: #0e1520;
+    border:none;
+    border-radius: 10px;
+    padding: 13px;
+    font-weight: 800;
+    font-size: 14.5px;
+    text-align:center;
+  }
+  .btn-clear{
+    flex: 1;
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid rgba(201,106,90,0.4);
+    border-radius: 10px;
+    padding: 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn-share{
+    flex: 1;
+    background: transparent;
+    color: var(--green);
+    border: 1px solid rgba(78,159,110,0.4);
+    border-radius: 10px;
+    padding: 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn-fuel{
+    flex: 1;
+    background: transparent;
+    color: #d98c2b;
+    border: 1px solid rgba(217,140,43,0.4);
+    border-radius: 10px;
+    padding: 13px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .btn-maps:active, .btn-clear:active, .btn-share:active, .btn-fuel:active{ opacity:.75; }
+  .note{
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-align:center;
+    padding: 6px 16px 2px;
+  }
+
+  #historyView{ display:none; padding: 16px; }
+  .histHead{ display:flex; gap:8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .btn-cerrar{
+    flex:1;
+    background: rgba(242,169,59,0.14);
+    color: var(--amber);
+    border: 1px solid rgba(242,169,59,0.4);
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .histTotal{
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .histTotal b{ color: var(--amber); font-size: 20px; display:block; }
+  .histCard{
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .histCardTop{ display:flex; justify-content:space-between; font-size:14px; }
+  .histCardTop b{ font-weight:700; }
+  .histCardSub{ color: var(--muted); font-size: 11.5px; margin-top:3px; font-family: var(--mono); }
+  .histActions{ display:flex; gap:8px; margin-top: 16px; flex-wrap: wrap; }
+  .histActions .ghostbtn{ flex:1; justify-content:center; }
+
+  .modalOverlay{
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display:flex; align-items:center; justify-content:center;
+    z-index: 500; padding: 20px;
+  }
+  .modalBox{
+    background: var(--card, #1c1c1e); border-radius: 14px;
+    padding: 18px; width: 100%; max-width: 420px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+  }
+  .modalBox h3{ margin: 0 0 8px; font-size: 16px; }
+  .importHint{
+    font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height:1.4;
+  }
+  #importTextarea{
+    width: 100%; box-sizing: border-box; border-radius: 10px;
+    border: 1px solid var(--line, #333); background: var(--bg2, #111);
+    color: var(--text); font-family: var(--mono); font-size: 13px;
+    padding: 10px; resize: vertical;
+  }
+  .importActions{
+    display:flex; gap:10px; margin-top: 14px; justify-content:flex-end;
+  }
+  .importActions button{
+    padding: 9px 16px; border-radius: 10px; font-size: 14px; border:none;
+  }
+  .secondaryBtn{
+    background: none; border: 1px solid var(--line, #444); color: var(--text);
+  }
+  #btnImportConfirm{
+    background: var(--blue); color: #fff; font-weight:700;
+  }
+</style>
+</head>
+<body>
+
+<div id="mainView">
+<header>
+  <div class="eyebrow"><span>Comisiones Mauri</span><span id="fecha"></span></div>
+  <h1>Mi Ruta</h1>
+  <div class="sub">Paradas ilimitadas — sin plan pago</div>
+  <div class="stats">
+    <div><b id="statTotal">0</b> paradas</div>
+    <div><b id="statDone">0</b> retiradas</div>
+    <div><b id="statPaid">0</b> pagadas</div>
+    <div><b id="statMonto">$0</b></div>
+  </div>
+  <div class="dateNav">
+    <button id="btnPrevDay" class="dateArrow" title="Día anterior">‹</button>
+    <button id="btnDateLabel" class="dateLabel"></button>
+    <button id="btnNextDay" class="dateArrow" title="Día siguiente">›</button>
+    <button id="btnJumpToday" class="ghostbtn" style="display:none">Hoy</button>
+  </div>
+  <input type="date" id="dateInput">
+  <div class="headerActions">
+    <button id="btnNight" class="ghostbtn">🌙 Modo noche</button>
+    <button id="btnHistory" class="ghostbtn">🕑 Historial</button>
+  </div>
+</header>
+
+<div class="addbar">
+  <input id="inputAddr" list="freqList" type="text" placeholder="Agregar dirección o cliente…" autocomplete="off">
+  <button id="btnAdd">Agregar</button>
+</div>
+<datalist id="freqList"></datalist>
+<datalist id="localidadList"></datalist>
+
+<div class="freqhead">
+  <b>Locales frecuentes</b>
+  <button id="btnImportLocales">⇩ Importar</button>
+  <button id="btnEditChips">✎ Editar</button>
+</div>
+<div class="frequent" id="freqChips"></div>
+
+<div class="freqhead">
+  <b>Clientes frecuentes</b>
+  <button id="btnImportClientes">⇩ Importar</button>
+  <button id="btnEditClientChips">✎ Editar</button>
+</div>
+<div class="frequent" id="clientChips"></div>
+
+<div id="importModal" class="modalOverlay" style="display:none">
+  <div class="modalBox">
+    <h3 id="importModalTitle">Importar locales</h3>
+    <p class="importHint">Pegá una lista, una por línea, con el formato: Nombre -> Dirección (o Nombre -> Dirección -> Teléfono)</p>
+    <textarea id="importTextarea" rows="10" placeholder="Altagro -> Av. Presidente Perón 3697
+Copyprint -> Jujuy 2550 -> 3411234567"></textarea>
+    <div class="importActions">
+      <button id="btnImportCancel" class="secondaryBtn">Cancelar</button>
+      <button id="btnImportConfirm">Importar</button>
+    </div>
+  </div>
+</div>
+
+<div id="fuelModal" class="modalOverlay" style="display:none">
+  <div class="modalBox">
+    <h3>Cargar combustible</h3>
+    <div class="detail-field">
+      <label>Monto de esta carga ($)</label>
+      <input type="number" id="fuelMonto" placeholder="Ej: 20000">
+    </div>
+    <div id="fuelListWrap"></div>
+    <div class="importActions">
+      <button id="btnFuelCancel" class="secondaryBtn">Cerrar</button>
+      <button id="btnFuelConfirm">Agregar carga</button>
+    </div>
+  </div>
+</div>
+
+<div id="kmStartModal" class="modalOverlay" style="display:none">
+  <div class="modalBox">
+    <h3>Kilómetro inicial del día</h3>
+    <p class="importHint">Anotá lo que marca el cuentakilómetros antes de salir, así no te lo perdés para el cierre.</p>
+    <div class="detail-field">
+      <label>Kilómetro inicial</label>
+      <input type="number" id="kmInicioInput" placeholder="Ej: 45200">
+    </div>
+    <div class="importActions">
+      <button id="btnKmStartCancel" class="secondaryBtn">Cancelar</button>
+      <button id="btnKmStartConfirm">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="cierreModal" class="modalOverlay" style="display:none">
+  <div class="modalBox">
+    <h3>Cerrar día — kilómetros</h3>
+    <p class="importHint" id="cierreFuelResumen"></p>
+    <div class="detail-field">
+      <label>Kilómetro inicial</label>
+      <input type="number" id="kmInicio" placeholder="Ej: 45200">
+    </div>
+    <div class="detail-field">
+      <label>Kilómetro final</label>
+      <input type="number" id="kmFin" placeholder="Ej: 45340">
+    </div>
+    <div class="importActions">
+      <button id="btnCierreCancel" class="secondaryBtn">Cancelar</button>
+      <button id="btnCierreConfirm">Cerrar día</button>
+    </div>
+  </div>
+</div>
+
+<div class="toolbar2">
+  <button id="btnToggleOptions" class="linklike">⚙ Opciones de ruta (buscar, primera/última parada, optimizar)</button>
+</div>
+<div class="optionsPanel" id="optionsPanel" style="display:none">
+  <input id="searchInput" type="text" placeholder="Buscar en la ruta de hoy…">
+  <div class="pinRow">
+    <div class="detail-field">
+      <label>Primera parada</label>
+      <select id="selFirst"></select>
+    </div>
+    <div class="detail-field">
+      <label>Última parada</label>
+      <select id="selLast"></select>
+    </div>
+  </div>
+  <div class="detail-field" style="margin-bottom:10px">
+    <label>Punto de partida en Maps</label>
+    <select id="selOrigin">
+      <option value="gps">Mi ubicación actual</option>
+      <option value="fixed">Un punto fijo (dirección)</option>
+    </select>
+  </div>
+  <input id="originAddr" type="text" placeholder="Dirección del punto de partida (ej: mi casa)" style="display:none">
+  <button id="btnOptimize" class="btn-optimize">📍 Optimizar recorrido por cercanía</button>
+</div>
+
+<main>
+  <div class="route" id="routeList"></div>
+  <div class="empty" id="emptyState">
+    <b>Sin paradas todavía</b>
+    Agregá direcciones arriba — no hay límite.<br>Tocá un chip de "Locales" para el lugar donde retirás, o de "Clientes" para cargar a quién le llevás el pedido.
+  </div>
+</main>
+
+<div class="kmStartBar" id="kmStartBar" style="display:none">
+  <span id="kmStartText"></span>
+  <button id="btnSetKmStart" class="linklike">📍 Cargar km inicial del día</button>
+</div>
+<footer>
+  <button class="btn-clear" id="btnClear">Vaciar</button>
+  <button class="btn-fuel" id="btnAddFuel">⛽ Cargar combustible</button>
+  <button class="btn-share" id="btnShare">Compartir resumen</button>
+  <button class="btn-maps" id="btnMaps">Ver en Maps →</button>
+</footer>
+<div class="note" id="fuelTotalNote"></div>
+<div class="note" id="mapsNote"></div>
+</div>
+
+<section id="historyView">
+  <div class="histHead">
+    <button id="btnBackToRoute" class="ghostbtn">‹ Volver a la ruta</button>
+    <button id="btnCerrarDia" class="btn-cerrar">Cerrar este día</button>
+  </div>
+  <div class="histTotal">
+    <b id="histTotalCount">0</b>
+    comisiones en total (días cerrados)
+  </div>
+  <div id="histList"></div>
+  <div class="histActions">
+    <button id="btnExportHistCSV" class="ghostbtn">⬇ Exportar historial (CSV)</button>
+    <button id="btnExportBackup" class="ghostbtn">⬇ Copia de seguridad</button>
+    <label class="ghostbtn filelabel">⬆ Importar copia
+      <input type="file" id="fileImport" accept="application/json" style="display:none">
+    </label>
+  </div>
+</section>
+
+<script>
+const FREQUENT = [
+  "Altagro — Av. Presidente Perón 3697",
+  "De Crédito — Colón 1545",
+  "Embrague Alem — Liniers 1343",
+  "Distribuidora Motor Metal — Av. San Martín 1978",
+  "SUMA CELULARES — Av. San Martín 2202",
+  "Copyprint — Jujuy 2550",
+  "Telas DR — Av. Ovidio Lagos 3279",
+  "Roca Distribuciones — Corrientes 2734",
+  "Química del Norte — Colón 3287",
+  "Hospital Italiano Rosario — Virasoro 1249"
+];
+
+let stops = [];
+let fuelLoads = [];
+let kmInicioDia = null;
+let selectedDate = "";
+let searchTerm = "";
+let editingChips = false;
+let editingClientChips = false;
+let expandedIds = new Set();
+
+const STORAGE_KEY = "miruta:hoy";
+const CUSTOM_KEY = "miruta:custom";
+const HIDDEN_KEY = "miruta:hidden";
+const COUNTS_KEY = "miruta:counts";
+const HISTORY_KEY = "miruta:historial";
+const NIGHT_KEY = "miruta:noche";
+const CLIENTS_KEY = "miruta:clientes";
+const DAYS_KEY = "miruta:dias";
+const FUEL_KEY = "miruta:combustibleHoy";
+const KM_START_KEY = "miruta:kmInicioDia";
+const LEARNED_MIN = 3;
+const LEARNED_MAX = 4;
+
+function loadJSON(key, fallback){
+  try{ const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; }
+  catch(e){ return fallback; }
+}
+function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+function bumpCount(text){
+  const counts = loadJSON(COUNTS_KEY, {});
+  counts[text] = (counts[text]||0) + 1;
+  saveJSON(COUNTS_KEY, counts);
+}
+
+function loadCustom(){
+  const raw = loadJSON(CUSTOM_KEY, []);
+  return raw.map(c => typeof c === "string" ? {text:c, telefono:"", localidad:"Rosario"} : {localidad:"Rosario", ...c});
+}
+
+function getVisibleChips(){
+  const hidden = loadJSON(HIDDEN_KEY, []);
+  const custom = loadCustom().filter(c=> !hidden.includes(c.text));
+  const counts = loadJSON(COUNTS_KEY, {});
+  const base = FREQUENT.filter(f=> !hidden.includes(f)).map(f=>({text:f, telefono:"", localidad:"Rosario"}));
+  const learned = Object.entries(counts)
+    .filter(([text,n])=> n>=LEARNED_MIN && !base.some(b=>b.text===text) && !custom.some(c=>c.text===text) && !hidden.includes(text))
+    .sort((a,b)=> b[1]-a[1])
+    .slice(0, LEARNED_MAX)
+    .map(([text])=> ({text, telefono:"", localidad:"Rosario"}));
+  return base.concat(custom).concat(learned);
+}
+
+function populateLocalidadList(){
+  const dl = document.getElementById("localidadList");
+  if(!dl) return;
+  const known = new Set(["Rosario", "Casilda"]);
+  loadCustom().forEach(c=> known.add(c.localidad || "Rosario"));
+  loadClients().forEach(c=> known.add(c.localidad || "Rosario"));
+  stops.forEach(s=> known.add(s.localidad || "Rosario"));
+  dl.innerHTML = Array.from(known).filter(Boolean).map(loc=>`<option value="${escapeAttr(loc)}">`).join("");
+}
+
+function dateToStr(dt){
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+}
+function todayStr(){ return dateToStr(new Date()); }
+function fmtFecha(dateStr){
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  const dias = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+  const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  return `${dias[dt.getDay()]} ${dt.getDate()} ${meses[dt.getMonth()]}`;
+}
+document.getElementById("fecha").textContent = "hoy " + fmtFecha(todayStr());
+
+function renderFrequent(){
+  const wrap = document.getElementById("freqChips");
+  wrap.innerHTML = "";
+  const visible = getVisibleChips();
+
+  visible.forEach(chip=>{
+    const c = document.createElement("div");
+    c.className = "chip";
+    const label = document.createElement("span");
+    label.textContent = chip.text.split(" — ")[0];
+    c.appendChild(label);
+    if(editingChips){
+      const x = document.createElement("span");
+      x.className = "x";
+      x.textContent = "✕";
+      x.onclick = (e)=>{ e.stopPropagation(); hideChip(chip.text); };
+      c.appendChild(x);
+    } else {
+      c.onclick = ()=> addStop(chip.text, chip.telefono, chip.localidad);
+    }
+    wrap.appendChild(c);
+  });
+
+  if(editingChips){
+    const add = document.createElement("div");
+    add.className = "chip add";
+    add.textContent = "+ Agregar local";
+    add.onclick = addCustomChip;
+    wrap.appendChild(add);
+  }
+
+  const dl = document.getElementById("freqList");
+  dl.innerHTML = visible.map(chip=>`<option value="${chip.text}">`).join("");
+}
+
+function hideChip(text){
+  const custom = loadCustom();
+  if(custom.some(c=>c.text===text)){
+    saveJSON(CUSTOM_KEY, custom.filter(c=>c.text!==text));
+  } else {
+    const hidden = loadJSON(HIDDEN_KEY, []);
+    hidden.push(text);
+    saveJSON(HIDDEN_KEY, hidden);
+  }
+  renderFrequent();
+}
+
+function addCustomChip(){
+  const nombre = prompt("Nombre del local (como querés que se vea en el chip):");
+  if(!nombre) return;
+  const direccion = prompt("Dirección completa:");
+  if(!direccion) return;
+  const telefono = prompt("Teléfono del local (opcional, para avisarle que prepare el pedido):") || "";
+  const localidad = prompt("Localidad (dejalo vacío si es Rosario):") || "Rosario";
+  const custom = loadCustom();
+  custom.push({ text: `${nombre.trim()} — ${direccion.trim()}`, telefono: telefono.trim(), localidad: localidad.trim() || "Rosario" });
+  saveJSON(CUSTOM_KEY, custom);
+  renderFrequent();
+}
+
+// --- Clientes frecuentes (nombre + teléfono + dirección de entrega) ---
+function loadClients(){ return loadJSON(CLIENTS_KEY, []); }
+function saveClients(list){ saveJSON(CLIENTS_KEY, list); }
+
+function renderClientChips(){
+  const wrap = document.getElementById("clientChips");
+  wrap.innerHTML = "";
+  const clients = loadClients();
+
+  clients.forEach(cli=>{
+    const c = document.createElement("div");
+    c.className = "chip";
+    const label = document.createElement("span");
+    label.textContent = cli.nombre;
+    c.appendChild(label);
+    if(editingClientChips){
+      const x = document.createElement("span");
+      x.className = "x";
+      x.textContent = "✕";
+      x.onclick = (e)=>{ e.stopPropagation(); deleteClientChip(cli.id); };
+      c.appendChild(x);
+    } else {
+      c.onclick = ()=> addClienteStop(cli);
+    }
+    wrap.appendChild(c);
+  });
+
+  if(editingClientChips){
+    const add = document.createElement("div");
+    add.className = "chip add";
+    add.textContent = "+ Agregar cliente";
+    add.onclick = addClientChip;
+    wrap.appendChild(add);
+  }
+}
+
+function deleteClientChip(id){
+  saveClients(loadClients().filter(c=>c.id!==id));
+  renderClientChips();
+}
+
+function addClientChip(){
+  const nombre = prompt("Nombre del cliente:");
+  if(!nombre) return;
+  const telefono = prompt("Teléfono del cliente:") || "";
+  const direccion = prompt("Dirección del cliente (adonde le llevás el pedido):") || "";
+  const localidad = prompt("Localidad (dejalo vacío si es Rosario):") || "Rosario";
+  const clients = loadClients();
+  clients.push({ id: uid(), nombre: nombre.trim(), telefono: telefono.trim(), direccion: direccion.trim(), localidad: localidad.trim() || "Rosario" });
+  saveClients(clients);
+  renderClientChips();
+}
+
+// --- Importar en lote (Locales y Clientes) ---
+let importMode = "locales"; // "locales" o "clientes"
+
+function openImportModal(mode){
+  importMode = mode;
+  document.getElementById("importModalTitle").textContent =
+    mode === "locales" ? "Importar locales" : "Importar clientes";
+  const hint = document.querySelector("#importModal .importHint");
+  hint.textContent = mode === "locales"
+    ? "Pegá una lista, una por línea: Nombre -> Dirección (opcional -> Teléfono -> Localidad)"
+    : "Pegá una lista, una por línea: Nombre -> Teléfono -> Dirección (opcional -> Localidad)";
+  document.getElementById("importTextarea").value = "";
+  document.getElementById("importModal").style.display = "flex";
+}
+function closeImportModal(){
+  document.getElementById("importModal").style.display = "none";
+}
+
+function parseImportLine(line){
+  // separa por "->" o " - " o tabulador
+  return line.split(/->|\t/).map(p => p.trim()).filter(p => p.length > 0);
+}
+
+function runImport(){
+  const raw = document.getElementById("importTextarea").value;
+  const lines = raw.split("\n").map(l=>l.trim()).filter(l=>l.length>0);
+  if(lines.length === 0){ closeImportModal(); return; }
+
+  let count = 0;
+  if(importMode === "locales"){
+    const custom = loadCustom();
+    lines.forEach(line=>{
+      const parts = parseImportLine(line);
+      if(parts.length < 2) return;
+      const [nombre, direccion, telefono, localidad] = parts;
+      custom.push({ text: `${nombre} — ${direccion}`, telefono: (telefono||"").trim(), localidad: (localidad||"").trim() || "Rosario" });
+      count++;
+    });
+    saveJSON(CUSTOM_KEY, custom);
+    renderFrequent();
+  } else {
+    const clients = loadClients();
+    lines.forEach(line=>{
+      const parts = parseImportLine(line);
+      if(parts.length < 2) return;
+      const [nombre, telefono, direccion, localidad] = parts;
+      clients.push({ id: uid(), nombre: nombre, telefono: (telefono||"").trim(), direccion: (direccion||"").trim(), localidad: (localidad||"").trim() || "Rosario" });
+      count++;
+    });
+    saveClients(clients);
+    renderClientChips();
+  }
+  closeImportModal();
+  alert(count + " " + (importMode === "locales" ? "locales importados." : "clientes importados."));
+}
+
+document.getElementById("btnImportLocales").onclick = ()=> openImportModal("locales");
+document.getElementById("btnImportClientes").onclick = ()=> openImportModal("clientes");
+document.getElementById("btnImportCancel").onclick = closeImportModal;
+document.getElementById("btnImportConfirm").onclick = runImport;
+
+function addClienteStop(cliente){
+  if(!cliente.direccion){
+    alert("Ese cliente no tiene dirección guardada. Editalo para agregarla, o cargá la parada a mano.");
+    return;
+  }
+  addStop(cliente.direccion, "", cliente.localidad);
+  const nuevaParada = stops[stops.length-1];
+  nuevaParada.cliente = cliente.nombre;
+  nuevaParada.telefono = cliente.telefono;
+  save();
+  render();
+}
+
+document.getElementById("btnEditClientChips").onclick = ()=>{
+  editingClientChips = !editingClientChips;
+  document.getElementById("btnEditClientChips").textContent = editingClientChips ? "✓ Listo" : "✎ Editar";
+  renderClientChips();
+};
+
+document.getElementById("btnEditChips").onclick = ()=>{
+  editingChips = !editingChips;
+  document.getElementById("btnEditChips").textContent = editingChips ? "✓ Listo" : "✎ Editar";
+  renderFrequent();
+};
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function addStop(text, telefonoLocal, localidad){
+  const t = (text ?? document.getElementById("inputAddr").value).trim();
+  if(!t) return;
+  stops.push({ id: uid(), text: t, done:false, paid:false, monto:"", bultos:"", nota:"", cliente:"", telefono:"", telefonoLocal: telefonoLocal||"", tipo:"", paquete:"", tamano:"", foto:"", pin:null, lat:null, lon:null, localidad: (localidad||"Rosario").trim() });
+  document.getElementById("inputAddr").value = "";
+  bumpCount(t);
+  save();
+  render();
+  renderFrequent();
+}
+
+function removeStop(id){
+  stops = stops.filter(s=>s.id!==id);
+  expandedIds.delete(id);
+  save(); render();
+}
+function toggleDone(id){
+  stops = stops.map(s=> s.id===id ? {...s, done:!s.done} : s);
+  save(); render();
+}
+function togglePaid(id){
+  stops = stops.map(s=> s.id===id ? {...s, paid:!s.paid} : s);
+  save(); render();
+}
+function updateField(id, field, value){
+  stops = stops.map(s=> s.id===id ? {...s, [field]: value} : s);
+  save();
+}
+function clearAll(){
+  if(stops.length && !confirm("¿Vaciar toda la ruta de hoy?")) return;
+  stops = [];
+  expandedIds.clear();
+  save(); render();
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str ?? "";
+  return d.innerHTML;
+}
+function escapeAttr(str){
+  return escapeHtml(str).replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+const TIPO_LABEL = { entrega:"Entrega", recogida:"Recogida" };
+const PAQUETE_LABEL = { bolsa:"Bolsa", caja:"Caja", sobre:"Sobre" };
+const TAMANO_LABEL = { chico:"Chico", mediano:"Mediano", grande:"Grande" };
+
+function render(){
+  const list = document.getElementById("routeList");
+  const empty = document.getElementById("emptyState");
+  list.innerHTML = "";
+
+  const term = searchTerm.trim().toLowerCase();
+  const visibleStops = term
+    ? stops.filter(s => s.text.toLowerCase().includes(term) || (s.nota||"").toLowerCase().includes(term))
+    : stops;
+
+  if(stops.length===0){
+    empty.style.display = "block";
+  } else if(visibleStops.length===0){
+    empty.style.display = "block";
+  } else {
+    empty.style.display = "none";
+    visibleStops.forEach((s)=>{
+      const idx = stops.indexOf(s);
+      const expanded = expandedIds.has(s.id);
+      const badges = [];
+      if(s.tipo) badges.push(TIPO_LABEL[s.tipo]);
+      if(s.paquete) badges.push(PAQUETE_LABEL[s.paquete]);
+      if(s.tamano) badges.push(TAMANO_LABEL[s.tamano]);
+      if(s.pin==="first") badges.push("🏁 Primera");
+      if(s.pin==="last") badges.push("🏁 Última");
+      if(s.cliente) badges.push("👤 " + s.cliente);
+      if(s.nota) badges.push("📝 " + s.nota);
+      if(s.foto) badges.push("📷");
+      const badgeLine = badges.length ? `<div class="badge-line">${escapeHtml(badges.join(" · "))}</div>` : "";
+
+      const el = document.createElement("div");
+      el.className = "stop" + (s.done ? " done" : "");
+      el.dataset.id = s.id;
+      el.innerHTML = `
+        <div class="stop-top">
+          <button class="drag-handle" data-id="${s.id}" title="Arrastrar para reordenar">⠿</button>
+          <div class="stop-num">${String(idx+1).padStart(2,"0")}</div>
+          <div class="stop-main">
+            <div class="stop-addr">${escapeHtml(s.text)}</div>
+            ${badgeLine}
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field">
+            <label>Monto $</label>
+            <input type="number" inputmode="numeric" placeholder="0" data-field="monto" data-id="${s.id}" value="${escapeAttr(s.monto ?? '')}">
+          </div>
+          <div class="detail-field">
+            <label>Bultos</label>
+            <input type="number" inputmode="numeric" placeholder="1" data-field="bultos" data-id="${s.id}" value="${escapeAttr(s.bultos ?? '')}">
+          </div>
+        </div>
+        ${expanded ? `
+        <div class="detail-row">
+          <div class="detail-field wide">
+            <label>Teléfono del local (para avisar que prepare el pedido)</label>
+            <div class="phone-row">
+              <input type="tel" placeholder="341…" data-field="telefonoLocal" data-id="${s.id}" value="${escapeAttr(s.telefonoLocal ?? '')}">
+              ${s.telefonoLocal ? `<a class="icon-btn call" href="tel:${escapeAttr(s.telefonoLocal)}" title="Llamar al local">📞</a>` : ""}
+              ${s.telefonoLocal ? `<a class="icon-btn whatsapp" href="${waLink(s.telefonoLocal)}" target="_blank" title="WhatsApp al local">💬</a>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field wide">
+            <label>Cliente (quién hizo el pedido)</label>
+            <input type="text" placeholder="Nombre de quién pidió…" data-field="cliente" data-id="${s.id}" value="${escapeAttr(s.cliente ?? '')}">
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field wide">
+            <label>Localidad (para agrupar la ruta y evitar zigzag)</label>
+            <input type="text" list="localidadList" placeholder="Rosario" data-field="localidad" data-id="${s.id}" value="${escapeAttr(s.localidad ?? 'Rosario')}">
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field wide">
+            <label>Nota (qué pidió el cliente)</label>
+            <input type="text" placeholder="Ej: 3 cajas, repuesto de embrague…" data-field="nota" data-id="${s.id}" value="${escapeAttr(s.nota ?? '')}">
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field wide">
+            <label>Foto</label>
+            <div class="foto-row">
+              ${s.foto ? `<img class="foto-thumb" src="${s.foto}" data-id="${s.id}">` : ""}
+              <label class="foto-btn">
+                📷 Cámara
+                <input type="file" accept="image/*" capture="environment" data-foto="${s.id}" style="display:none">
+              </label>
+              <label class="foto-btn">
+                🖼 Galería
+                <input type="file" accept="image/*" data-foto="${s.id}" style="display:none">
+              </label>
+              ${s.foto ? `<button class="icon-btn del" data-act="delfoto" data-id="${s.id}">✕</button>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field">
+            <label>Teléfono del cliente</label>
+            <div class="phone-row">
+              <input type="tel" placeholder="341…" data-field="telefono" data-id="${s.id}" value="${escapeAttr(s.telefono ?? '')}">
+              ${s.telefono ? `<a class="icon-btn call" href="tel:${escapeAttr(s.telefono)}" title="Llamar">📞</a>` : ""}
+              ${s.telefono ? `<a class="icon-btn whatsapp" href="${waLink(s.telefono)}" target="_blank" title="WhatsApp">💬</a>` : ""}
+            </div>
+          </div>
+          <div class="detail-field">
+            <label>Tipo</label>
+            <select data-field="tipo" data-id="${s.id}">
+              <option value="">—</option>
+              <option value="entrega" ${s.tipo==="entrega"?"selected":""}>Entrega</option>
+              <option value="recogida" ${s.tipo==="recogida"?"selected":""}>Recogida</option>
+            </select>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-field">
+            <label>Paquete</label>
+            <select data-field="paquete" data-id="${s.id}">
+              <option value="">—</option>
+              <option value="bolsa" ${s.paquete==="bolsa"?"selected":""}>Bolsa</option>
+              <option value="caja" ${s.paquete==="caja"?"selected":""}>Caja</option>
+              <option value="sobre" ${s.paquete==="sobre"?"selected":""}>Sobre</option>
+            </select>
+          </div>
+          <div class="detail-field">
+            <label>Tamaño</label>
+            <select data-field="tamano" data-id="${s.id}">
+              <option value="">—</option>
+              <option value="chico" ${s.tamano==="chico"?"selected":""}>Chico</option>
+              <option value="mediano" ${s.tamano==="mediano"?"selected":""}>Mediano</option>
+              <option value="grande" ${s.tamano==="grande"?"selected":""}>Grande</option>
+            </select>
+          </div>
+        </div>
+        ` : ""}
+        <div class="stop-actions-row">
+          <div class="toggles">
+            <button class="tgl ${s.done?'on-done':''}" data-act="done" data-id="${s.id}">✓ RETIRADO</button>
+            <button class="tgl ${s.paid?'on-paid':''}" data-act="paid" data-id="${s.id}">$ PAGADO</button>
+          </div>
+          <button class="expand-toggle" data-act="expand" data-id="${s.id}">${expanded ? "▴ Menos" : "▾ Más datos"}</button>
+          <div class="move-del">
+            ${s.telefono ? `<a class="icon-btn call" href="tel:${escapeAttr(s.telefono)}" title="Llamar">📞</a>` : ""}
+            ${s.telefono ? `<a class="icon-btn whatsapp" href="${waLink(s.telefono)}" target="_blank" title="WhatsApp">💬</a>` : ""}
+            <button class="icon-btn del" data-act="del" data-id="${s.id}">✕</button>
+          </div>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+  document.getElementById("statTotal").textContent = stops.length;
+  document.getElementById("statDone").textContent = stops.filter(s=>s.done).length;
+  document.getElementById("statPaid").textContent = stops.filter(s=>s.paid).length;
+  const totalMonto = stops.reduce((acc,s)=> acc + (parseFloat(s.monto)||0), 0);
+  document.getElementById("statMonto").textContent = "$" + totalMonto.toLocaleString("es-AR");
+
+  const note = document.getElementById("mapsNote");
+  note.textContent = stops.length > 9
+    ? "Maps puede tardar en trazar rutas muy largas — probá abrirla igual, si no anda dividila en dos tandas."
+    : "";
+
+  updatePinSelectors();
+  populateLocalidadList();
+}
+
+document.getElementById("routeList").addEventListener("click", (e)=>{
+  const thumb = e.target.closest(".foto-thumb");
+  if(thumb){
+    const s = stops.find(x=>x.id===thumb.dataset.id);
+    if(s && s.foto) window.open(s.foto, "_blank");
+    return;
+  }
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const act = btn.dataset.act;
+  if(act==="done") toggleDone(id);
+  if(act==="paid") togglePaid(id);
+  if(act==="del") removeStop(id);
+  if(act==="delfoto"){
+    if(confirm("¿Borrar la foto de esta parada?")){ updateField(id, "foto", ""); render(); }
+  }
+  if(act==="expand"){
+    if(expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
+    render();
+  }
+});
+
+function handleFieldInput(e){
+  const el = e.target;
+  if(!el.dataset || !el.dataset.field) return;
+  updateField(el.dataset.id, el.dataset.field, el.value);
+  if(el.dataset.field==="monto"){
+    const totalMonto = stops.reduce((acc,s)=> acc + (parseFloat(s.monto)||0), 0);
+    document.getElementById("statMonto").textContent = "$" + totalMonto.toLocaleString("es-AR");
+  }
+}
+document.getElementById("routeList").addEventListener("input", handleFieldInput);
+document.getElementById("routeList").addEventListener("change", (e)=>{
+  const fotoInput = e.target.closest("input[data-foto]");
+  if(fotoInput){
+    const file = fotoInput.files && fotoInput.files[0];
+    if(file) handleFotoUpload(fotoInput.dataset.foto, file);
+    return;
+  }
+  handleFieldInput(e);
+  if(e.target.tagName==="SELECT"){ render(); }
+});
+
+function handleFotoUpload(id, file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const maxDim = 1000;
+      let w = img.width, h = img.height;
+      if(w > maxDim || h > maxDim){
+        if(w >= h){ h = Math.round(h * maxDim/w); w = maxDim; }
+        else{ w = Math.round(w * maxDim/h); h = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+      updateField(id, "foto", dataUrl);
+      render();
+    };
+    img.onerror = ()=> alert("No se pudo procesar esa imagen.");
+    img.src = reader.result;
+  };
+  reader.onerror = ()=> alert("No se pudo leer el archivo.");
+  reader.readAsDataURL(file);
+}
+
+// --- Arrastrar y soltar para reordenar paradas ---
+document.getElementById("routeList").addEventListener("pointerdown", (e)=>{
+  if(searchTerm.trim()) return;
+  const handle = e.target.closest(".drag-handle");
+  if(!handle) return;
+  e.preventDefault();
+  const listEl = document.getElementById("routeList");
+  const stopEl = handle.closest(".stop");
+  if(!stopEl) return;
+  const startY = e.clientY;
+  let currentTranslate = 0;
+  stopEl.classList.add("dragging");
+  try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+
+  function onMove(ev){
+    currentTranslate = ev.clientY - startY;
+    stopEl.style.transform = `translateY(${currentTranslate}px)`;
+    const items = Array.from(listEl.children).filter(el=>el.classList.contains("stop"));
+    const draggedRect = stopEl.getBoundingClientRect();
+    const draggedMid = draggedRect.top + draggedRect.height/2;
+    for(const item of items){
+      if(item===stopEl) continue;
+      const r = item.getBoundingClientRect();
+      const mid = r.top + r.height/2;
+      const stopIsBefore = !!(stopEl.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING);
+      if(stopIsBefore && draggedMid > mid){
+        listEl.insertBefore(item, stopEl);
+      } else if(!stopIsBefore && draggedMid < mid){
+        listEl.insertBefore(stopEl, item);
+      }
+    }
+  }
+  function onUp(ev){
+    stopEl.classList.remove("dragging");
+    stopEl.style.transform = "";
+    try{ handle.releasePointerCapture(ev.pointerId); }catch(err){}
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    const newOrder = Array.from(listEl.children).filter(el=>el.classList.contains("stop")).map(el=>el.dataset.id);
+    stops.sort((a,b)=> newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+    save();
+    render();
+  }
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+});
+
+document.getElementById("btnAdd").onclick = ()=> addStop();
+document.getElementById("inputAddr").addEventListener("keydown", (e)=>{
+  if(e.key==="Enter") addStop();
+});
+document.getElementById("btnClear").onclick = clearAll;
+
+document.getElementById("btnMaps").onclick = ()=>{
+  if(stops.length===0){ alert("Agregá al menos una parada primero."); return; }
+  const parts = stops.map(s=> encodeURIComponent(s.text + ", Rosario, Santa Fe"));
+  const origin = loadJSON(ORIGIN_KEY, {mode:"gps", addr:""});
+  let originPart = "";
+  if(origin.mode === "fixed" && origin.addr && origin.addr.trim()){
+    originPart = encodeURIComponent(origin.addr.trim() + ", Rosario, Santa Fe") + "/";
+  }
+  const url = "https://www.google.com/maps/dir/" + originPart + parts.join("/");
+  window.open(url, "_blank");
+};
+
+const ORIGIN_KEY = "miruta:origen";
+function loadOriginUI(){
+  const origin = loadJSON(ORIGIN_KEY, {mode:"gps", addr:""});
+  document.getElementById("selOrigin").value = origin.mode;
+  document.getElementById("originAddr").value = origin.addr || "";
+  document.getElementById("originAddr").style.display = origin.mode === "fixed" ? "block" : "none";
+}
+function saveOrigin(){
+  const mode = document.getElementById("selOrigin").value;
+  const addr = document.getElementById("originAddr").value;
+  saveJSON(ORIGIN_KEY, {mode, addr});
+}
+document.getElementById("selOrigin").onchange = ()=>{
+  document.getElementById("originAddr").style.display =
+    document.getElementById("selOrigin").value === "fixed" ? "block" : "none";
+  saveOrigin();
+};
+document.getElementById("originAddr").addEventListener("input", saveOrigin);
+loadOriginUI();
+
+document.getElementById("btnShare").onclick = ()=>{
+  if(stops.length===0){ alert("Agregá al menos una parada primero."); return; }
+  const fecha = fmtFecha(selectedDate);
+  let totalMonto = 0, totalBultos = 0;
+  const lineas = stops.map((s,i)=>{
+    const monto = parseFloat(s.monto)||0;
+    const bultos = parseFloat(s.bultos)||0;
+    totalMonto += monto;
+    totalBultos += bultos;
+    const estado = s.done ? "✓ retirado" : "pendiente";
+    const pago = s.paid ? "pagado" : "a cobrar";
+    const montoTxt = monto ? `$${monto.toLocaleString("es-AR")}` : "-";
+    const bultosTxt = bultos ? `${bultos} bulto(s)` : "";
+    const notaTxt = s.nota ? ` — nota: ${s.nota}` : "";
+    const clienteTxt = s.cliente ? ` — cliente: ${s.cliente}` : "";
+    return `${i+1}. ${s.text} — ${montoTxt} ${bultosTxt} (${estado}, ${pago})${clienteTxt}${notaTxt}`;
+  }).join("\n");
+  const resumen = `RUTA ${fecha}\n${lineas}\n\nTotal: $${totalMonto.toLocaleString("es-AR")} — ${totalBultos} bultos — ${stops.filter(s=>s.done).length}/${stops.length} retirados`;
+  const url = "https://wa.me/?text=" + encodeURIComponent(resumen);
+  window.open(url, "_blank");
+};
+
+// --- Modo noche ---
+function applyNightMode(){
+  const on = localStorage.getItem(NIGHT_KEY) === "1";
+  document.body.classList.toggle("night", on);
+  document.getElementById("btnNight").classList.toggle("active", on);
+}
+document.getElementById("btnNight").onclick = ()=>{
+  const on = document.body.classList.toggle("night");
+  localStorage.setItem(NIGHT_KEY, on ? "1" : "0");
+  document.getElementById("btnNight").classList.toggle("active", on);
+};
+
+// --- Opciones de ruta: buscador, primera/última, optimizar ---
+document.getElementById("btnToggleOptions").onclick = ()=>{
+  const panel = document.getElementById("optionsPanel");
+  panel.style.display = panel.style.display==="none" ? "block" : "none";
+};
+document.getElementById("searchInput").addEventListener("input", (e)=>{
+  searchTerm = e.target.value;
+  render();
+});
+
+function updatePinSelectors(){
+  const selFirst = document.getElementById("selFirst");
+  const selLast = document.getElementById("selLast");
+  const opts = stops.map(s=>`<option value="${s.id}">${escapeHtml(s.text.slice(0,40))}</option>`).join("");
+  selFirst.innerHTML = `<option value="">Automático</option>` + opts;
+  selLast.innerHTML = `<option value="">Automático</option>` + opts;
+  const first = stops.find(s=>s.pin==="first");
+  const last = stops.find(s=>s.pin==="last");
+  selFirst.value = first ? first.id : "";
+  selLast.value = last ? last.id : "";
+}
+document.getElementById("selFirst").addEventListener("change", (e)=>{
+  stops.forEach(s=>{ if(s.pin==="first") s.pin=null; });
+  if(e.target.value){
+    const s = stops.find(x=>x.id===e.target.value);
+    if(s){ if(s.pin==="last") s.pin=null; s.pin="first"; }
+  }
+  save(); render();
+});
+document.getElementById("selLast").addEventListener("change", (e)=>{
+  stops.forEach(s=>{ if(s.pin==="last") s.pin=null; });
+  if(e.target.value){
+    const s = stops.find(x=>x.id===e.target.value);
+    if(s){ if(s.pin==="first") s.pin=null; s.pin="last"; }
+  }
+  save(); render();
+});
+
+function dist(a,b){
+  const dx = a.lat-b.lat, dy = a.lon-b.lon;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+function addressForGeocode(text){
+  const idx = text.indexOf(" — ");
+  return idx >= 0 ? text.slice(idx + 3) : text;
+}
+function waLink(telefono){
+  let digits = (telefono||"").replace(/\D/g,"");
+  if(!digits) return "#";
+  if(!digits.startsWith("54")) digits = "54" + digits;
+  return `https://wa.me/${digits}`;
+}
+
+document.getElementById("btnOptimize").onclick = async ()=>{
+  if(stops.length < 3){ alert("Necesitás al menos 3 paradas para optimizar el recorrido."); return; }
+  const btn = document.getElementById("btnOptimize");
+  btn.disabled = true;
+  const original = btn.textContent;
+  try{
+    btn.textContent = "Ubicando direcciones…";
+    for(const s of stops){
+      if(s.lat && s.lon) continue;
+      const q = encodeURIComponent(addressForGeocode(s.text) + `, ${s.localidad || "Rosario"}, Santa Fe, Argentina`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}`);
+      const data = await res.json();
+      if(data && data[0]){ s.lat = parseFloat(data[0].lat); s.lon = parseFloat(data[0].lon); }
+      await new Promise(r=>setTimeout(r, 1100));
+    }
+    const withCoords = stops.filter(s=>s.lat && s.lon);
+    if(withCoords.length < 2){
+      alert("No se pudieron ubicar suficientes direcciones para optimizar. Revisá que estén completas (con calle y altura).");
+      return;
+    }
+    btn.textContent = "Calculando orden…";
+    const pinFirst = stops.find(s=>s.pin==="first");
+    const pinLast = stops.find(s=>s.pin==="last");
+    let remaining = stops.filter(s=> s!==pinFirst && s!==pinLast);
+
+    // Agrupar las paradas restantes por localidad, para no zigzaguear entre ciudades
+    const groups = {};
+    remaining.forEach(s=>{
+      const loc = s.localidad || "Rosario";
+      (groups[loc] = groups[loc] || []).push(s);
+    });
+
+    function centroid(list){
+      const withCoords = list.filter(s=>s.lat && s.lon);
+      if(!withCoords.length) return null;
+      return {
+        lat: withCoords.reduce((a,s)=>a+s.lat,0) / withCoords.length,
+        lon: withCoords.reduce((a,s)=>a+s.lon,0) / withCoords.length
+      };
+    }
+
+    function nearestNeighborOrder(list, start){
+      let rem = list.slice();
+      let ordered = [];
+      let current = start;
+      if(!current){ current = rem.shift(); ordered.push(current); }
+      while(rem.length){
+        let nearest = null, nearestD = Infinity;
+        for(const s of rem){
+          if(!s.lat || !s.lon || !current.lat || !current.lon) continue;
+          const d = dist(current, s);
+          if(d < nearestD){ nearestD = d; nearest = s; }
+        }
+        if(!nearest) nearest = rem[0];
+        ordered.push(nearest);
+        rem = rem.filter(x=>x!==nearest);
+        current = nearest;
+      }
+      return ordered;
+    }
+
+    // Ordenar las localidades entre sí por cercanía (arrancando de la parada fija, si hay)
+    let groupKeys = Object.keys(groups).sort((a,b)=> groups[b].length - groups[a].length);
+    let orderedGroups = [];
+    if(groupKeys.length){
+      const startPoint = (pinFirst && pinFirst.lat && pinFirst.lon) ? pinFirst : null;
+      let startKey = startPoint && groups[startPoint.localidad || "Rosario"] ? (startPoint.localidad || "Rosario") : groupKeys[0];
+      let remainingGroups = groupKeys.filter(k=>k!==startKey);
+      orderedGroups.push(startKey);
+      let currentCentroid = startPoint ? {lat:startPoint.lat, lon:startPoint.lon} : centroid(groups[startKey]);
+      while(remainingGroups.length){
+        let nearestKey = null, nearestD = Infinity;
+        for(const k of remainingGroups){
+          const c = centroid(groups[k]);
+          if(!c || !currentCentroid) continue;
+          const d = dist(currentCentroid, c);
+          if(d < nearestD){ nearestD = d; nearestKey = k; }
+        }
+        if(!nearestKey) nearestKey = remainingGroups[0];
+        orderedGroups.push(nearestKey);
+        remainingGroups = remainingGroups.filter(k=>k!==nearestKey);
+        currentCentroid = centroid(groups[nearestKey]) || currentCentroid;
+      }
+    }
+
+    let ordered = [];
+    if(pinFirst) ordered.push(pinFirst);
+    let cursor = (pinFirst && pinFirst.lat && pinFirst.lon) ? pinFirst : null;
+    orderedGroups.forEach(key=>{
+      const groupStops = groups[key];
+      const groupOrdered = nearestNeighborOrder(groupStops, cursor);
+      ordered.push(...groupOrdered);
+      const lastWithCoords = [...groupOrdered].reverse().find(s=>s.lat && s.lon);
+      if(lastWithCoords) cursor = lastWithCoords;
+    });
+    if(pinLast) ordered.push(pinLast);
+    stops = ordered;
+    save(); render();
+    alert("Ruta optimizada: primero por localidad y después por cercanía dentro de cada una.");
+  }catch(err){
+    alert("No se pudo optimizar — revisá tu conexión a internet e intentá de nuevo.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+};
+
+// --- Historial ---
+document.getElementById("btnHistory").onclick = ()=>{
+  document.getElementById("mainView").style.display = "none";
+  document.getElementById("historyView").style.display = "block";
+  renderHistory();
+};
+document.getElementById("btnBackToRoute").onclick = ()=>{
+  document.getElementById("historyView").style.display = "none";
+  document.getElementById("mainView").style.display = "block";
+};
+
+function renderHistory(){
+  const historial = loadJSON(HISTORY_KEY, []);
+  const totalComisiones = historial.reduce((acc,h)=> acc + h.total, 0);
+  document.getElementById("histTotalCount").textContent = totalComisiones;
+  const list = document.getElementById("histList");
+  if(historial.length===0){
+    list.innerHTML = `<div class="empty"><b>Todavía no cerraste ningún día</b>Cuando termines tu ruta, tocá "Cerrar día de hoy" para guardar el resumen acá.</div>`;
+    return;
+  }
+  list.innerHTML = historial.map(h=>{
+    const kmTxt = h.kmRecorridos ? ` — ${h.kmRecorridos.toLocaleString("es-AR")} km` : "";
+    const cargasN = h.fuelLoads && h.fuelLoads.length;
+    const combTxt = h.gastoCombustible ? ` — combustible: $${h.gastoCombustible.toLocaleString("es-AR")}${cargasN?` (${cargasN} carga${cargasN>1?"s":""})`:""}` : "";
+    const costoTxt = h.costoPorKm ? ` — $${h.costoPorKm.toLocaleString("es-AR",{maximumFractionDigits:1})}/km` : "";
+    return `
+    <div class="histCard">
+      <div class="histCardTop"><b>${escapeHtml(h.fecha)}</b><span>$${h.totalMonto.toLocaleString("es-AR")}</span></div>
+      <div class="histCardSub">${h.retiradas}/${h.total} retiradas — ${h.totalBultos} bultos${kmTxt}${combTxt}${costoTxt}</div>
+    </div>
+  `;
+  }).join("");
+}
+
+function renderFuelModalList(){
+  const wrap = document.getElementById("fuelListWrap");
+  if(fuelLoads.length===0){ wrap.innerHTML = ""; return; }
+  const rows = fuelLoads.map((f,i)=>{
+    const hora = new Date(f.hora).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+    return `
+    <div class="fuelRow">
+      <div class="fuelRowInfo"><b>$${f.monto.toLocaleString("es-AR")}</b> <span class="fuelRowHora">— ${hora}</span></div>
+      <button class="icon-btn del" data-act="delfuel" data-idx="${i}">✕</button>
+    </div>`;
+  }).join("");
+  wrap.innerHTML = `<div class="fuelList">${rows}</div>
+    <div class="fuelTotalRow"><span>${fuelLoads.length} carga${fuelLoads.length>1?"s":""} hoy</span><span>Total: $${fuelTotal().toLocaleString("es-AR")}</span></div>`;
+}
+
+document.getElementById("fuelListWrap").addEventListener("click", (e)=>{
+  const btn = e.target.closest('[data-act="delfuel"]');
+  if(!btn) return;
+  const idx = parseInt(btn.dataset.idx, 10);
+  fuelLoads.splice(idx, 1);
+  saveFuel();
+  renderFuel();
+  renderFuelModalList();
+});
+
+document.getElementById("btnAddFuel").onclick = ()=>{
+  document.getElementById("fuelMonto").value = "";
+  renderFuelModalList();
+  document.getElementById("fuelModal").style.display = "flex";
+};
+
+document.getElementById("btnFuelCancel").onclick = ()=>{
+  document.getElementById("fuelModal").style.display = "none";
+};
+
+document.getElementById("btnFuelConfirm").onclick = ()=>{
+  const monto = parseFloat(document.getElementById("fuelMonto").value) || 0;
+  if(monto<=0){ alert("Cargá un monto válido."); return; }
+  fuelLoads.push({monto, hora: new Date().toISOString()});
+  saveFuel();
+  renderFuel();
+  renderFuelModalList();
+  document.getElementById("fuelMonto").value = "";
+  document.getElementById("fuelMonto").focus();
+};
+
+document.getElementById("btnSetKmStart").onclick = ()=>{
+  document.getElementById("kmInicioInput").value = kmInicioDia!=null ? kmInicioDia : "";
+  document.getElementById("kmStartModal").style.display = "flex";
+};
+
+document.getElementById("btnKmStartCancel").onclick = ()=>{
+  document.getElementById("kmStartModal").style.display = "none";
+};
+
+document.getElementById("btnKmStartConfirm").onclick = ()=>{
+  const val = parseFloat(document.getElementById("kmInicioInput").value);
+  kmInicioDia = isNaN(val) ? null : val;
+  saveKmStart();
+  renderFuel();
+  document.getElementById("kmStartModal").style.display = "none";
+};
+
+document.getElementById("btnCerrarDia").onclick = ()=>{
+  if(stops.length===0){ alert("No hay paradas cargadas ese día."); return; }
+  const pendientes = stops.filter(s=>!s.done).length;
+  if(pendientes>0 && !confirm(`Todavía tenés ${pendientes} parada(s) sin marcar como retiradas. ¿Cerrar igual el día ${fmtFecha(selectedDate)}?`)) return;
+  document.getElementById("kmInicio").value = kmInicioDia!=null ? kmInicioDia : "";
+  document.getElementById("kmFin").value = "";
+  const resumen = document.getElementById("cierreFuelResumen");
+  resumen.textContent = fuelLoads.length
+    ? `Combustible cargado hoy: $${fuelTotal().toLocaleString("es-AR")} (${fuelLoads.length} carga(s))`
+    : "No cargaste combustible hoy. Podés cerrar igual.";
+  document.getElementById("cierreModal").style.display = "flex";
+};
+
+document.getElementById("btnCierreCancel").onclick = ()=>{
+  document.getElementById("cierreModal").style.display = "none";
+};
+
+document.getElementById("btnCierreConfirm").onclick = ()=>{
+  const kmInicio = parseFloat(document.getElementById("kmInicio").value) || null;
+  const kmFin = parseFloat(document.getElementById("kmFin").value) || null;
+  const gastoCombustible = fuelLoads.length ? fuelTotal() : null;
+  let kmRecorridos = null, costoPorKm = null;
+  if(kmInicio!=null && kmFin!=null && kmFin > kmInicio){
+    kmRecorridos = kmFin - kmInicio;
+    if(gastoCombustible!=null && kmRecorridos>0){
+      costoPorKm = gastoCombustible / kmRecorridos;
+    }
+  }
+  const fecha = fmtFecha(selectedDate);
+  const totalMonto = stops.reduce((a,s)=>a+(parseFloat(s.monto)||0),0);
+  const totalBultos = stops.reduce((a,s)=>a+(parseFloat(s.bultos)||0),0);
+  const historial = loadJSON(HISTORY_KEY, []);
+  historial.unshift({
+    fecha,
+    stops: JSON.parse(JSON.stringify(stops)),
+    totalMonto, totalBultos,
+    retiradas: stops.filter(s=>s.done).length,
+    total: stops.length,
+    kmInicio, kmFin, kmRecorridos, gastoCombustible, costoPorKm,
+    fuelLoads: JSON.parse(JSON.stringify(fuelLoads))
+  });
+  saveJSON(HISTORY_KEY, historial);
+  stops = [];
+  fuelLoads = [];
+  kmInicioDia = null;
+  expandedIds.clear();
+  save();
+  saveFuel();
+  saveKmStart();
+  render();
+  renderFuel();
+  renderHistory();
+  document.getElementById("cierreModal").style.display = "none";
+  alert(`Día ${fecha} cerrado y guardado en el historial.`);
+};
+
+function exportCSV(rows, headers, filename){
+  const csv = [headers.join(",")].concat(
+    rows.map(r=> r.map(v=> `"${String(v??"").replace(/"/g,'""')}"`).join(","))
+  ).join("\n");
+  const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("btnExportHistCSV").onclick = ()=>{
+  const historial = loadJSON(HISTORY_KEY, []);
+  if(historial.length===0){ alert("Todavía no hay historial guardado."); return; }
+  const rows = [];
+  historial.forEach(h=>{
+    h.stops.forEach(s=>{
+      rows.push([h.fecha, s.text, s.cliente||"", s.telefono||"", s.telefonoLocal||"", s.nota||"", s.tipo||"", s.paquete||"", s.tamano||"", s.monto||"", s.bultos||"", s.done?"retirado":"pendiente", s.paid?"pagado":"a cobrar", s.foto?"sí":"no"]);
+    });
+  });
+  exportCSV(rows, ["Fecha","Dirección","Cliente","Tel. Cliente","Tel. Local","Nota","Tipo","Paquete","Tamaño","Monto","Bultos","Estado","Pago","Foto"], `mi-ruta-historial-${new Date().toISOString().slice(0,10)}.csv`);
+};
+
+document.getElementById("btnExportBackup").onclick = ()=>{
+  const data = {};
+  [STORAGE_KEY, CUSTOM_KEY, HIDDEN_KEY, COUNTS_KEY, HISTORY_KEY, NIGHT_KEY, CLIENTS_KEY, DAYS_KEY].forEach(k=>{
+    data[k] = localStorage.getItem(k);
+  });
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `mi-ruta-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+document.getElementById("fileImport").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      Object.entries(data).forEach(([k,v])=>{ if(v!=null) localStorage.setItem(k, v); });
+      alert("Copia importada. La página se va a recargar.");
+      location.reload();
+    }catch(err){ alert("El archivo no es una copia de seguridad válida."); }
+  };
+  reader.readAsText(file);
+});
+
+function loadAllDays(){ return loadJSON(DAYS_KEY, {}); }
+function loadAllFuel(){ return loadJSON(FUEL_KEY, {}); }
+
+function save(){
+  const days = loadAllDays();
+  days[selectedDate] = stops;
+  try{
+    localStorage.setItem(DAYS_KEY, JSON.stringify(days));
+  }catch(err){
+    console.error("No se pudo guardar", err);
+    alert("No se pudo guardar: la memoria del navegador para esta app está llena (probablemente por muchas fotos acumuladas). Andá al Historial, hacé una 'Copia de seguridad' para no perder nada, y después borrá fotos viejas.");
+  }
+}
+
+function saveFuel(){
+  const allFuel = loadAllFuel();
+  allFuel[selectedDate] = fuelLoads;
+  saveJSON(FUEL_KEY, allFuel);
+}
+
+function fuelTotal(){
+  return fuelLoads.reduce((a,f)=>a+(parseFloat(f.monto)||0),0);
+}
+
+function loadAllKmStart(){ return loadJSON(KM_START_KEY, {}); }
+function saveKmStart(){
+  const all = loadAllKmStart();
+  if(kmInicioDia==null){ delete all[selectedDate]; }
+  else{ all[selectedDate] = kmInicioDia; }
+  saveJSON(KM_START_KEY, all);
+}
+
+function renderFuel(){
+  const note = document.getElementById("fuelTotalNote");
+  if(note){
+    note.textContent = fuelLoads.length ? `⛽ Combustible hoy: $${fuelTotal().toLocaleString("es-AR")} (${fuelLoads.length} carga${fuelLoads.length>1?"s":""})` : "";
+  }
+  const bar = document.getElementById("kmStartBar");
+  const text = document.getElementById("kmStartText");
+  if(!bar) return;
+  if(kmInicioDia!=null){
+    bar.style.display = "flex";
+    text.textContent = `📍 Km inicial de hoy: ${kmInicioDia.toLocaleString("es-AR")}`;
+    document.getElementById("btnSetKmStart").textContent = "✎ Editar";
+  } else {
+    bar.style.display = "flex";
+    text.textContent = "";
+    document.getElementById("btnSetKmStart").textContent = "📍 Cargar km inicial del día";
+  }
+}
+
+function updateDateLabel(){
+  document.getElementById("btnDateLabel").textContent = fmtFecha(selectedDate);
+  document.getElementById("btnJumpToday").style.display = (selectedDate===todayStr()) ? "none" : "inline-flex";
+}
+
+function switchDate(newDateStr){
+  save();
+  saveFuel();
+  selectedDate = newDateStr;
+  stops = loadAllDays()[selectedDate] || [];
+  fuelLoads = loadAllFuel()[selectedDate] || [];
+  kmInicioDia = loadAllKmStart()[selectedDate] ?? null;
+  expandedIds.clear();
+  updateDateLabel();
+  render();
+  renderFuel();
+}
+function shiftDate(delta){
+  const [y,m,d] = selectedDate.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  dt.setDate(dt.getDate()+delta);
+  switchDate(dateToStr(dt));
+}
+
+document.getElementById("btnPrevDay").onclick = ()=> shiftDate(-1);
+document.getElementById("btnNextDay").onclick = ()=> shiftDate(1);
+document.getElementById("btnJumpToday").onclick = ()=> switchDate(todayStr());
+document.getElementById("btnDateLabel").onclick = ()=>{
+  const di = document.getElementById("dateInput");
+  di.value = selectedDate;
+  if(di.showPicker){ di.showPicker(); } else { di.focus(); di.click(); }
+};
+document.getElementById("dateInput").addEventListener("change", (e)=>{
+  if(e.target.value) switchDate(e.target.value);
+});
+
+function load(){
+  // Migración: versiones anteriores guardaban un único día "de hoy" bajo STORAGE_KEY.
+  const days = loadAllDays();
+  if(Object.keys(days).length === 0){
+    try{
+      const oldRaw = localStorage.getItem(STORAGE_KEY);
+      if(oldRaw){
+        const oldStops = JSON.parse(oldRaw);
+        if(Array.isArray(oldStops) && oldStops.length){
+          days[todayStr()] = oldStops;
+          localStorage.setItem(DAYS_KEY, JSON.stringify(days));
+        }
+      }
+    }catch(err){ /* nada para migrar */ }
+  }
+  selectedDate = todayStr();
+  stops = loadAllDays()[selectedDate] || [];
+  fuelLoads = loadAllFuel()[selectedDate] || [];
+  kmInicioDia = loadAllKmStart()[selectedDate] ?? null;
+  updateDateLabel();
+  render();
+  renderFuel();
+}
+
+applyNightMode();
+renderFrequent();
+renderClientChips();
+load();
+</script>
+</body>
+</html>
