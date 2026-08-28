@@ -1329,13 +1329,22 @@ document.getElementById("btnClear").onclick = clearAll;
 
 document.getElementById("btnMaps").onclick = ()=>{
   if(stops.length===0){ alert("Agregá al menos una parada primero."); return; }
-  const parts = stops.map(s=> encodeURIComponent(s.text + ", Rosario, Santa Fe"));
+  const addrFor = (s)=> encodeURIComponent(s.text + `, ${s.localidad || "Rosario"}, Santa Fe, Argentina`);
   const origin = loadJSON(ORIGIN_KEY, {mode:"gps", addr:""});
-  let originPart = "";
+  const params = [];
   if(origin.mode === "fixed" && origin.addr && origin.addr.trim()){
-    originPart = encodeURIComponent(origin.addr.trim() + ", Rosario, Santa Fe") + "/";
+    params.push("origin=" + encodeURIComponent(origin.addr.trim() + ", Rosario, Santa Fe, Argentina"));
   }
-  const url = "https://www.google.com/maps/dir/" + originPart + parts.join("/");
+  // Si el origen es "gps" no mandamos el parámetro origin: así Google Maps usa
+  // automáticamente la ubicación actual del celular como punto de partida.
+  const last = stops[stops.length - 1];
+  const middle = stops.slice(0, -1);
+  params.push("destination=" + addrFor(last));
+  if(middle.length){
+    params.push("waypoints=" + middle.map(addrFor).join("|"));
+  }
+  params.push("travelmode=driving");
+  const url = "https://www.google.com/maps/dir/?api=1&" + params.join("&");
   window.open(url, "_blank");
 };
 
