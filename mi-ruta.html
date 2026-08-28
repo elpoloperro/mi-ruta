@@ -1517,53 +1517,89 @@ document.getElementById("btnOptimize").onclick = async ()=>{
       return ordered;
     }
 
+    // Segunda pasada (2-opt): revisa un recorrido ya armado y prueba invertir tramos
+    // si eso acorta la distancia total. Corrige el "zigzag" que deja el vecino-más-cercano
+    // puro, tanto entre paradas de una misma localidad como entre localidades distintas.
+    function twoOptImprove(list, start, end){
+      if(list.length < 3) return list;
+      function routeLength(route){
+        let total = 0, prev = start;
+        for(const s of route){
+          if(prev && prev.lat && prev.lon && s.lat && s.lon) total += dist(prev, s);
+          prev = s;
+        }
+        if(end && prev && prev.lat && prev.lon && end.lat && end.lon) total += dist(prev, end);
+        return total;
+      }
+      let route = list.slice();
+      let improved = true;
+      let guard = 0;
+      while(improved && guard < 200){
+        improved = false; guard++;
+        for(let i=0;i<route.length-1;i++){
+          for(let j=i+1;j<route.length;j++){
+            const candidate = route.slice(0,i).concat(route.slice(i,j+1).reverse(), route.slice(j+1));
+            if(routeLength(candidate) < routeLength(route) - 1e-9){
+              route = candidate;
+              improved = true;
+            }
+          }
+        }
+      }
+      return route;
+    }
+
+    // Ordena una lista de localidades (por la posición de su centroide) usando
+    // vecino-más-cercano y después 2-opt, para no repetir el mismo zigzag a nivel ciudad.
+    function orderGroupsByProximity(keys, startAnchor, endAnchor){
+      if(!keys.length) return [];
+      let points = keys.map(k=>{ const c = centroid(groups[k]); return {key:k, lat: c?c.lat:null, lon: c?c.lon:null}; });
+      let rem = points.slice();
+      let orderedPts = [];
+      let current = startAnchor;
+      while(rem.length){
+        let nearest=null, nearestD=Infinity;
+        for(const p of rem){
+          if(!current || !p.lat || !p.lon){ if(!nearest) nearest = p; continue; }
+          const d = dist(current, p);
+          if(d < nearestD){ nearestD = d; nearest = p; }
+        }
+        if(!nearest) nearest = rem[0];
+        orderedPts.push(nearest);
+        rem = rem.filter(x=>x!==nearest);
+        current = nearest;
+      }
+      orderedPts = twoOptImprove(orderedPts, startAnchor, endAnchor);
+      return orderedPts.map(p=>p.key);
+    }
+
     // Ordenar las localidades entre sí por cercanía (arrancando de la parada fija, si hay,
-    // y dejando la localidad de la parada final fija para el final, para no volver dos veces)
+    // y dejando la localidad de la parada final fija para el final, para no volver dos veces).
+    // Se evalúa el recorrido completo entre localidades (no solo "la más cercana, paso a paso")
+    // para no repetir viajes de ida y vuelta cuando hay 3 o más localidades distintas.
     let groupKeys = Object.keys(groups).sort((a,b)=> groups[b].length - groups[a].length);
     let orderedGroups = [];
     if(groupKeys.length){
       const startPoint = (pinFirst && pinFirst.lat && pinFirst.lon) ? pinFirst : null;
       const endLocality = pinLast ? (pinLast.localidad || "Rosario") : null;
 
-      let startKey;
-      if(startPoint && groups[startPoint.localidad || "Rosario"]){
-        startKey = startPoint.localidad || "Rosario";
-      } else if(endLocality && groups[endLocality] && groupKeys.length > 1){
-        // Sin parada de arranque fija: evitamos empezar por la localidad de la parada final
-        startKey = groupKeys.find(k=>k!==endLocality) || groupKeys[0];
-      } else {
-        startKey = groupKeys[0];
-      }
+      const forcedLastKey = (endLocality && groupKeys.includes(endLocality) && groupKeys.length > 1) ? endLocality : null;
+      const middleKeys = groupKeys.filter(k=>k!==forcedLastKey);
+      const endAnchorForMiddle = forcedLastKey ? centroid(groups[forcedLastKey]) : null;
 
-      let remainingGroups = groupKeys.filter(k=>k!==startKey);
-      orderedGroups.push(startKey);
-      let currentCentroid = startPoint ? {lat:startPoint.lat, lon:startPoint.lon} : centroid(groups[startKey]);
-
-      const forcedLastKey = (endLocality && remainingGroups.includes(endLocality)) ? endLocality : null;
-      if(forcedLastKey) remainingGroups = remainingGroups.filter(k=>k!==forcedLastKey);
-
-      while(remainingGroups.length){
-        let nearestKey = null, nearestD = Infinity;
-        for(const k of remainingGroups){
-          const c = centroid(groups[k]);
-          if(!c || !currentCentroid) continue;
-          const d = dist(currentCentroid, c);
-          if(d < nearestD){ nearestD = d; nearestKey = k; }
-        }
-        if(!nearestKey) nearestKey = remainingGroups[0];
-        orderedGroups.push(nearestKey);
-        remainingGroups = remainingGroups.filter(k=>k!==nearestKey);
-        currentCentroid = centroid(groups[nearestKey]) || currentCentroid;
-      }
+      orderedGroups = orderGroupsByProximity(middleKeys, startPoint, endAnchorForMiddle);
       if(forcedLastKey) orderedGroups.push(forcedLastKey);
     }
 
     let ordered = [];
     if(pinFirst) ordered.push(pinFirst);
     let cursor = (pinFirst && pinFirst.lat && pinFirst.lon) ? pinFirst : null;
-    orderedGroups.forEach(key=>{
+    orderedGroups.forEach((key, idx)=>{
       const groupStops = groups[key];
-      const groupOrdered = nearestNeighborOrder(groupStops, cursor);
+      const isLastGroup = idx === orderedGroups.length - 1;
+      const endAnchor = (isLastGroup && pinLast && pinLast.lat && pinLast.lon) ? pinLast : null;
+      let groupOrdered = nearestNeighborOrder(groupStops, cursor);
+      groupOrdered = twoOptImprove(groupOrdered, cursor, endAnchor);
       ordered.push(...groupOrdered);
       const lastWithCoords = [...groupOrdered].reverse().find(s=>s.lat && s.lon);
       if(lastWithCoords) cursor = lastWithCoords;
