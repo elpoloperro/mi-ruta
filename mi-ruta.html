@@ -1610,7 +1610,15 @@ document.getElementById("btnOptimize").onclick = async ()=>{
     if(pinLast) ordered.push(pinLast);
     stops = ordered;
     save(); render();
-    alert("Ruta optimizada: primero por localidad y después por cercanía dentro de cada una.");
+    // DEBUG TEMPORAL: muestra las coordenadas que le quedaron a cada parada,
+    // para poder detectar si alguna dirección se geocodificó en el lugar
+    // equivocado (sacalo cuando ya no lo necesitemos).
+    const debugCoords = ordered.map(s=>{
+      const nombre = (s.text||"").split(" — ")[0];
+      const coords = (s.lat && s.lon) ? `${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}` : "SIN UBICAR";
+      return `${nombre} (${s.localidad||"Rosario"}): ${coords}`;
+    }).join("\n");
+    alert("Ruta optimizada: primero por localidad y después por cercanía dentro de cada una.\n\n— Coordenadas usadas —\n" + debugCoords);
   }catch(err){
     alert("No se pudo optimizar — revisá tu conexión a internet e intentá de nuevo.");
   } finally {
