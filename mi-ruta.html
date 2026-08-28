@@ -920,8 +920,11 @@ function closeImportModal(){
 }
 
 function parseImportLine(line){
-  // separa por "->" o " - " o tabulador
-  return line.split(/->|\t/).map(p => p.trim()).filter(p => p.length > 0);
+  // separa por "->" o tabulador. OJO: no filtra los campos vacíos (por ejemplo
+  // un teléfono en blanco entre dos flechas) porque eso corría de lugar los
+  // campos siguientes — un teléfono vacío hacía que la Localidad terminara
+  // guardada como si fuera el teléfono.
+  return line.split(/->|\t/).map(p => p.trim());
 }
 
 function runImport(){
