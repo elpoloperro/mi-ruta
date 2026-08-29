@@ -1661,6 +1661,20 @@
   }
 
   loadData();
+
+  // Reintenta traer datos frescos de la nube cuando la app vuelve a primer plano
+  // (por ejemplo al reabrir el ícono instalado, que a veces queda con una copia vieja en memoria)
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') pullFromCloud().then(changed => {
+      if(changed){
+        populateFilterOptions();
+        renderBanners();
+        render();
+        renderQuickButtons();
+        updateRawHistory();
+      }
+    });
+  });
 })();
 </script>
 
