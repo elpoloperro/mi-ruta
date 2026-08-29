@@ -71,6 +71,10 @@
     display:flex; align-items:center; justify-content:center;
     transition:background-color .25s ease, border-color .25s ease;
   }
+  .sync-status{
+    font-family:'JetBrains Mono', monospace; font-size:14px; line-height:1;
+    display:inline-flex; align-items:center; opacity:0.85;
+  }
 
   .month-nav{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
   .month-nav button{
@@ -419,7 +423,10 @@
 
 <div class="wrap">
   <header>
-    <h1>moneda<span>.</span></h1>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <h1>moneda<span>.</span></h1>
+      <span class="sync-status" id="syncStatus" title="Estado de sincronización"></span>
+    </div>
     <button class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
   </header>
 
@@ -545,12 +552,15 @@
   ];
   const INCOME_WORDS = ['cobre','cobré','cobro','ingreso','sueldo','salario','deposito','depósito','me pagaron','freelance','venta','vendi','vendí','honorario','reintegro','devolucion','devolución'];
   const PALETTE = ['#c98a2c','#3f7a5c','#b8462f','#4c6ea8','#8a5aa8','#a8834c','#5c9ba0','#a85c7a','#6b8a3f','#8a6b3f'];
+  const SYNC_URL = 'https://script.google.com/macros/s/AKfycbyAPJ15SDBDwfrtJ2WA3Z0hOPHac9lNI7_Os5MY9GPJ4baonhWiFQ0Z4QKnT5CuFwQh/exec';
 
   let movements = [];
   let categories = [];
   let viewDate = new Date();
   let recognizing = false;
   let recognition = null;
+  let syncTimer = null;
+  let syncInFlight = false;
   let expandedDays = null; // Set de dayKeys expandidos; null = todavía no inicializado
 
   const monthLabelEl = document.getElementById('monthLabel');
@@ -688,6 +698,7 @@
     try{ const q = localStorage.getItem('moneda_quickbuttons'); quickButtons = q ? JSON.parse(q) : []; }
     catch(e){ quickButtons = []; }
     await applyCategoryUpgrades();
+    await pullFromCloud();
     populateFilterOptions();
     renderBanners();
     render();
@@ -697,6 +708,78 @@
     let savedOpen = false;
     try{ savedOpen = localStorage.getItem('moneda_catsection_open') === '1'; }catch(e){}
     setCatSectionOpen(savedOpen);
+  }
+
+  // ---- Sincronización con Google Sheets ----
+  function setSyncStatus(state){
+    const el = document.getElementById('syncStatus');
+    if(!el) return;
+    if(state === 'syncing'){ el.textContent = '🔄'; el.title = 'Sincronizando...'; }
+    else if(state === 'ok'){ el.textContent = '☁️'; el.title = 'Sincronizado'; }
+    else if(state === 'offline'){ el.textContent = '⚠️'; el.title = 'Sin conexión: el cambio quedó guardado solo en este dispositivo por ahora'; }
+  }
+
+  async function pullFromCloud(){
+    if(!SYNC_URL) return false;
+    setSyncStatus('syncing');
+    try{
+      const res = await fetch(SYNC_URL, { method:'GET' });
+      if(!res.ok) throw new Error('bad status');
+      const cloud = await res.json();
+      const localUpdatedAt = localStorage.getItem('moneda_updated_at') || '';
+      if(cloud && cloud.updatedAt && (!localUpdatedAt || cloud.updatedAt > localUpdatedAt)){
+        movements = Array.isArray(cloud.movements) ? cloud.movements : movements;
+        if(Array.isArray(cloud.categories) && cloud.categories.length) categories = cloud.categories;
+        quickButtons = Array.isArray(cloud.quickButtons) ? cloud.quickButtons : quickButtons;
+        try{
+          localStorage.setItem('moneda_movements', JSON.stringify(movements));
+          localStorage.setItem('moneda_categories', JSON.stringify(categories));
+          localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons));
+          localStorage.setItem('moneda_updated_at', cloud.updatedAt);
+        }catch(e){}
+        setSyncStatus('ok');
+        return true;
+      } else {
+        if(!cloud || !cloud.updatedAt) scheduleSync();
+        setSyncStatus('ok');
+        return false;
+      }
+    }catch(e){
+      console.error(e);
+      setSyncStatus('offline');
+      return false;
+    }
+  }
+
+  async function syncPush(){
+    if(!SYNC_URL) return;
+    if(syncInFlight){ scheduleSync(); return; }
+    syncInFlight = true;
+    setSyncStatus('syncing');
+    try{
+      const payload = {
+        movements, categories, quickButtons,
+        updatedAt: localStorage.getItem('moneda_updated_at') || new Date().toISOString()
+      };
+      const res = await fetch(SYNC_URL, { method:'POST', body: JSON.stringify(payload) });
+      if(!res.ok) throw new Error('bad status');
+      setSyncStatus('ok');
+    }catch(e){
+      console.error(e);
+      setSyncStatus('offline');
+    }finally{
+      syncInFlight = false;
+    }
+  }
+
+  function scheduleSync(){
+    if(syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(syncPush, 900);
+  }
+
+  function markLocalChange(){
+    try{ localStorage.setItem('moneda_updated_at', new Date().toISOString()); }catch(e){}
+    scheduleSync();
   }
 
   async function applyCategoryUpgrades(){
@@ -716,9 +799,9 @@
     }
     if(changed) await saveCategories();
   }
-  async function saveMovements(){ try{ localStorage.setItem('moneda_movements', JSON.stringify(movements)); } catch(e){ console.error(e); alert('No se pudo guardar. Puede que el navegador esté sin espacio o en modo incógnito.'); } }
-  async function saveCategories(){ try{ localStorage.setItem('moneda_categories', JSON.stringify(categories)); } catch(e){ console.error(e); } }
-  async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); } catch(e){ console.error(e); } }
+  async function saveMovements(){ try{ localStorage.setItem('moneda_movements', JSON.stringify(movements)); markLocalChange(); } catch(e){ console.error(e); alert('No se pudo guardar. Puede que el navegador esté sin espacio o en modo incógnito.'); } }
+  async function saveCategories(){ try{ localStorage.setItem('moneda_categories', JSON.stringify(categories)); markLocalChange(); } catch(e){ console.error(e); } }
+  async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); markLocalChange(); } catch(e){ console.error(e); } }
 
   function updateRawHistory(){
     const uniq = [...new Set(movements.map(mv => mv.raw))].slice(-60);
