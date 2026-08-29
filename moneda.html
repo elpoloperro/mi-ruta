@@ -82,7 +82,36 @@
   .month-nav .month{
     font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink-soft);
     text-transform:uppercase; letter-spacing:0.05em; flex:1; text-align:center;
+    cursor:pointer; padding:6px; border-radius:8px;
+    transition:background-color .2s ease;
   }
+  .month-nav .month:active{ background-color:var(--card); }
+
+  /* Selector de mes/año */
+  .month-picker-card{ width:min(320px, 90vw); }
+  .month-picker-year{
+    display:flex; align-items:center; justify-content:center; gap:18px;
+    margin-bottom:14px;
+  }
+  .month-picker-year button{
+    background:var(--card); border:1px solid var(--paper-line); border-radius:8px;
+    width:30px; height:30px; cursor:pointer; font-size:14px; color:var(--ink);
+  }
+  .month-picker-year .year-label{
+    font-family:'JetBrains Mono', monospace; font-size:16px; font-weight:700; min-width:64px; text-align:center;
+  }
+  .month-picker-grid{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;
+  }
+  .month-picker-grid button{
+    background:var(--paper); border:1px solid var(--paper-line); border-radius:8px;
+    padding:10px 4px; font-size:13px; color:var(--ink); cursor:pointer;
+    text-transform:capitalize; font-family:inherit;
+  }
+  .month-picker-grid button.selected{
+    background:var(--danger); color:#fff; border-color:var(--danger);
+  }
+  .month-picker-grid button:disabled{ opacity:0.3; cursor:default; }
 
   /* Banners */
   .banner{
@@ -356,6 +385,28 @@
     font-size:12px; font-weight:700; color:var(--ink-soft); padding:6px 4px 12px 4px;
     border-bottom:2px solid var(--paper-line);
   }
+  .day-summary{
+    display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
+    margin:14px 0 0 0; padding:8px 4px; border-bottom:2px solid var(--paper-line);
+  }
+  .day-summary:first-child{ margin-top:0; }
+  .day-summary-arrow{
+    font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-soft);
+    transition:transform 0.15s ease; flex-shrink:0; width:12px; text-align:center;
+  }
+  .day-summary.expanded .day-summary-arrow{ transform:rotate(90deg); }
+  .day-summary-label{
+    font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:0.06em; color:var(--coin); flex:1;
+  }
+  .day-summary-total{
+    font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--ink-soft);
+  }
+  .day-summary-count{
+    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-soft); opacity:0.6;
+  }
+  .day-body{ overflow:hidden; }
+  .day-body.collapsed{ display:none; }
 
   @media (max-width:400px){
     header h1{ font-size:22px; }
@@ -374,7 +425,7 @@
 
   <div class="month-nav">
     <button id="prevMonth">←</button>
-    <div class="month" id="monthLabel"></div>
+    <div class="month" id="monthLabel" title="Tocá para elegir mes y año"></div>
     <button id="nextMonth">→</button>
   </div>
 
@@ -500,6 +551,7 @@
   let viewDate = new Date();
   let recognizing = false;
   let recognition = null;
+  let expandedDays = null; // Set de dayKeys expandidos; null = todavía no inicializado
 
   const monthLabelEl = document.getElementById('monthLabel');
   const catsEl = document.getElementById('categories');
@@ -587,17 +639,34 @@
     return INCOME_WORDS.some(w => norm.includes(normalize(w)));
   }
   function parseAmount(text){
+    const milMatch = text.match(/(\d+(?:[.,]\d+)?)\s*mil\s*(\d+)?/i);
+    if(milMatch){
+      let base = parseFloat(milMatch[1].replace(',', '.'));
+      let extra = milMatch[2] ? parseInt(milMatch[2]) * (milMatch[2].length === 1 ? 100 : 1) : 0;
+      return base * 1000 + extra;
+    }
     const kMatch = text.match(/(\d+(?:[.,]\d+)?)\s*k\s*(\d+)?/i);
     if(kMatch){
       let base = parseFloat(kMatch[1].replace(',', '.'));
       let extra = kMatch[2] ? parseInt(kMatch[2]) * (kMatch[2].length === 1 ? 100 : 1) : 0;
       return base * 1000 + extra;
     }
-    const numMatch = text.match(/(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)/);
+    const numMatch = text.match(/(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)/);
     if(!numMatch) return null;
     let raw = numMatch[1];
-    if(/\.\d{3}(?:\D|$)/.test(raw) && !raw.includes(',')){ raw = raw.replace(/\./g,''); }
-    else { raw = raw.replace(/\./g,'').replace(',', '.'); }
+    const hasDot = raw.includes('.');
+    const hasComma = raw.includes(',');
+    if(hasDot && hasComma){
+      // el que aparece último es el separador decimal; el otro es de miles
+      if(raw.lastIndexOf(',') > raw.lastIndexOf('.')){ raw = raw.replace(/\./g,'').replace(',', '.'); }
+      else { raw = raw.replace(/,/g,''); }
+    } else if(hasComma && !hasDot){
+      // coma sola: de miles si son grupos de 3 dígitos, sino decimal
+      raw = /^\d{1,3}(,\d{3})+$/.test(raw) ? raw.replace(/,/g,'') : raw.replace(',', '.');
+    } else if(hasDot && !hasComma){
+      // punto solo: de miles si son grupos de 3 dígitos, sino decimal
+      raw = /^\d{1,3}(\.\d{3})+$/.test(raw) ? raw.replace(/\./g,'') : raw;
+    }
     const val = parseFloat(raw);
     return isNaN(val) ? null : val;
   }
@@ -770,6 +839,7 @@
       chip.addEventListener('click', async () => {
         const entry = { id: Date.now(), amount:s.amount, category:s.category, raw:s.raw, isIncome:s.isIncome, date:new Date().toISOString() };
         movements.push(entry);
+        if(expandedDays) expandedDays.add(entry.date.slice(0,10));
         await saveMovements();
         render();
       });
@@ -851,6 +921,7 @@
       d.setFullYear(yy, mm-1, dd);
       const entry = { id: Date.now(), amount:qb.amount, category:cat, raw:qb.name, isIncome:false, date:d.toISOString() };
       movements.push(entry);
+      if(expandedDays) expandedDays.add(entry.date.slice(0,10));
       await saveMovements();
       quickConfirmWrap.innerHTML = '';
       viewDate = new Date();
@@ -1059,25 +1130,43 @@
     const catOptions = categories.map(c => `<option value="${c.key}">${c.icon} ${c.label}</option>`).join('');
 
     const dayTotals = {};
+    const dayCounts = {};
     sorted.forEach(mv => {
       const dk = mv.date.slice(0,10);
       if(!mv.isIncome) dayTotals[dk] = (dayTotals[dk]||0) + mv.amount;
+      dayCounts[dk] = (dayCounts[dk]||0) + 1;
     });
 
-    function appendDayTotal(dayKey){
-      const total = dayTotals[dayKey] || 0;
-      const foot = document.createElement('div');
-      foot.className = 'day-total';
-      foot.innerHTML = `<span>Total del día</span><span>${fmt(total)}</span>`;
-      movesEl.appendChild(foot);
+    // por defecto solo el día más reciente queda expandido; el resto colapsado
+    if(expandedDays === null){
+      expandedDays = new Set();
+      if(sorted.length) expandedDays.add(sorted[0].date.slice(0,10));
     }
-    function appendDayHeader(dayKey){
+
+    function appendDaySummary(dayKey){
       const dh = new Date(dayKey + 'T12:00:00');
       const label = dh.toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'long' });
-      const head = document.createElement('div');
-      head.className = 'day-header';
-      head.textContent = label.charAt(0).toUpperCase() + label.slice(1);
-      movesEl.appendChild(head);
+      const total = dayTotals[dayKey] || 0;
+      const count = dayCounts[dayKey] || 0;
+      const isExpanded = expandedDays.has(dayKey);
+      const bar = document.createElement('div');
+      bar.className = 'day-summary' + (isExpanded ? ' expanded' : '');
+      bar.innerHTML = `
+        <span class="day-summary-arrow">▸</span>
+        <span class="day-summary-label">${label.charAt(0).toUpperCase() + label.slice(1)}</span>
+        <span class="day-summary-count">(${count})</span>
+        <span class="day-summary-total">${fmt(total)}</span>
+      `;
+      bar.addEventListener('click', () => {
+        if(expandedDays.has(dayKey)) expandedDays.delete(dayKey);
+        else expandedDays.add(dayKey);
+        renderMovements();
+      });
+      movesEl.appendChild(bar);
+      const body = document.createElement('div');
+      body.className = 'day-body' + (isExpanded ? '' : ' collapsed');
+      movesEl.appendChild(body);
+      return body;
     }
 
     async function commitField(mvId, field, rawValue){
@@ -1139,11 +1228,11 @@
     }
 
     let lastDayKey = null;
+    let currentDayBody = null;
     sorted.forEach(mv => {
       const dayKey = mv.date.slice(0,10);
       if(dayKey !== lastDayKey){
-        if(lastDayKey !== null) appendDayTotal(lastDayKey);
-        appendDayHeader(dayKey);
+        currentDayBody = appendDaySummary(dayKey);
         lastDayKey = dayKey;
       }
 
@@ -1163,7 +1252,7 @@
           <button class="move-del" data-id="${mv.id}" title="Borrar">✕</button>
         </div>
       `;
-      movesEl.appendChild(row);
+      currentDayBody.appendChild(row);
       if(!mv.isIncome){
         const sel = row.querySelector('.cat-select');
         sel.value = mv.category;
@@ -1177,7 +1266,6 @@
       makeInlineEditable(row.querySelector('.move-date'), mv, 'date', 'date');
       makeInlineEditable(row.querySelector('.move-amount'), mv, 'amount', 'text', 'Monto');
     });
-    if(lastDayKey !== null) appendDayTotal(lastDayKey);
     movesEl.querySelectorAll('.move-del').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = Number(e.target.dataset.id);
@@ -1214,6 +1302,7 @@
     d.setFullYear(yy, mm-1, dd);
     const entry = { id: Date.now(), amount:parsed.amount, category: parsed.isIncome ? parsed.category : chosenCat, raw:parsed.raw, note, isIncome:parsed.isIncome, date:d.toISOString() };
     movements.push(entry);
+    if(expandedDays) expandedDays.add(entry.date.slice(0,10));
     await saveMovements();
     if(parsed.isIncome){
       preview.className = 'parse-preview show income';
@@ -1288,12 +1377,54 @@
   backupBtn.addEventListener('click', exportBackup);
   restoreFile.addEventListener('change', (e) => { if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value=''; });
 
-  document.getElementById('prevMonth').addEventListener('click', () => { viewDate.setMonth(viewDate.getMonth()-1); viewDate = new Date(viewDate); render(); });
+  document.getElementById('prevMonth').addEventListener('click', () => { viewDate.setMonth(viewDate.getMonth()-1); viewDate = new Date(viewDate); expandedDays = null; render(); });
   document.getElementById('nextMonth').addEventListener('click', () => {
     const now = new Date();
     if(monthKeyOf(viewDate) >= monthKeyOf(now)) return;
-    viewDate.setMonth(viewDate.getMonth()+1); viewDate = new Date(viewDate); render();
+    viewDate.setMonth(viewDate.getMonth()+1); viewDate = new Date(viewDate); expandedDays = null; render();
   });
+  document.getElementById('monthLabel').addEventListener('click', openMonthPicker);
+
+  function openMonthPicker(){
+    const mesesCortos = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    let pickerYear = viewDate.getFullYear();
+    const nowD = new Date();
+
+    function draw(){
+      confirmModalWrap.innerHTML = `
+        <div class="modal-overlay">
+          <div class="modal-card month-picker-card">
+            <div class="modal-title">Elegir mes</div>
+            <div class="month-picker-year">
+              <button id="pickerPrevYear">←</button>
+              <div class="year-label">${pickerYear}</div>
+              <button id="pickerNextYear" ${pickerYear >= nowD.getFullYear() ? 'disabled' : ''}>→</button>
+            </div>
+            <div class="month-picker-grid">
+              ${mesesCortos.map((m, i) => {
+                const disabled = pickerYear > nowD.getFullYear() || (pickerYear === nowD.getFullYear() && i > nowD.getMonth());
+                const selected = pickerYear === viewDate.getFullYear() && i === viewDate.getMonth();
+                return `<button data-month="${i}" ${disabled ? 'disabled' : ''} class="${selected ? 'selected' : ''}">${m}</button>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('pickerPrevYear').addEventListener('click', () => { pickerYear--; draw(); });
+      document.getElementById('pickerNextYear').addEventListener('click', () => { if(pickerYear < nowD.getFullYear()) { pickerYear++; draw(); } });
+      confirmModalWrap.querySelectorAll('.month-picker-grid button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if(btn.disabled) return;
+          viewDate = new Date(pickerYear, parseInt(btn.dataset.month), 1);
+          expandedDays = null;
+          confirmModalWrap.innerHTML = '';
+          render();
+        });
+      });
+      confirmModalWrap.querySelector('.modal-overlay').addEventListener('click', (e) => { if(e.target.classList.contains('modal-overlay')) confirmModalWrap.innerHTML = ''; });
+    }
+    draw();
+  }
 
   function setCatSectionOpen(open){
     catSectionBody.style.display = open ? 'block' : 'none';
