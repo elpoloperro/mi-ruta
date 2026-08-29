@@ -160,6 +160,16 @@
     border-left:1px solid var(--coin); padding-left:6px;
   }
   .qb-edit-icon:hover{ color:var(--coin); }
+  .kw-autocomplete-wrap{
+    display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;
+  }
+  .kw-autocomplete-chip{
+    background:var(--card); color:var(--coin);
+    border:1px solid var(--coin); border-radius:14px;
+    padding:4px 10px; font-size:12px; cursor:pointer;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .kw-autocomplete-chip:active{ transform:scale(0.96); }
 
   /* Chat-style input */
   .composer{
@@ -425,7 +435,7 @@
   <header>
     <div style="display:flex;align-items:center;gap:8px;">
       <h1>moneda<span>.</span></h1>
-      <span class="sync-status" id="syncStatus" title="Estado de sincronización"></span>
+      <span class="sync-status" id="syncStatus" title="Tocá para forzar una actualización desde la nube"></span>
     </div>
     <button class="theme-toggle" id="themeToggle" title="Cambiar tema">🌙</button>
   </header>
@@ -447,6 +457,7 @@
       <button class="mic-btn" id="micBtn" title="Dictar por voz">🎤</button>
       <button class="send-btn" id="sendBtn">Anotar</button>
     </div>
+    <div id="kwAutocomplete" class="kw-autocomplete-wrap"></div>
     <div class="composer-row2">
       <input type="text" id="composerNote" class="composer-note-inline" placeholder="Detalle opcional (ej: regalo a Walter)">
       <input type="date" id="composerDate">
@@ -724,7 +735,7 @@
     if(!SYNC_URL) return false;
     setSyncStatus('syncing');
     try{
-      const res = await fetch(SYNC_URL, { method:'GET' });
+      const res = await fetch(SYNC_URL + '?_=' + Date.now(), { method:'GET', cache:'no-store' });
       if(!res.ok) throw new Error('bad status');
       const cloud = await res.json();
       const localUpdatedAt = localStorage.getItem('moneda_updated_at') || '';
@@ -762,7 +773,7 @@
         movements, categories, quickButtons,
         updatedAt: localStorage.getItem('moneda_updated_at') || new Date().toISOString()
       };
-      const res = await fetch(SYNC_URL, { method:'POST', body: JSON.stringify(payload) });
+      const res = await fetch(SYNC_URL, { method:'POST', body: JSON.stringify(payload), cache:'no-store' });
       if(!res.ok) throw new Error('bad status');
       setSyncStatus('ok');
     }catch(e){
@@ -807,6 +818,40 @@
   function updateRawHistory(){
     const uniq = [...new Set(movements.map(mv => mv.raw))].slice(-60);
     rawHistoryEl.innerHTML = uniq.map(r => `<option value="${escapeHtml(r)}">`).join('');
+  }
+
+  function renderKwAutocomplete(){
+    const wrap = document.getElementById('kwAutocomplete');
+    if(!wrap) return;
+    const value = input.value;
+    const tokens = value.split(/\s+/);
+    const lastToken = tokens[tokens.length - 1] || '';
+    const normToken = normalize(lastToken);
+    // no sugerimos mientras está vacío o es puramente numérico (probablemente el monto)
+    if(!normToken || /^[\d.,]+$/.test(normToken)){ wrap.innerHTML = ''; return; }
+    const seen = new Set();
+    const matches = [];
+    categories.forEach(cat => {
+      (cat.words||[]).forEach(w => {
+        const normW = normalize(w);
+        if(normW.startsWith(normToken) && normW !== normToken && !seen.has(normW)){
+          seen.add(normW);
+          matches.push({ word:w, icon:cat.icon });
+        }
+      });
+    });
+    if(matches.length === 0){ wrap.innerHTML = ''; return; }
+    wrap.innerHTML = matches.slice(0,6).map(m =>
+      `<span class="kw-autocomplete-chip" data-word="${escapeHtml(m.word)}">${m.icon} ${escapeHtml(m.word)}</span>`
+    ).join('');
+    wrap.querySelectorAll('.kw-autocomplete-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        tokens[tokens.length - 1] = chip.dataset.word;
+        input.value = tokens.join(' ') + ' ';
+        wrap.innerHTML = '';
+        input.focus();
+      });
+    });
   }
 
   function monthMovements(d){
@@ -1402,6 +1447,7 @@
       preview.innerHTML = `Anotado: <b>${fmt(parsed.amount)}</b> en <b>${cat.icon} ${cat.label}</b> (${d.toLocaleDateString('es-AR')})`;
     }
     input.value = '';
+    document.getElementById('kwAutocomplete').innerHTML = '';
     composerNote.value = '';
     composerDate.value = todayKey();
     viewDate = new Date();
@@ -1457,6 +1503,7 @@
 
   sendBtn.addEventListener('click', handleSend);
   input.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleSend(); });
+  input.addEventListener('input', renderKwAutocomplete);
   composerNote.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleSend(); });
   composerDate.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleSend(); });
   searchInput.addEventListener('input', renderMovements);
@@ -1580,6 +1627,16 @@
     if(isDark){ document.documentElement.removeAttribute('data-theme'); themeToggle.textContent = '🌙'; }
     else { document.documentElement.setAttribute('data-theme','dark'); themeToggle.textContent = '☀️'; }
     try{ localStorage.setItem('moneda_theme', isDark ? 'light' : 'dark'); }catch(e){}
+  });
+
+  document.getElementById('syncStatus').style.cursor = 'pointer';
+  document.getElementById('syncStatus').addEventListener('click', async () => {
+    const changed = await pullFromCloud();
+    populateFilterOptions();
+    renderBanners();
+    render();
+    renderQuickButtons();
+    updateRawHistory();
   });
 
   // ---- Voice input (Web Speech API) ----
