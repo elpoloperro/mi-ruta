@@ -562,6 +562,7 @@
   let syncTimer = null;
   let syncInFlight = false;
   let expandedDays = null; // Set de dayKeys expandidos; null = todavía no inicializado
+  let openKwPanel = null; // key de la categoría cuyo panel de palabras clave está abierto
 
   const monthLabelEl = document.getElementById('monthLabel');
   const catsEl = document.getElementById('categories');
@@ -1126,7 +1127,7 @@
         <div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${pct}%"></div></div>
         ${dailyLine}
         <div class="kw-toggle" data-cat="${cat.key}">🔑 palabras clave (${(cat.words||[]).length})</div>
-        <div class="kw-panel" id="kw-panel-${cat.key}" style="display:none;">
+        <div class="kw-panel" id="kw-panel-${cat.key}" style="display:${openKwPanel === cat.key ? 'block' : 'none'};">
           <div class="kw-chips">${wordChips || '<span class="kw-empty">Sin palabras clave todavía</span>'}</div>
           <div class="kw-add-row">
             <input type="text" class="kw-input" data-cat="${cat.key}" placeholder="ej: facebook, instagram">
@@ -1140,7 +1141,9 @@
     catsEl.querySelectorAll('.kw-toggle').forEach(el => {
       el.addEventListener('click', () => {
         const panel = document.getElementById('kw-panel-' + el.dataset.cat);
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        const isOpen = panel.style.display !== 'none';
+        openKwPanel = isOpen ? null : el.dataset.cat;
+        panel.style.display = isOpen ? 'none' : 'block';
       });
     });
     catsEl.querySelectorAll('.kw-x').forEach(el => {
@@ -1158,7 +1161,10 @@
       const cat = findCategory(catKey);
       cat.words = cat.words || [];
       if(!cat.words.includes(word)) cat.words.push(word);
+      openKwPanel = catKey;
       await saveCategories(); render();
+      const newInput = catsEl.querySelector(`.kw-input[data-cat="${catKey}"]`);
+      if(newInput) newInput.focus();
     }
     catsEl.querySelectorAll('.kw-add-btn').forEach(btn => {
       btn.addEventListener('click', () => {
