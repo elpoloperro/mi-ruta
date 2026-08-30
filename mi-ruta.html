@@ -846,17 +846,141 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 });
 
-/* --- Optimización automática por localidad (evita zigzag) --- */
-function optimizarRuta(){
+/* --- Geocodificación gratuita (OpenStreetMap / Nominatim) con caché en localStorage ---
+   Uso: transformar direcciones en coordenadas para poder ordenar por cercanía real
+   dentro de cada localidad, en vez de solo respetar el orden de carga.
+   Política de uso de Nominatim: máximo 1 pedido por segundo, por eso el delay entre
+   direcciones nuevas. Las ya geocodificadas quedan cacheadas y no vuelven a pedirse. */
+const LS_GEOCODE = 'mr2_geocode';
+let geocodeCache = JSON.parse(localStorage.getItem(LS_GEOCODE) || '{}');
+function saveGeocodeCache(){ localStorage.setItem(LS_GEOCODE, JSON.stringify(geocodeCache)); }
+function claveGeocode(direccionCompleta){ return direccionCompleta.trim().toLowerCase(); }
+
+async function geocodeDireccion(direccionCompleta){
+  const clave = claveGeocode(direccionCompleta);
+  if(geocodeCache[clave]) return geocodeCache[clave];
+  let resultado;
+  try{
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ar&q=' + encodeURIComponent(direccionCompleta);
+    const resp = await fetch(url, { headers: { 'Accept-Language':'es' } });
+    const data = await resp.json();
+    resultado = (data && data[0]) ? { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) } : { fallo:true };
+  }catch(e){
+    resultado = { fallo:true };
+  }
+  geocodeCache[clave] = resultado;
+  saveGeocodeCache();
+  return resultado;
+}
+
+// Geocodifica todas las paradas de un grupo, devuelve { paradaId: {lat,lon} | null }
+async function geocodificarGrupo(paradas, onNueva){
+  const resultados = {};
+  for(const p of paradas){
+    const dirCompleta = normalizarDireccion(p.direccion || p.nombre, p.localidad);
+    if(!dirCompleta){ resultados[p.id] = null; continue; }
+    const clave = claveGeocode(dirCompleta);
+    const yaEstaba = !!geocodeCache[clave];
+    const r = await geocodeDireccion(dirCompleta);
+    resultados[p.id] = (r && !r.fallo) ? r : null;
+    if(!yaEstaba){
+      if(onNueva) onNueva();
+      await new Promise(res=>setTimeout(res, 1100)); // respeta el límite de 1 pedido/seg de Nominatim
+    }
+  }
+  return resultados;
+}
+
+function haversineKm(a, b){
+  if(!a || !b) return null;
+  const R = 6371;
+  const dLat = (b.lat-a.lat) * Math.PI/180;
+  const dLon = (b.lon-a.lon) * Math.PI/180;
+  const lat1 = a.lat*Math.PI/180, lat2 = b.lat*Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+// Vecino más cercano: arma una ruta greedy siempre saltando al punto no visitado más próximo
+function nearestNeighborOrder(puntos){
+  if(puntos.length <= 2) return puntos.slice();
+  const restantes = puntos.slice();
+  const ruta = [restantes.shift()];
+  while(restantes.length){
+    const ultimo = ruta[ruta.length-1];
+    let mejorIdx = 0, mejorDist = Infinity;
+    restantes.forEach((p,i)=>{ const d = haversineKm(ultimo.coord, p.coord); if(d < mejorDist){ mejorDist = d; mejorIdx = i; } });
+    ruta.push(restantes.splice(mejorIdx,1)[0]);
+  }
+  return ruta;
+}
+
+// Mejora la ruta del vecino más cercano deshaciendo cruces (2-opt), pocas iteraciones alcanzan
+function twoOpt(ruta){
+  if(ruta.length < 4) return ruta;
+  function distTotal(r){ let d=0; for(let i=0;i<r.length-1;i++) d += haversineKm(r[i].coord, r[i+1].coord); return d; }
+  let mejor = ruta.slice();
+  let mejorDist = distTotal(mejor);
+  let mejorando = true, vueltas = 0;
+  while(mejorando && vueltas < 40){
+    mejorando = false; vueltas++;
+    for(let i=1; i<mejor.length-2; i++){
+      for(let k=i+1; k<mejor.length-1; k++){
+        const nueva = mejor.slice(0,i).concat(mejor.slice(i,k+1).reverse(), mejor.slice(k+1));
+        const d = distTotal(nueva);
+        if(d < mejorDist - 1e-6){ mejor = nueva; mejorDist = d; mejorando = true; }
+      }
+    }
+  }
+  return mejor;
+}
+
+// Inserción más barata: mete cada parada "libre" en el hueco de la ruta de anclas
+// (paradas con horario) que menos distancia extra agregue. Así respeta el orden horario
+// de las que tienen horaDesde y acomoda las demás alrededor por cercanía real.
+function insercionMasBarata(anclas, libres){
+  let ruta = anclas.slice();
+  libres.forEach(punto=>{
+    if(!ruta.length){ ruta.push(punto); return; }
+    let mejorPos = ruta.length, mejorCosto = Infinity;
+    for(let i=0; i<=ruta.length; i++){
+      const prev = i>0 ? ruta[i-1] : null;
+      const next = i<ruta.length ? ruta[i] : null;
+      let costo;
+      if(prev && next){
+        const dPrevNext = haversineKm(prev.coord, next.coord) || 0;
+        const dPrevNew = haversineKm(prev.coord, punto.coord);
+        const dNewNext = haversineKm(punto.coord, next.coord);
+        costo = (dPrevNew==null || dNewNext==null) ? Infinity : (dPrevNew + dNewNext - dPrevNext);
+      } else if(prev){
+        const d = haversineKm(prev.coord, punto.coord);
+        costo = d==null ? Infinity : d;
+      } else if(next){
+        const d = haversineKm(punto.coord, next.coord);
+        costo = d==null ? Infinity : d;
+      } else costo = 0;
+      if(costo < mejorCosto){ mejorCosto = costo; mejorPos = i; }
+    }
+    ruta.splice(mejorPos, 0, punto);
+  });
+  return ruta;
+}
+
+/* --- Optimización automática por localidad + cercanía real (evita zigzag) ---
+   1) Agrupa por localidad (evita el zigzag entre ciudades, ej. Rosario→Casilda→Rosario).
+   2) Dentro de cada localidad, geocodifica las direcciones (gratis, vía OpenStreetMap)
+      y ordena por cercanía real. Las paradas con horario (horaDesde) quedan como
+      "anclas" fijas en su orden horario, y el resto se acomoda alrededor por distancia. */
+async function optimizarRuta(){
+  if(window._optimizando) return;
   const r = rutas[currentRutaId];
   if(r.paradas.length < 2){ toast('Necesitás al menos 2 paradas para optimizar'); return; }
+  window._optimizando = true;
+
   const primero = r.paradas.filter(p=>p.orden==='primero');
   const ultimo = r.paradas.filter(p=>p.orden==='ultimo');
   const normal = r.paradas.filter(p=>p.orden!=='primero' && p.orden!=='ultimo');
 
-  // Agrupar por localidad manteniendo el orden de aparición de cada grupo (estable),
-  // así evita el zigzag Rosario→Casilda→Rosario. Dentro de cada localidad,
-  // las paradas con horario límite (horaDesde) se acomodan antes según esa hora.
   const gruposOrden = [];
   const grupos = {};
   normal.forEach(p=>{
@@ -864,22 +988,49 @@ function optimizarRuta(){
     if(!grupos[loc]){ grupos[loc]=[]; gruposOrden.push(loc); }
     grupos[loc].push(p);
   });
-  const normalOrdenado = [];
-  gruposOrden.forEach(loc=>{
-    const g = grupos[loc].slice();
-    g.sort((a,b)=>{
-      if(a.horaDesde && b.horaDesde) return a.horaDesde.localeCompare(b.horaDesde);
-      if(a.horaDesde) return -1;
-      if(b.horaDesde) return 1;
-      return 0;
-    });
-    normalOrdenado.push(...g);
-  });
 
-  r.paradas = [...primero, ...normalOrdenado, ...ultimo];
-  saveRutas();
-  renderRuta();
-  toast('Ruta reordenada agrupando por localidad — podés ajustar a mano arrastrando ⠿');
+  openSheet(`
+    <h3 style="margin-bottom:6px;">Optimizando ruta…</h3>
+    <p id="optimStatus" style="color:var(--ink-soft);font-size:13.5px;line-height:1.5;">Agrupando por localidad…</p>
+    <p style="color:var(--ink-soft);font-size:11px;margin-top:10px;">Ubicación de direcciones: © OpenStreetMap</p>
+  `, {center:true, dismissible:false});
+  const setStatus = (msg)=>{ const el = document.getElementById('optimStatus'); if(el) el.textContent = msg; };
+
+  let totalNuevas = 0;
+  const normalOrdenado = [];
+  try{
+    for(const loc of gruposOrden){
+      const g = grupos[loc];
+      if(g.length <= 1){ normalOrdenado.push(...g); continue; }
+      setStatus(`Ubicando direcciones en ${loc}…`);
+      const coordsPorId = await geocodificarGrupo(g, ()=>{ totalNuevas++; setStatus(`Ubicando direcciones en ${loc}… (${totalNuevas} nueva${totalNuevas===1?'':'s'})`); });
+
+      const conCoord = g.filter(p=>coordsPorId[p.id]).map(p=>({p, coord:coordsPorId[p.id]}));
+      const sinCoord = g.filter(p=>!coordsPorId[p.id]);
+
+      const conHora = conCoord.filter(x=>x.p.horaDesde).sort((a,b)=>a.p.horaDesde.localeCompare(b.p.horaDesde));
+      const sinHora = conCoord.filter(x=>!x.p.horaDesde);
+
+      let ordenGrupo;
+      if(conHora.length){
+        ordenGrupo = insercionMasBarata(conHora, sinHora).map(x=>x.p);
+      } else {
+        ordenGrupo = twoOpt(nearestNeighborOrder(sinHora)).map(x=>x.p);
+      }
+      normalOrdenado.push(...ordenGrupo, ...sinCoord);
+    }
+
+    r.paradas = [...primero, ...normalOrdenado, ...ultimo];
+    saveRutas();
+    renderRuta();
+    closeSheet();
+    toast('Ruta optimizada por cercanía real' + (totalNuevas ? ` (${totalNuevas} dirección${totalNuevas===1?'':'es'} nueva${totalNuevas===1?'':'s'} ubicada${totalNuevas===1?'':'s'})` : '') + ' — podés ajustar a mano arrastrando ⠿');
+  }catch(e){
+    closeSheet();
+    toast('No se pudo optimizar por cercanía (¿sin internet?). Se dejó el orden agrupado por localidad.');
+  }finally{
+    window._optimizando = false;
+  }
 }
 
 /* --- Cierre de día: combustible + km + resumen --- */
@@ -1598,8 +1749,8 @@ function eliminarCliente(id){
 function abrirImportar(){
   openSheet(`
     <h3>Importar lista</h3>
-    <p style="font-size:13px;color:var(--ink-soft);">Pegá una lista, una por línea, con el formato:<br><span class="mono">Nombre -&gt; Dirección -&gt; Teléfono</span></p>
-    <textarea class="input" id="importText" placeholder="Nombre -> Dirección -> Teléfono"></textarea>
+    <p style="font-size:13px;color:var(--ink-soft);">Pegá una lista, una por línea, con el formato:<br><span class="mono">Nombre -&gt; Dirección -&gt; Teléfono -&gt; Localidad</span><br><span style="font-size:11.5px;">(la Localidad es opcional; si no la ponés, queda "Rosario")</span></p>
+    <textarea class="input" id="importText" placeholder="Nombre -> Dirección -> Teléfono -> Localidad"></textarea>
     <div class="field-label">Importar en</div>
     <div class="seg">
       <button id="impLocales" class="on" onclick="setImportDestino('locales')">Locales</button>
@@ -1622,10 +1773,11 @@ function procesarImportacion(){
   lineas.forEach(linea=>{
     const partes = linea.split('->').map(p=>p.trim());
     if(!partes[0]) return;
+    const localidad = partes[3] || 'Rosario';
     if(window.importDestino==='locales'){
-      locales.push({ id:uid(), nombre:partes[0], direccion:partes[1]||'', localidad:'Rosario', telefono:partes[2]||'' });
+      locales.push({ id:uid(), nombre:partes[0], direccion:partes[1]||'', localidad, telefono:partes[2]||'' });
     } else {
-      clientes.push({ id:uid(), nombre:partes[0], direccion:partes[1]||'', localidad:'Rosario', telefono:partes[2]||'', tipo:'' });
+      clientes.push({ id:uid(), nombre:partes[0], direccion:partes[1]||'', localidad, telefono:partes[2]||'', tipo:'' });
     }
     count++;
   });
