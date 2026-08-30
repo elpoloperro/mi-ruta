@@ -11,6 +11,7 @@
 
   :root{
     --bg: #0d1113;
+    --bg-rgb: 13,17,19;
     --bg-elev: #171c1f;
     --bg-elev2: #1f2529;
     --line: #2a3237;
@@ -27,9 +28,59 @@
     --info: #5aa9e6;
     --info-soft: #17242e;
     --purple: #b18cf0;
+    --purple-soft: #241b33;
+    --navegar-bg: #1a2c40;
     --radius: 14px;
     --radius-sm: 10px;
     --shadow: 0 4px 18px rgba(0,0,0,.35);
+  }
+  /* Modo día: pensado para leer con luz fuerte / sol de frente */
+  html[data-theme="dia"]{
+    --bg: #f4f5f4;
+    --bg-rgb: 244,245,244;
+    --bg-elev: #ffffff;
+    --bg-elev2: #eceeec;
+    --line: #dde1de;
+    --ink: #15191b;
+    --ink-soft: #565f5a;
+    --ink-faint: #8a938d;
+    --accent: #c97a12;
+    --accent-soft: #fbe6c3;
+    --accent-ink: #1c1206;
+    --ok: #29915a;
+    --ok-soft: #dcf1e6;
+    --danger: #c33f30;
+    --danger-soft: #fbe1dd;
+    --info: #256fae;
+    --info-soft: #e1eef9;
+    --purple: #7c53c9;
+    --purple-soft: #ede4fb;
+    --navegar-bg: #dcecfb;
+    --shadow: 0 4px 18px rgba(0,0,0,.10);
+  }
+  /* Modo noche: para manejar de noche sin encandilarte — negro puro y colores apagados */
+  html[data-theme="noche"]{
+    --bg: #000000;
+    --bg-rgb: 0,0,0;
+    --bg-elev: #0a0a0a;
+    --bg-elev2: #121212;
+    --line: #1e1e1e;
+    --ink: #a89a86;
+    --ink-soft: #6b6058;
+    --ink-faint: #423d37;
+    --accent: #a05f18;
+    --accent-soft: #201609;
+    --accent-ink: #0a0806;
+    --ok: #3c6b4c;
+    --ok-soft: #0f1712;
+    --danger: #833a30;
+    --danger-soft: #1a100d;
+    --info: #45586a;
+    --info-soft: #12171c;
+    --purple: #62536f;
+    --purple-soft: #1a1520;
+    --navegar-bg: #14212e;
+    --shadow: 0 4px 18px rgba(0,0,0,.6);
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
   html,body{ margin:0; padding:0; }
@@ -50,7 +101,7 @@
   /* ---------- Barra superior ---------- */
   .topbar{
     position:sticky; top:0; z-index:30;
-    background:rgba(13,17,19,.92); backdrop-filter:blur(8px);
+    background:rgba(var(--bg-rgb),.92); backdrop-filter:blur(8px);
     border-bottom:1px solid var(--line);
     padding:14px 16px; display:flex; align-items:center; gap:10px;
   }
@@ -130,7 +181,7 @@
   .row-2 > *{ flex:1; }
 
   .tabbar{
-    position:sticky; bottom:0; z-index:30; background:rgba(13,17,19,.95); backdrop-filter:blur(8px);
+    position:sticky; bottom:0; z-index:30; background:rgba(var(--bg-rgb),.95); backdrop-filter:blur(8px);
     border-top:1px solid var(--line); display:flex; padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px)) 6px;
   }
   .tabbar button{
@@ -182,7 +233,7 @@
   .stop .tags{ display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
   .tag{ font-size:10.5px; padding:3px 7px; border-radius:7px; background:var(--bg-elev2); color:var(--ink-soft); border:1px solid var(--line); display:inline-flex; align-items:center; gap:3px; }
   .tag.entrega{ color:var(--info); border-color:var(--info); background:var(--info-soft); }
-  .tag.recogida{ color:var(--purple); border-color:var(--purple); background:#241b33; }
+  .tag.recogida{ color:var(--purple); border-color:var(--purple); background:var(--purple-soft); }
   .tag.precio{ color:var(--accent); border-color:var(--accent); background:var(--accent-soft); font-weight:700; }
   .stop .drag-handle{
     background:none; border:none; color:var(--ink-faint); font-size:19px; padding:4px 2px 4px 8px; touch-action:none; flex-shrink:0; align-self:flex-start;
@@ -198,7 +249,7 @@
     border:1px solid var(--line); background:var(--bg-elev); color:var(--ink); font-size:12px; font-weight:700;
   }
   .action-3 button .ic{ font-size:20px; }
-  .action-3 button.navegar{ background:#1a2c40; border-color:var(--info); color:var(--info); }
+  .action-3 button.navegar{ background:var(--navegar-bg); border-color:var(--info); color:var(--info); }
   .action-3 button.fallida-btn{ background:var(--danger-soft); border-color:var(--danger); color:var(--danger); }
   .action-3 button.hecho{ background:var(--ok-soft); border-color:var(--ok); color:var(--ok); }
   .action-3 button.done-state{ background:var(--ok); color:#0d1113; }
@@ -296,6 +347,7 @@
   <div class="view active" id="view-home">
     <div class="topbar">
       <h1>Mi Ruta</h1>
+      <button class="icon-btn" onclick="abrirSelectorTema()" title="Modo día / noche">🌓</button>
       <button class="icon-btn" onclick="goView('view-historial')" title="Historial e informes">📊</button>
       <button class="icon-btn" onclick="goView('view-agenda')" title="Locales y clientes">📇</button>
     </div>
@@ -428,6 +480,38 @@ let agendaTab = 'locales';
 function saveRutas(){ localStorage.setItem(LS_RUTAS, JSON.stringify(rutas)); }
 function saveLocales(){ localStorage.setItem(LS_LOCALES, JSON.stringify(locales)); }
 function saveClientes(){ localStorage.setItem(LS_CLIENTES, JSON.stringify(clientes)); }
+
+/* --- Tema: día / actual / noche --- */
+const LS_TEMA = 'mr2_tema';
+function aplicarTema(tema){
+  if(tema === 'actual'){ document.documentElement.removeAttribute('data-theme'); }
+  else { document.documentElement.setAttribute('data-theme', tema); }
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if(metaTheme){
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    if(bg) metaTheme.setAttribute('content', bg);
+  }
+}
+function temaActual(){ return localStorage.getItem(LS_TEMA) || 'actual'; }
+function elegirTema(tema){
+  localStorage.setItem(LS_TEMA, tema);
+  aplicarTema(tema);
+  closeSheet();
+}
+function abrirSelectorTema(){
+  const t = temaActual();
+  const opt = (val,label,desc)=>`
+    <div class="route-row" style="margin:0 0 8px 0;${t===val?'border-color:var(--accent);':''}" onclick="elegirTema('${val}')">
+      <div class="info"><div class="name">${label}${t===val?' ✓':''}</div><div class="meta"><span>${desc}</span></div></div>
+    </div>`;
+  openSheet(`
+    <h3>Tema de la app</h3>
+    ${opt('dia','☀️ Modo día','Fondo claro, ideal con sol o luz fuerte')}
+    ${opt('actual','🌆 Modo actual','El oscuro de siempre')}
+    ${opt('noche','🌙 Modo noche','Bien oscuro, pensado para manejar de noche sin encandilarte')}
+  `, {center:true});
+}
+aplicarTema(temaActual());
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function money(n){ n = Number(n)||0; return '$' + n.toLocaleString('es-AR'); }
