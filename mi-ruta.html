@@ -985,6 +985,59 @@ function haversineKm(a, b){
   return 2*R*Math.asin(Math.sqrt(h));
 }
 
+/* --- Distancias reales por calle (OpenRouteService, gratis con clave personal) ---
+   La línea recta (haversineKm) no sabe de calles, sentidos únicos ni del río: dos
+   direcciones "cerca" en el mapa pueden estar lejos manejando. Antes de optimizar se
+   pide UNA vez la matriz de distancias reales entre todas las paradas del día; el
+   resto del algoritmo (vecino más cercano, 2-opt, anclas de entrada/salida) sigue
+   igual, solo que ahora consulta esa matriz en vez de la línea recta.
+   Cuota gratis: 500 pedidos/día, hasta 50 direcciones por pedido — de sobra para una
+   ruta diaria. Si hay más de 50 paradas geocodificadas, o si falla (sin internet, sin
+   cuota), se sigue usando la línea recta como respaldo automático. */
+const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjhiZWIwYzg5MTIyNjQwOTNiMDMyMTJmNTIwYzRjZTA3IiwiaCI6Im11cm11cjY0In0=';
+const ORS_MATRIX_URL = 'https://api.heigit.org/openrouteservice/v2/matrix/driving-car';
+const ORS_MAX_PUNTOS = 50;
+
+let _distMatrizReal = null; // matriz [i][j] en km, o null si no hay (todavía) matriz real
+let _distIndiceReal = null; // Map: objeto coord -> índice en la matriz
+
+async function construirMatrizReal(coords){
+  _distMatrizReal = null; _distIndiceReal = null;
+  const unicos = [];
+  const vistos = new Set();
+  coords.forEach(c=>{ if(c && !vistos.has(c)){ vistos.add(c); unicos.push(c); } });
+  if(unicos.length < 2 || unicos.length > ORS_MAX_PUNTOS) return false;
+  try{
+    const resp = await fetch(ORS_MATRIX_URL, {
+      method: 'POST',
+      headers: { 'Authorization': ORS_API_KEY, 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ locations: unicos.map(c=>[c.lon, c.lat]), metrics: ['distance'], units: 'km' })
+    });
+    if(!resp.ok) return false;
+    const data = await resp.json();
+    if(!data || !Array.isArray(data.distances)) return false;
+    _distMatrizReal = data.distances;
+    _distIndiceReal = new Map(unicos.map((c,i)=>[c,i]));
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+// Distancia a usar en toda la optimización: real por calle si está en la matriz ya
+// pedida, o línea recta como respaldo (misma lógica de antes, sin romper nada si la
+// matriz no se pudo pedir).
+function distanciaKm(a, b){
+  if(!a || !b) return null;
+  if(a === b) return 0;
+  if(_distIndiceReal && _distIndiceReal.has(a) && _distIndiceReal.has(b)){
+    const fila = _distMatrizReal[_distIndiceReal.get(a)];
+    const d = fila ? fila[_distIndiceReal.get(b)] : null;
+    if(typeof d === 'number') return d;
+  }
+  return haversineKm(a, b);
+}
+
 // Vecino más cercano: arma una ruta greedy siempre saltando al punto no visitado más próximo
 function nearestNeighborOrder(puntos){
   if(puntos.length <= 2) return puntos.slice();
@@ -993,7 +1046,7 @@ function nearestNeighborOrder(puntos){
   while(restantes.length){
     const ultimo = ruta[ruta.length-1];
     let mejorIdx = 0, mejorDist = Infinity;
-    restantes.forEach((p,i)=>{ const d = haversineKm(ultimo.coord, p.coord); if(d < mejorDist){ mejorDist = d; mejorIdx = i; } });
+    restantes.forEach((p,i)=>{ const d = distanciaKm(ultimo.coord, p.coord); if(d < mejorDist){ mejorDist = d; mejorIdx = i; } });
     ruta.push(restantes.splice(mejorIdx,1)[0]);
   }
   return ruta;
@@ -1002,7 +1055,7 @@ function nearestNeighborOrder(puntos){
 // Mejora la ruta del vecino más cercano deshaciendo cruces (2-opt), pocas iteraciones alcanzan
 function twoOpt(ruta){
   if(ruta.length < 4) return ruta;
-  function distTotal(r){ let d=0; for(let i=0;i<r.length-1;i++) d += haversineKm(r[i].coord, r[i+1].coord); return d; }
+  function distTotal(r){ let d=0; for(let i=0;i<r.length-1;i++) d += distanciaKm(r[i].coord, r[i+1].coord); return d; }
   let mejor = ruta.slice();
   let mejorDist = distTotal(mejor);
   let mejorando = true, vueltas = 0;
@@ -1034,19 +1087,19 @@ function insercionMasBarata(anclas, libres, entradaCoord){
       const next = i<ruta.length ? ruta[i] : null;
       let costo;
       if(prev && next){
-        const dPrevNext = haversineKm(prev.coord, next.coord) || 0;
-        const dPrevNew = haversineKm(prev.coord, punto.coord);
-        const dNewNext = haversineKm(punto.coord, next.coord);
+        const dPrevNext = distanciaKm(prev.coord, next.coord) || 0;
+        const dPrevNew = distanciaKm(prev.coord, punto.coord);
+        const dNewNext = distanciaKm(punto.coord, next.coord);
         costo = (dPrevNew==null || dNewNext==null) ? Infinity : (dPrevNew + dNewNext - dPrevNext);
       } else if(prev){
-        const d = haversineKm(prev.coord, punto.coord);
+        const d = distanciaKm(prev.coord, punto.coord);
         costo = d==null ? Infinity : d;
       } else if(next){
-        const dNewNext = haversineKm(punto.coord, next.coord);
+        const dNewNext = distanciaKm(punto.coord, next.coord);
         if(dNewNext==null){ costo = Infinity; }
         else if(entradaCoord){
-          const dEntradaNew = haversineKm(entradaCoord, punto.coord);
-          const dEntradaNext = haversineKm(entradaCoord, next.coord) || 0;
+          const dEntradaNew = distanciaKm(entradaCoord, punto.coord);
+          const dEntradaNext = distanciaKm(entradaCoord, next.coord) || 0;
           costo = (dEntradaNew==null) ? dNewNext : (dEntradaNew + dNewNext - dEntradaNext);
         } else costo = dNewNext;
       } else costo = 0;
@@ -1074,7 +1127,7 @@ function ordenPorCercania(puntos, entradaCoord, salidaCoord){
   // en vez de arrancar del primero cargado (que no tiene relación con la geografía).
   if(entradaCoord){
     let mejorIdx = 0, mejorDist = Infinity;
-    lista.forEach((x,i)=>{ const d = haversineKm(entradaCoord, x.coord); if(d!=null && d<mejorDist){ mejorDist=d; mejorIdx=i; } });
+    lista.forEach((x,i)=>{ const d = distanciaKm(entradaCoord, x.coord); if(d!=null && d<mejorDist){ mejorDist=d; mejorIdx=i; } });
     lista.unshift(lista.splice(mejorIdx,1)[0]);
   }
 
@@ -1085,11 +1138,11 @@ function ordenPorCercania(puntos, entradaCoord, salidaCoord){
   // sin tocar el punto de entrada ya fijado en la posición 0.
   if(salidaCoord && ruta.length > 1){
     let mejorIdx = ruta.length-1;
-    let mejorDist = haversineKm(salidaCoord, ruta[ruta.length-1].coord);
+    let mejorDist = distanciaKm(salidaCoord, ruta[ruta.length-1].coord);
     if(mejorDist==null) mejorDist = Infinity;
     ruta.forEach((x,i)=>{
       if(entradaCoord && i===0) return; // no mover el punto de entrada
-      const d = haversineKm(salidaCoord, x.coord);
+      const d = distanciaKm(salidaCoord, x.coord);
       if(d!=null && d<mejorDist){ mejorDist=d; mejorIdx=i; }
     });
     if(mejorIdx !== ruta.length-1){
@@ -1111,16 +1164,38 @@ async function geocodePuntoAncla(parada){
   return (r && !r.fallo) ? r : null;
 }
 
+// Punto real de un grupo que queda más cerca, en promedio, del resto de las paradas
+// de esa misma localidad (el "medoide"), usado como posición representativa de la
+// localidad entera para decidir en qué orden conviene visitarla respecto a las demás.
+// A diferencia de un centro geométrico inventado, esto es una dirección real que ya
+// está en la matriz de distancias, así que la comparación entre localidades también
+// usa distancia real por calle en vez de línea recta.
+function medoide(itemsConCoord){
+  const validos = itemsConCoord.filter(x=>x.coord);
+  if(!validos.length) return null;
+  if(validos.length === 1) return validos[0].coord;
+  let mejor = validos[0].coord, mejorSuma = Infinity;
+  validos.forEach(x=>{
+    let suma = 0;
+    validos.forEach(y=>{ if(y!==x) suma += (distanciaKm(x.coord, y.coord) || 0); });
+    if(suma < mejorSuma){ mejorSuma = suma; mejor = x.coord; }
+  });
+  return mejor;
+}
+
 /* --- Optimización automática por localidad + cercanía real (evita zigzag) ---
-   1) Agrupa por localidad (evita el zigzag entre ciudades, ej. Rosario→Casilda→Rosario).
-   2) Dentro de cada localidad, geocodifica las direcciones (gratis, vía OpenStreetMap)
-      y ordena por cercanía real. Las paradas con horario (horaDesde) quedan como
-      "anclas" fijas en su orden horario, y el resto se acomoda alrededor por distancia.
-   3) Encadena las localidades entre sí: cada una arranca desde el punto más cercano a
-      donde terminó la localidad anterior (o a la última parada "primero"), y la última
-      localidad intenta terminar cerca de la primera parada "último", si hay una. Antes,
-      cada localidad se resolvía como un recorrido aislado sin relación con las demás,
-      lo que podía dejar un extremo lejos de por dónde realmente se entra o se sale. */
+   1) Agrupa por localidad.
+   2) Decide en qué ORDEN conviene visitar esas localidades entre sí, por cercanía real
+      (usando el centro de cada una), encadenado desde la última parada "primero" hasta
+      la primera "último". Sin este paso, una localidad lejana como Casilda podía quedar
+      en el medio del recorrido según el orden en que se cargaron las paradas, obligando
+      a ir y volver (Rosario→Casilda→Rosario) en vez de dejarla en una punta del viaje.
+   3) Dentro de cada localidad, ya en el orden decidido, geocodifica las direcciones
+      (gratis, vía OpenStreetMap) y ordena por cercanía real. Las paradas con horario
+      (horaDesde) quedan como "anclas" fijas en su orden horario, y el resto se acomoda
+      alrededor por distancia. Cada localidad arranca desde el punto más cercano a donde
+      terminó la anterior, y la última intenta terminar cerca de la primera parada
+      "último", si hay una. */
 async function optimizarRuta(){
   if(window._optimizando) return;
   const r = rutas[currentRutaId];
@@ -1131,11 +1206,11 @@ async function optimizarRuta(){
   const ultimo = r.paradas.filter(p=>p.orden==='ultimo');
   const normal = r.paradas.filter(p=>p.orden!=='primero' && p.orden!=='ultimo');
 
-  const gruposOrden = [];
+  const gruposOrdenCarga = [];
   const grupos = {};
   normal.forEach(p=>{
     const loc = (p.localidad||'Rosario').trim() || 'Rosario';
-    if(!grupos[loc]){ grupos[loc]=[]; gruposOrden.push(loc); }
+    if(!grupos[loc]){ grupos[loc]=[]; gruposOrdenCarga.push(loc); }
     grupos[loc].push(p);
   });
 
@@ -1156,12 +1231,44 @@ async function optimizarRuta(){
     // última localidad termine cerca de ahí.
     const anclaSalida = ultimo.length ? await geocodePuntoAncla(ultimo[0]) : null;
 
+    // Geocodificar todas las localidades primero: hace falta la posición de cada una
+    // para poder decidir después en qué orden conviene visitarlas.
+    const coordsPorLocalidad = {};
+    for(const loc of gruposOrdenCarga){
+      setStatus(`Ubicando direcciones en ${loc}…`);
+      coordsPorLocalidad[loc] = await geocodificarGrupo(grupos[loc], ()=>{ totalNuevas++; setStatus(`Ubicando direcciones en ${loc}… (${totalNuevas} nueva${totalNuevas===1?'':'s'})`); });
+    }
+
+    // Con todas las direcciones ya ubicadas, pedir UNA vez la matriz de distancias
+    // reales por calle entre todas ellas (más las anclas de entrada/salida). Si falla
+    // o hay demasiadas paradas, distanciaKm() sigue funcionando con línea recta.
+    setStatus('Calculando distancias reales por calle…');
+    const poolCoords = [];
+    if(puntoAnteriorCoord) poolCoords.push(puntoAnteriorCoord);
+    if(anclaSalida) poolCoords.push(anclaSalida);
+    gruposOrdenCarga.forEach(loc=>{
+      grupos[loc].forEach(p=>{ const c = coordsPorLocalidad[loc][p.id]; if(c) poolCoords.push(c); });
+    });
+    const huboMatrizReal = await construirMatrizReal(poolCoords);
+
+    // Decidir el orden entre localidades por cercanía real (si hay más de una).
+    let gruposOrden = gruposOrdenCarga;
+    if(gruposOrdenCarga.length > 1){
+      const nodos = gruposOrdenCarga.map(loc=>{
+        const items = grupos[loc].map(p=>({p, coord: coordsPorLocalidad[loc][p.id]}));
+        return { p: loc, coord: medoide(items) };
+      }).filter(n=>n.coord);
+      const sinUbicar = gruposOrdenCarga.filter(loc=>!nodos.find(n=>n.p===loc));
+      if(nodos.length > 1){
+        gruposOrden = [...ordenPorCercania(nodos, puntoAnteriorCoord, anclaSalida).map(x=>x.p), ...sinUbicar];
+      }
+    }
+
     for(let gi=0; gi<gruposOrden.length; gi++){
       const loc = gruposOrden[gi];
       const g = grupos[loc];
       const esUltimoGrupo = (gi === gruposOrden.length-1);
-      setStatus(`Ubicando direcciones en ${loc}…`);
-      const coordsPorId = await geocodificarGrupo(g, ()=>{ totalNuevas++; setStatus(`Ubicando direcciones en ${loc}… (${totalNuevas} nueva${totalNuevas===1?'':'s'})`); });
+      const coordsPorId = coordsPorLocalidad[loc];
 
       if(g.length <= 1){
         normalOrdenado.push(...g);
@@ -1193,7 +1300,7 @@ async function optimizarRuta(){
     saveRutas();
     renderRuta();
     closeSheet();
-    toast('Ruta optimizada por cercanía real' + (totalNuevas ? ` (${totalNuevas} dirección${totalNuevas===1?'':'es'} nueva${totalNuevas===1?'':'s'} ubicada${totalNuevas===1?'':'s'})` : '') + ' — podés ajustar a mano arrastrando ⠿');
+    toast('Ruta optimizada por ' + (huboMatrizReal ? 'distancia real de manejo' : 'cercanía en línea recta') + (totalNuevas ? ` (${totalNuevas} dirección${totalNuevas===1?'':'es'} nueva${totalNuevas===1?'':'s'} ubicada${totalNuevas===1?'':'s'})` : '') + ' — podés ajustar a mano arrastrando ⠿');
   }catch(e){
     closeSheet();
     toast('No se pudo optimizar por cercanía (¿sin internet?). Se dejó el orden agrupado por localidad.');
