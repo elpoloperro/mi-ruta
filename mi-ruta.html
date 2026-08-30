@@ -1111,27 +1111,42 @@ function insercionMasBarata(anclas, libres, entradaCoord){
 }
 
 // Ordena los puntos "libres" (sin horario) de una localidad por cercanía real, anclando
-// el recorrido a por dónde se entra y por dónde se sale de esa localidad. Sin esto, el
-// vecino-más-cercano + 2-opt arrancaban desde el primer punto cargado (orden arbitrario)
-// y podían terminar en cualquier punta del mapa, generando el zigzag entre localidades
-// aunque el recorrido interno ya estuviera optimizado.
+// el recorrido a por dónde se entra y por dónde se sale de esa localidad.
 // entradaCoord: coordenada de la última parada resuelta antes de esta localidad (o null
 //   si es la primera localidad de la ruta). salidaCoord: coordenada de la próxima parada
 //   fija después de esta localidad (por ahora, solo se conoce para la última localidad,
 //   si hay una parada marcada "último"), o null si no hay ninguna.
+// Cuando NO hay ancla de entrada (no hay parada "primero"), no alcanza con arrancar
+// del primer punto cargado ni de un único candidato: un punto bien alejado del resto
+// (por ejemplo Casilda, si por algún motivo no quedó agrupado aparte) puede terminar
+// varado en el medio del recorrido, que es la peor posición posible para un punto
+// lejano (implica ir y volver). Por eso, si no hay entrada fija, se prueba arrancar
+// desde CADA punto del grupo, se arma y mejora (2-opt) el recorrido para cada opción,
+// y se elige la de menor distancia total (contando también el tramo a la salida, si
+// se conoce) — así un punto lejano naturalmente termina en una punta, no en el medio.
 function ordenPorCercania(puntos, entradaCoord, salidaCoord){
   if(puntos.length <= 1) return puntos.slice();
-  let lista = puntos.slice();
 
-  // Elegir como punto de partida el más cercano a por dónde se entra a la localidad,
-  // en vez de arrancar del primero cargado (que no tiene relación con la geografía).
-  if(entradaCoord){
-    let mejorIdx = 0, mejorDist = Infinity;
-    lista.forEach((x,i)=>{ const d = distanciaKm(entradaCoord, x.coord); if(d!=null && d<mejorDist){ mejorDist=d; mejorIdx=i; } });
-    lista.unshift(lista.splice(mejorIdx,1)[0]);
-  }
-
-  let ruta = twoOpt(nearestNeighborOrder(lista));
+  const candidatos = entradaCoord ? [0] : puntos.map((_,i)=>i);
+  let mejorRuta = null, mejorCosto = Infinity;
+  candidatos.forEach(idx=>{
+    let lista = puntos.slice();
+    if(entradaCoord){
+      // Con entrada conocida, el candidato es el punto más cercano a ella (no el índice 0).
+      let mejorIdx = 0, mejorDist = Infinity;
+      lista.forEach((x,i)=>{ const d = distanciaKm(entradaCoord, x.coord); if(d!=null && d<mejorDist){ mejorDist=d; mejorIdx=i; } });
+      lista.unshift(lista.splice(mejorIdx,1)[0]);
+    } else {
+      lista.unshift(lista.splice(idx,1)[0]);
+    }
+    const candidata = twoOpt(nearestNeighborOrder(lista));
+    let costo = 0;
+    for(let i=0;i<candidata.length-1;i++) costo += (distanciaKm(candidata[i].coord, candidata[i+1].coord) || 0);
+    if(entradaCoord) costo += (distanciaKm(entradaCoord, candidata[0].coord) || 0);
+    if(salidaCoord) costo += (distanciaKm(salidaCoord, candidata[candidata.length-1].coord) || 0);
+    if(costo < mejorCosto){ mejorCosto = costo; mejorRuta = candidata; }
+  });
+  let ruta = mejorRuta;
 
   // Si se conoce el punto de salida, verificar que el recorrido termine en el punto más
   // cercano a él; si no es así, moverlo al final y volver a destrabar cruces (2-opt),
