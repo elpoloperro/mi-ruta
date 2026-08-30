@@ -330,6 +330,10 @@
       <div class="stat"><div class="v" id="sumKm">–</div><div class="l">Km</div></div>
     </div>
 
+    <div style="padding:6px 16px 0 16px;">
+      <button class="btn-primary" onclick="iniciarRecorrido()">🚀 Iniciar recorrido</button>
+    </div>
+
     <div class="ruta-toolbar">
       <button class="chip-btn" onclick="optimizarRuta()">🧭 Optimizar</button>
       <button class="chip-btn" onclick="abrirBuscadorParadas()">🔎 Buscar</button>
@@ -558,6 +562,113 @@ function guardarNombreRuta(){
   rutas[currentRutaId].nombre = document.getElementById('editRutaNombre').value.trim();
   saveRutas(); closeSheet(); renderRuta();
 }
+
+/* --- Iniciar recorrido: arma el link de Google Maps con todas las paradas en orden --- */
+function normalizarDireccion(dir){
+  dir = (dir||'').trim();
+  if(!dir) return dir;
+  const yaTieneContexto = /rosario|casilda|santa fe|argentina|buenos aires|c[oó]rdoba,|venado tuerto|firmat|ca[nñ]ada de g[oó]mez/i.test(dir);
+  if(yaTieneContexto) return dir;
+  return dir + ', Rosario, Argentina';
+}
+
+/* --- Iniciar recorrido: arma tramos de hasta 10 paradas para Google Maps (límite de Maps) ---
+   Los tramos se calculan sobre el orden fijo de TODAS las paradas de la ruta (bloques de 10),
+   no solo las pendientes, para que el número de tramo no se recalcule cuando algunas se completan. */
+function tramosDeRuta(r){
+  const tramos = [];
+  for(let i=0;i<r.paradas.length;i+=10) tramos.push(r.paradas.slice(i,i+10));
+  return tramos;
+}
+function pendientesDeTramo(tramo){
+  return tramo.filter(p=>p.estado==='pendiente');
+}
+function iniciarRecorrido(){
+  const r = rutas[currentRutaId];
+  if(!r.paradas.length){ toast('Todavía no cargaste ninguna parada'); return; }
+  const pp = r.puntoPartida || {tipo:'actual', direccion:''};
+  const tramos = tramosDeRuta(r);
+  r.tramoActual = r.tramoActual || 0;
+  // saltar al primer tramo (desde el actual) que todavía tenga paradas pendientes
+  while(r.tramoActual < tramos.length && pendientesDeTramo(tramos[r.tramoActual]).length===0) r.tramoActual++;
+  if(r.tramoActual >= tramos.length){ toast('No quedan paradas pendientes'); return; }
+  const tramoPend = pendientesDeTramo(tramos[r.tramoActual]);
+  openSheet(`
+    <h3>Iniciar recorrido</h3>
+    <div class="field-label">Punto de partida</div>
+    <div class="seg" id="segPuntoPartida">
+      <button class="${pp.tipo==='actual'?'on':''}" onclick="setPuntoPartidaTipo('actual',this)">📍 Mi ubicación actual</button>
+      <button class="${pp.tipo==='fijo'?'on':''}" onclick="setPuntoPartidaTipo('fijo',this)">🏠 Dirección fija</button>
+    </div>
+    <div id="puntoPartidaDirWrap" style="${pp.tipo==='fijo'?'':'display:none;'}margin-top:10px;">
+      <input class="input" id="puntoPartidaDir" placeholder="🎤 Dirección de partida" value="${(pp.direccion||'').replace(/"/g,'&quot;')}">
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:14px;">
+      ${tramos.length>1
+        ? `Tenés ${tramos.length} tramos de hasta 10 paradas (límite de Google Maps por viaje). Se abre el tramo ${r.tramoActual+1} de ${tramos.length} ahora (${tramoPend.length} pendientes); cuando marques todas sus paradas, la app habilita solo el siguiente tramo.`
+        : `Se va a abrir Google Maps con las ${tramoPend.length} paradas pendientes en el orden actual de la lista, como escalas de la ruta.`}
+    </p>
+    <div style="height:6px;"></div>
+    <button class="btn-primary" onclick="confirmarIniciarRecorrido()">Abrir Tramo ${r.tramoActual+1}${tramos.length>1?(' de '+tramos.length):''} en Google Maps</button>
+  `);
+}
+function setPuntoPartidaTipo(tipo, btn){
+  const r = rutas[currentRutaId];
+  r.puntoPartida = r.puntoPartida || {tipo:'actual', direccion:''};
+  r.puntoPartida.tipo = tipo;
+  saveRutas();
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('puntoPartidaDirWrap').style.display = tipo==='fijo' ? '' : 'none';
+}
+function confirmarIniciarRecorrido(){
+  const r = rutas[currentRutaId];
+  r.puntoPartida = r.puntoPartida || {tipo:'actual', direccion:''};
+  if(r.puntoPartida.tipo==='fijo'){
+    r.puntoPartida.direccion = document.getElementById('puntoPartidaDir').value.trim();
+  }
+  const tramos = tramosDeRuta(r);
+  r.tramoActual = r.tramoActual || 0;
+  while(r.tramoActual < tramos.length && pendientesDeTramo(tramos[r.tramoActual]).length===0) r.tramoActual++;
+  if(r.tramoActual >= tramos.length){ toast('No quedan paradas pendientes'); closeSheet(); return; }
+  const tramoPend = pendientesDeTramo(tramos[r.tramoActual]);
+  const esPrimerTramo = r.tramoActual === 0;
+  const direcciones = tramoPend.map(p=> normalizarDireccion(p.direccion || p.nombre));
+  const destino = direcciones[direcciones.length-1];
+  const escalas = direcciones.slice(0,-1);
+  let url = 'https://www.google.com/maps/dir/?api=1';
+  if(esPrimerTramo && r.puntoPartida.tipo==='fijo' && r.puntoPartida.direccion){
+    url += '&origin=' + encodeURIComponent(normalizarDireccion(r.puntoPartida.direccion));
+  } else if(!esPrimerTramo){
+    // arranca desde la última parada (completada) del tramo anterior con datos
+    const anterior = tramos[r.tramoActual-1];
+    const ultimaAnterior = anterior[anterior.length-1];
+    if(ultimaAnterior){
+      url += '&origin=' + encodeURIComponent(normalizarDireccion(ultimaAnterior.direccion || ultimaAnterior.nombre));
+    }
+  }
+  url += '&destination=' + encodeURIComponent(destino);
+  if(escalas.length) url += '&waypoints=' + escalas.map(encodeURIComponent).join('|');
+  url += '&travelmode=driving';
+  saveRutas();
+  window.open(url, '_blank');
+  closeSheet();
+}
+function avanzarTramoSiCorresponde(){
+  const r = rutas[currentRutaId];
+  if(!r) return;
+  const tramos = tramosDeRuta(r);
+  r.tramoActual = r.tramoActual || 0;
+  const actual = tramos[r.tramoActual];
+  if(actual && pendientesDeTramo(actual).length===0 && r.tramoActual < tramos.length-1){
+    r.tramoActual++;
+    saveRutas();
+    toast('Tramo completo. Habilitado el tramo ' + (r.tramoActual+1) + ' de ' + tramos.length);
+  } else {
+    saveRutas();
+  }
+}
+
 function marcarRutaCompletada(){
   const r = rutas[currentRutaId];
   const pendientes = r.paradas.filter(p=>p.estado==='pendiente');
@@ -1198,7 +1309,7 @@ function accionNavegar(){
   const p = getParada(currentParadaId);
   p.horarios.navegar = Date.now();
   saveRutas();
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.direccion||p.nombre)}`;
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(normalizarDireccion(p.direccion||p.nombre))}`;
   window.open(url, '_blank');
   renderParada();
 }
@@ -1207,6 +1318,7 @@ function marcarCompletada(){
   if(p.estado==='completada'){ p.estado='pendiente'; p.horarios.accion=null; }
   else { p.estado='completada'; p.horarios.accion=Date.now(); }
   saveRutas();
+  avanzarTramoSiCorresponde();
   renderParada();
 }
 function abrirFallida(){
@@ -1258,6 +1370,7 @@ function confirmarFallida(){
   p.estado = 'fallida';
   p.horarios.accion = Date.now();
   saveRutas();
+  avanzarTramoSiCorresponde();
   closeSheet();
   renderParada();
 }
