@@ -1022,7 +1022,9 @@ function twoOpt(ruta){
 // Inserción más barata: mete cada parada "libre" en el hueco de la ruta de anclas
 // (paradas con horario) que menos distancia extra agregue. Así respeta el orden horario
 // de las que tienen horaDesde y acomoda las demás alrededor por cercanía real.
-function insercionMasBarata(anclas, libres){
+// entradaCoord (opcional): de dónde viene el recorrido antes de esta localidad, para que
+// el costo de insertar al principio también tenga en cuenta ese tramo de entrada.
+function insercionMasBarata(anclas, libres, entradaCoord){
   let ruta = anclas.slice();
   libres.forEach(punto=>{
     if(!ruta.length){ ruta.push(punto); return; }
@@ -1040,8 +1042,13 @@ function insercionMasBarata(anclas, libres){
         const d = haversineKm(prev.coord, punto.coord);
         costo = d==null ? Infinity : d;
       } else if(next){
-        const d = haversineKm(punto.coord, next.coord);
-        costo = d==null ? Infinity : d;
+        const dNewNext = haversineKm(punto.coord, next.coord);
+        if(dNewNext==null){ costo = Infinity; }
+        else if(entradaCoord){
+          const dEntradaNew = haversineKm(entradaCoord, punto.coord);
+          const dEntradaNext = haversineKm(entradaCoord, next.coord) || 0;
+          costo = (dEntradaNew==null) ? dNewNext : (dEntradaNew + dNewNext - dEntradaNext);
+        } else costo = dNewNext;
       } else costo = 0;
       if(costo < mejorCosto){ mejorCosto = costo; mejorPos = i; }
     }
@@ -1050,11 +1057,70 @@ function insercionMasBarata(anclas, libres){
   return ruta;
 }
 
+// Ordena los puntos "libres" (sin horario) de una localidad por cercanía real, anclando
+// el recorrido a por dónde se entra y por dónde se sale de esa localidad. Sin esto, el
+// vecino-más-cercano + 2-opt arrancaban desde el primer punto cargado (orden arbitrario)
+// y podían terminar en cualquier punta del mapa, generando el zigzag entre localidades
+// aunque el recorrido interno ya estuviera optimizado.
+// entradaCoord: coordenada de la última parada resuelta antes de esta localidad (o null
+//   si es la primera localidad de la ruta). salidaCoord: coordenada de la próxima parada
+//   fija después de esta localidad (por ahora, solo se conoce para la última localidad,
+//   si hay una parada marcada "último"), o null si no hay ninguna.
+function ordenPorCercania(puntos, entradaCoord, salidaCoord){
+  if(puntos.length <= 1) return puntos.slice();
+  let lista = puntos.slice();
+
+  // Elegir como punto de partida el más cercano a por dónde se entra a la localidad,
+  // en vez de arrancar del primero cargado (que no tiene relación con la geografía).
+  if(entradaCoord){
+    let mejorIdx = 0, mejorDist = Infinity;
+    lista.forEach((x,i)=>{ const d = haversineKm(entradaCoord, x.coord); if(d!=null && d<mejorDist){ mejorDist=d; mejorIdx=i; } });
+    lista.unshift(lista.splice(mejorIdx,1)[0]);
+  }
+
+  let ruta = twoOpt(nearestNeighborOrder(lista));
+
+  // Si se conoce el punto de salida, verificar que el recorrido termine en el punto más
+  // cercano a él; si no es así, moverlo al final y volver a destrabar cruces (2-opt),
+  // sin tocar el punto de entrada ya fijado en la posición 0.
+  if(salidaCoord && ruta.length > 1){
+    let mejorIdx = ruta.length-1;
+    let mejorDist = haversineKm(salidaCoord, ruta[ruta.length-1].coord);
+    if(mejorDist==null) mejorDist = Infinity;
+    ruta.forEach((x,i)=>{
+      if(entradaCoord && i===0) return; // no mover el punto de entrada
+      const d = haversineKm(salidaCoord, x.coord);
+      if(d!=null && d<mejorDist){ mejorDist=d; mejorIdx=i; }
+    });
+    if(mejorIdx !== ruta.length-1){
+      const elegido = ruta.splice(mejorIdx,1)[0];
+      ruta = twoOpt([...ruta, elegido]);
+    }
+  }
+  return ruta;
+}
+
+// Geocodifica una sola dirección "de anclaje" (la última parada "primero" o la primera
+// "último") para saber por dónde entra o sale el recorrido de la zona de localidades,
+// sin necesidad de geocodificar todas las paradas fijas.
+async function geocodePuntoAncla(parada){
+  if(!parada) return null;
+  const dir = normalizarDireccion(parada.direccion || parada.nombre, parada.localidad);
+  if(!dir) return null;
+  const r = await geocodeDireccion(dir);
+  return (r && !r.fallo) ? r : null;
+}
+
 /* --- Optimización automática por localidad + cercanía real (evita zigzag) ---
    1) Agrupa por localidad (evita el zigzag entre ciudades, ej. Rosario→Casilda→Rosario).
    2) Dentro de cada localidad, geocodifica las direcciones (gratis, vía OpenStreetMap)
       y ordena por cercanía real. Las paradas con horario (horaDesde) quedan como
-      "anclas" fijas en su orden horario, y el resto se acomoda alrededor por distancia. */
+      "anclas" fijas en su orden horario, y el resto se acomoda alrededor por distancia.
+   3) Encadena las localidades entre sí: cada una arranca desde el punto más cercano a
+      donde terminó la localidad anterior (o a la última parada "primero"), y la última
+      localidad intenta terminar cerca de la primera parada "último", si hay una. Antes,
+      cada localidad se resolvía como un recorrido aislado sin relación con las demás,
+      lo que podía dejar un extremo lejos de por dónde realmente se entra o se sale. */
 async function optimizarRuta(){
   if(window._optimizando) return;
   const r = rutas[currentRutaId];
@@ -1083,11 +1149,26 @@ async function optimizarRuta(){
   let totalNuevas = 0;
   const normalOrdenado = [];
   try{
-    for(const loc of gruposOrden){
+    // Ancla de entrada: dónde termina la última parada "primero" (si hay), para no
+    // arrancar la primera localidad en cualquier punta del mapa.
+    let puntoAnteriorCoord = primero.length ? await geocodePuntoAncla(primero[primero.length-1]) : null;
+    // Ancla de salida: dónde empieza la primera parada "último" (si hay), para que la
+    // última localidad termine cerca de ahí.
+    const anclaSalida = ultimo.length ? await geocodePuntoAncla(ultimo[0]) : null;
+
+    for(let gi=0; gi<gruposOrden.length; gi++){
+      const loc = gruposOrden[gi];
       const g = grupos[loc];
-      if(g.length <= 1){ normalOrdenado.push(...g); continue; }
+      const esUltimoGrupo = (gi === gruposOrden.length-1);
       setStatus(`Ubicando direcciones en ${loc}…`);
       const coordsPorId = await geocodificarGrupo(g, ()=>{ totalNuevas++; setStatus(`Ubicando direcciones en ${loc}… (${totalNuevas} nueva${totalNuevas===1?'':'s'})`); });
+
+      if(g.length <= 1){
+        normalOrdenado.push(...g);
+        const c = coordsPorId[g[0].id];
+        if(c) puntoAnteriorCoord = c; // encadena con la próxima localidad
+        continue;
+      }
 
       const conCoord = g.filter(p=>coordsPorId[p.id]).map(p=>({p, coord:coordsPorId[p.id]}));
       const sinCoord = g.filter(p=>!coordsPorId[p.id]);
@@ -1095,13 +1176,17 @@ async function optimizarRuta(){
       const conHora = conCoord.filter(x=>x.p.horaDesde).sort((a,b)=>a.p.horaDesde.localeCompare(b.p.horaDesde));
       const sinHora = conCoord.filter(x=>!x.p.horaDesde);
 
-      let ordenGrupo;
+      let ordenGrupoConCoord;
       if(conHora.length){
-        ordenGrupo = insercionMasBarata(conHora, sinHora).map(x=>x.p);
+        ordenGrupoConCoord = insercionMasBarata(conHora, sinHora, puntoAnteriorCoord);
       } else {
-        ordenGrupo = twoOpt(nearestNeighborOrder(sinHora)).map(x=>x.p);
+        ordenGrupoConCoord = ordenPorCercania(sinHora, puntoAnteriorCoord, esUltimoGrupo ? anclaSalida : null);
       }
-      normalOrdenado.push(...ordenGrupo, ...sinCoord);
+
+      if(ordenGrupoConCoord.length){
+        puntoAnteriorCoord = ordenGrupoConCoord[ordenGrupoConCoord.length-1].coord; // encadena con la próxima localidad
+      }
+      normalOrdenado.push(...ordenGrupoConCoord.map(x=>x.p), ...sinCoord);
     }
 
     r.paradas = [...primero, ...normalOrdenado, ...ultimo];
