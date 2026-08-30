@@ -564,12 +564,13 @@ function guardarNombreRuta(){
 }
 
 /* --- Iniciar recorrido: arma el link de Google Maps con todas las paradas en orden --- */
-function normalizarDireccion(dir){
+function normalizarDireccion(dir, localidad){
   dir = (dir||'').trim();
   if(!dir) return dir;
   const yaTieneContexto = /rosario|casilda|santa fe|argentina|buenos aires|c[oó]rdoba,|venado tuerto|firmat|ca[nñ]ada de g[oó]mez/i.test(dir);
   if(yaTieneContexto) return dir;
-  return dir + ', Rosario, Argentina';
+  const loc = (localidad||'').trim() || 'Rosario';
+  return dir + ', ' + loc + ', Argentina';
 }
 
 /* --- Iniciar recorrido: arma tramos de hasta 10 paradas para Google Maps (límite de Maps) ---
@@ -633,7 +634,7 @@ function confirmarIniciarRecorrido(){
   if(r.tramoActual >= tramos.length){ toast('No quedan paradas pendientes'); closeSheet(); return; }
   const tramoPend = pendientesDeTramo(tramos[r.tramoActual]);
   const esPrimerTramo = r.tramoActual === 0;
-  const direcciones = tramoPend.map(p=> normalizarDireccion(p.direccion || p.nombre));
+  const direcciones = tramoPend.map(p=> normalizarDireccion(p.direccion || p.nombre, p.localidad));
   const destino = direcciones[direcciones.length-1];
   const escalas = direcciones.slice(0,-1);
   let url = 'https://www.google.com/maps/dir/?api=1';
@@ -644,7 +645,7 @@ function confirmarIniciarRecorrido(){
     const anterior = tramos[r.tramoActual-1];
     const ultimaAnterior = anterior[anterior.length-1];
     if(ultimaAnterior){
-      url += '&origin=' + encodeURIComponent(normalizarDireccion(ultimaAnterior.direccion || ultimaAnterior.nombre));
+      url += '&origin=' + encodeURIComponent(normalizarDireccion(ultimaAnterior.direccion || ultimaAnterior.nombre, ultimaAnterior.localidad));
     }
   }
   url += '&destination=' + encodeURIComponent(destino);
@@ -1309,7 +1310,7 @@ function accionNavegar(){
   const p = getParada(currentParadaId);
   p.horarios.navegar = Date.now();
   saveRutas();
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(normalizarDireccion(p.direccion||p.nombre))}`;
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(normalizarDireccion(p.direccion||p.nombre, p.localidad))}`;
   window.open(url, '_blank');
   renderParada();
 }
