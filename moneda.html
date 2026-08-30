@@ -737,7 +737,7 @@
     else if(state === 'offline'){ el.textContent = '⚠️'; el.title = 'Sin conexión: el cambio quedó guardado solo en este dispositivo por ahora'; }
   }
 
-  async function pullFromCloud(){
+  async function pullFromCloud(forceOverride){
     if(!SYNC_URL) return false;
     setSyncStatus('syncing');
     try{
@@ -745,7 +745,7 @@
       if(!res.ok) throw new Error('bad status');
       const cloud = await res.json();
       const localUpdatedAt = localStorage.getItem('moneda_updated_at') || '';
-      if(cloud && cloud.updatedAt && (!localUpdatedAt || cloud.updatedAt > localUpdatedAt)){
+      if(cloud && cloud.updatedAt && (forceOverride || !localUpdatedAt || cloud.updatedAt > localUpdatedAt)){
         movements = Array.isArray(cloud.movements) ? cloud.movements : movements;
         if(Array.isArray(cloud.categories) && cloud.categories.length) categories = cloud.categories;
         quickButtons = Array.isArray(cloud.quickButtons) ? cloud.quickButtons : quickButtons;
@@ -1680,7 +1680,7 @@
 
   document.getElementById('syncStatus').style.cursor = 'pointer';
   document.getElementById('syncStatus').addEventListener('click', async () => {
-    const changed = await pullFromCloud();
+    const changed = await pullFromCloud(true);
     populateFilterOptions();
     renderBanners();
     render();
