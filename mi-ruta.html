@@ -1122,7 +1122,7 @@ function getParada(id){
 function abrirAgregarParada(){
   openSheet(`
     <h3>Añadir parada</h3>
-    <input class="input" id="addParadaBusq" placeholder="🎤 Nombre del local o cliente..." oninput="renderSugerenciasParada()">
+    <input class="input" id="addParadaBusq" placeholder="🎤 Nombre, local, cliente o dirección..." oninput="renderSugerenciasParada()">
     <div id="sugerenciasParada" style="margin-top:10px;max-height:260px;overflow-y:auto;"></div>
     <div style="height:10px;"></div>
     <button class="btn-secondary" onclick="crearParadaDesdeTexto()">＋ Crear parada nueva con este nombre</button>
@@ -1133,8 +1133,8 @@ function renderSugerenciasParada(){
   const t = (document.getElementById('addParadaBusq').value||'').toLowerCase().trim();
   const box = document.getElementById('sugerenciasParada');
   if(!t){ box.innerHTML=''; return; }
-  const matchLocales = locales.filter(l=>l.nombre.toLowerCase().includes(t)).slice(0,6);
-  const matchClientes = clientes.filter(c=>c.nombre.toLowerCase().includes(t)).slice(0,6);
+  const matchLocales = locales.filter(l=> l.nombre.toLowerCase().includes(t) || (l.direccion||'').toLowerCase().includes(t)).slice(0,6);
+  const matchClientes = clientes.filter(c=> c.nombre.toLowerCase().includes(t) || (c.direccion||'').toLowerCase().includes(t)).slice(0,6);
   let html = '';
   matchLocales.forEach(l=>{
     html += `<div class="route-row" style="margin:0 0 8px 0;" onclick="agregarParadaDesdeLocal('${l.id}')">
