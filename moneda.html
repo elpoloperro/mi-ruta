@@ -327,6 +327,31 @@
   }
   .new-cat-row button{ background:var(--ink); color:var(--paper); border:none; border-radius:8px; padding:0 12px; font-size:13px; cursor:pointer; flex-shrink:0; }
 
+  /* Pagos fijos */
+  .fp-card{
+    background:var(--card); border:1px solid var(--paper-line); border-radius:10px;
+    padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;
+    gap:10px; cursor:pointer; transition:background-color .25s ease, border-color .25s ease;
+  }
+  .fp-card.fp-paid{ border-color:var(--ok); }
+  .fp-card.fp-overdue{ border-color:var(--danger); }
+  .fp-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .fp-left .icon{ font-size:18px; flex-shrink:0; }
+  .fp-info{ min-width:0; }
+  .fp-name{ font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fp-meta{ font-size:11px; color:var(--ink-soft); font-family:'JetBrains Mono', monospace; margin-top:2px; }
+  .fp-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .fp-status{
+    font-size:11px; font-family:'JetBrains Mono', monospace; padding:4px 10px; border-radius:12px;
+    white-space:nowrap; border:1px solid var(--paper-line); color:var(--ink-soft); background:var(--paper);
+  }
+  .fp-status.fp-paid{ background:var(--ok); color:#fff; border-color:var(--ok); }
+  .fp-status.fp-overdue{ background:var(--danger); color:#fff; border-color:var(--danger); }
+  .fp-del{ background:none; border:none; color:#c2c2b5; cursor:pointer; font-size:13px; flex-shrink:0; }
+  .fp-del:hover{ color:var(--danger); }
+  .fp-edit{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; flex-shrink:0; }
+  .fp-edit:hover{ color:var(--coin); }
+
   .filter-row{ display:flex; gap:8px; margin-bottom:4px; flex-wrap:wrap; }
   .filter-total{ font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--ink-soft); background:var(--card); border:1px solid var(--paper-line); border-radius:8px; padding:8px 12px; margin-bottom:10px; }
   .filter-total b{ color:var(--ink); font-size:15px; }
@@ -512,6 +537,32 @@
     </div>
   </div>
 
+  <div class="section-title fp-section-toggle" id="fpSectionToggle">
+    <span>Pagos fijos <span id="fpSectionCaret">▸</span></span>
+    <span class="add-link" id="toggleNewFp">+ pago fijo</span>
+  </div>
+  <div class="cat-summary" id="fpSummary"></div>
+  <div id="fpSectionBody" style="display:none;">
+    <div class="new-cat-row" id="newFpRow" style="display:none;">
+      <input type="text" class="icon-input" id="newFpIcon" placeholder="🏷️" maxlength="2">
+      <input type="text" class="name-input" id="newFpName" placeholder="Nombre (ej: Luz)">
+      <input type="text" class="budget-input" id="newFpAmount" placeholder="Monto aprox.">
+      <input type="text" class="budget-input" id="newFpDueDay" placeholder="Día venc.">
+      <select id="newFpCat"></select>
+      <button id="addFpBtn">Sumar</button>
+    </div>
+    <div class="new-cat-row" id="editFpRow" style="display:none;">
+      <input type="text" class="icon-input" id="editFpIcon" placeholder="🏷️" maxlength="2">
+      <input type="text" class="name-input" id="editFpName" placeholder="Nombre">
+      <input type="text" class="budget-input" id="editFpAmount" placeholder="Monto aprox.">
+      <input type="text" class="budget-input" id="editFpDueDay" placeholder="Día venc.">
+      <select id="editFpCat"></select>
+      <button id="saveFpEditBtn">Guardar</button>
+      <button id="cancelFpEditBtn" class="edit-cancel">Cancelar</button>
+    </div>
+    <div id="fixedPayments"></div>
+  </div>
+
   <div class="section-title cat-section-toggle" id="catSectionToggle">
     <span>Presupuestos por categoría <span id="catSectionCaret">▸</span></span>
     <span class="add-link" id="toggleNewCat">+ categoría</span>
@@ -618,6 +669,14 @@
   const quickButtonsWrap = document.getElementById('quickButtonsWrap');
   const quickConfirmWrap = document.getElementById('quickConfirmWrap');
   const confirmModalWrap = document.getElementById('confirmModalWrap');
+  const fpSectionToggle = document.getElementById('fpSectionToggle');
+  const fpSectionBody = document.getElementById('fpSectionBody');
+  const fpSectionCaret = document.getElementById('fpSectionCaret');
+  const fpSummary = document.getElementById('fpSummary');
+  const toggleNewFp = document.getElementById('toggleNewFp');
+  const newFpRow = document.getElementById('newFpRow');
+  const addFpBtn = document.getElementById('addFpBtn');
+  const fixedPaymentsEl = document.getElementById('fixedPayments');
 
   function openConfirmModal(title, text, onConfirm){
     confirmModalWrap.innerHTML = `
@@ -638,6 +697,7 @@
   }
   const rawHistoryEl = document.getElementById('rawHistory');
   let quickButtons = [];
+  let fixedPayments = [];
   const restoreFile = document.getElementById('restoreFile');
 
   function monthKeyOf(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
@@ -655,6 +715,12 @@
 
   function normalize(str){
     return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  function containsWholeWord(normText, normWord){
+    if(!normWord) return false;
+    const escaped = normWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp('(^|[^a-z0-9])' + escaped + '($|[^a-z0-9])');
+    return re.test(normText);
   }
   function detectCategory(text){
     const norm = normalize(text);
@@ -717,6 +783,8 @@
     catch(e){}
     try{ const q = localStorage.getItem('moneda_quickbuttons'); quickButtons = q ? JSON.parse(q) : []; }
     catch(e){ quickButtons = []; }
+    try{ const f = localStorage.getItem('moneda_fixedpayments'); fixedPayments = f ? JSON.parse(f) : []; }
+    catch(e){ fixedPayments = []; }
     await applyCategoryUpgrades();
     await pullFromCloud();
     populateFilterOptions();
@@ -726,6 +794,7 @@
     updateRawHistory();
     composerDate.value = new Date().toISOString().slice(0,10);
     setCatSectionOpen(false);
+    setFpSectionOpen(false);
   }
 
   // ---- Sincronización con Google Sheets ----
@@ -749,10 +818,12 @@
         movements = Array.isArray(cloud.movements) ? cloud.movements : movements;
         if(Array.isArray(cloud.categories) && cloud.categories.length) categories = cloud.categories;
         quickButtons = Array.isArray(cloud.quickButtons) ? cloud.quickButtons : quickButtons;
+        fixedPayments = Array.isArray(cloud.fixedPayments) ? cloud.fixedPayments : fixedPayments;
         try{
           localStorage.setItem('moneda_movements', JSON.stringify(movements));
           localStorage.setItem('moneda_categories', JSON.stringify(categories));
           localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons));
+          localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments));
           localStorage.setItem('moneda_updated_at', cloud.updatedAt);
         }catch(e){}
         setSyncStatus('ok');
@@ -776,7 +847,7 @@
     setSyncStatus('syncing');
     try{
       const payload = {
-        movements, categories, quickButtons,
+        movements, categories, quickButtons, fixedPayments,
         updatedAt: localStorage.getItem('moneda_updated_at') || new Date().toISOString()
       };
       const res = await fetch(SYNC_URL, { method:'POST', body: JSON.stringify(payload), cache:'no-store' });
@@ -843,6 +914,7 @@
   async function saveMovements(){ try{ localStorage.setItem('moneda_movements', JSON.stringify(movements)); markLocalChange(); } catch(e){ console.error(e); alert('No se pudo guardar. Puede que el navegador esté sin espacio o en modo incógnito.'); } }
   async function saveCategories(){ try{ localStorage.setItem('moneda_categories', JSON.stringify(categories)); markLocalChange(); } catch(e){ console.error(e); } }
   async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); markLocalChange(); } catch(e){ console.error(e); } }
+  async function saveFixedPayments(){ try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); markLocalChange(); } catch(e){ console.error(e); } }
 
   function updateRawHistory(){
     const uniq = [...new Set(movements.map(mv => mv.raw))].slice(-60);
@@ -888,6 +960,41 @@
     const mk = monthKeyOf(d);
     return movements.filter(mv => mv.date.startsWith(mk));
   }
+  function fixedPaymentPaid(fp, forDate){
+    const d = forDate || viewDate;
+    const mk = monthKeyOf(d);
+    if((fp.paidMonths||[]).includes(mk)) return true;
+    const nameNorm = normalize(fp.name);
+    return monthMovements(d).some(mv => {
+      if(mv.isIncome) return false;
+      if(nameNorm && containsWholeWord(normalize(mv.raw), nameNorm)) return true;
+      if(fp.amount > 0 && mv.category === fp.category){
+        return Math.abs(mv.amount - fp.amount) <= Math.max(fp.amount * 0.15, 500);
+      }
+      return false;
+    });
+  }
+  async function toggleFixedPaid(fp){
+    const mk = monthKeyOf(viewDate);
+    fp.paidMonths = fp.paidMonths || [];
+    const idx = fp.paidMonths.indexOf(mk);
+    if(idx >= 0) fp.paidMonths.splice(idx,1); else fp.paidMonths.push(mk);
+    await saveFixedPayments();
+  }
+  function openFpEdit(id){
+    const fp = fixedPayments.find(x => x.id === id);
+    if(!fp) return;
+    document.getElementById('editFpIcon').value = fp.icon;
+    document.getElementById('editFpName').value = fp.name;
+    document.getElementById('editFpAmount').value = fp.amount || '';
+    document.getElementById('editFpDueDay').value = fp.dueDay || '';
+    const catSel = document.getElementById('editFpCat');
+    catSel.innerHTML = categories.map(c => `<option value="${c.key}">${c.icon} ${c.label}</option>`).join('');
+    catSel.value = fp.category;
+    document.getElementById('editFpRow').dataset.id = id;
+    newFpRow.style.display = 'none';
+    document.getElementById('editFpRow').style.display = 'flex';
+  }
   function populateFilterOptions(){
     filterCat.innerHTML = '<option value="">Todas</option>' + categories.map(c => `<option value="${c.key}">${c.icon} ${c.label}</option>`).join('');
   }
@@ -903,6 +1010,17 @@
       b.innerHTML = `<span>⏰ Todavía no anotaste nada hoy. ¿Te olvidaste de algún gasto?</span><button class="banner-close">✕</button>`;
       b.querySelector('.banner-close').addEventListener('click', () => b.remove());
       bannersEl.appendChild(b);
+    }
+    if(fixedPayments.length > 0){
+      const overdue = fixedPayments.filter(fp => fp.dueDay > 0 && now.getDate() > fp.dueDay && !fixedPaymentPaid(fp, now));
+      if(overdue.length > 0){
+        const names = overdue.map(fp => fp.icon + ' ' + escapeHtml(fp.name)).join(', ');
+        const b = document.createElement('div');
+        b.className = 'banner warn-b';
+        b.innerHTML = `<span>⚠️ Pagos fijos atrasados este mes: ${names}.</span><button class="banner-close">✕</button>`;
+        b.querySelector('.banner-close').addEventListener('click', () => b.remove());
+        bannersEl.appendChild(b);
+      }
     }
     if(now.getDay() === 1){
       const oneWeekAgo = new Date(now); oneWeekAgo.setDate(now.getDate()-7);
@@ -1136,6 +1254,76 @@
     trendChartEl.innerHTML = rows.length ? rows.join('') : '<div class="empty-chart">Sin datos suficientes.</div>';
   }
 
+  function renderFixedPayments(){
+    const mk = monthKeyOf(viewDate);
+    const now = new Date();
+    const isCurrentMonth = mk === monthKeyOf(now);
+    const results = fixedPayments.map(fp => {
+      const paid = fixedPaymentPaid(fp);
+      const overdue = !paid && isCurrentMonth && fp.dueDay > 0 && now.getDate() > fp.dueDay;
+      return { fp, paid, overdue };
+    });
+
+    if(fixedPayments.length === 0){
+      fpSummary.innerHTML = '<span class="cat-summary-chip" style="cursor:default;">Sin pagos fijos cargados todavía</span>';
+    } else {
+      const paidCount = results.filter(r => r.paid).length;
+      const summaryChip = `<span class="cat-summary-chip" style="cursor:default;">${paidCount}/${fixedPayments.length} al día</span>`;
+      const chips = results.map(({fp, paid, overdue}) => {
+        const mark = paid ? '✅' : (overdue ? '⚠️' : '⏳');
+        return `<span class="cat-summary-chip ${overdue ? 'over' : ''}">${fp.icon} ${mark}</span>`;
+      }).join('');
+      fpSummary.innerHTML = summaryChip + chips;
+    }
+
+    fixedPaymentsEl.innerHTML = '';
+    results.forEach(({fp, paid, overdue}) => {
+      const cat = findCategory(fp.category);
+      const card = document.createElement('div');
+      card.className = 'fp-card ' + (paid ? 'fp-paid' : (overdue ? 'fp-overdue' : ''));
+      const amountText = fp.amount > 0 ? fmt(fp.amount) : 'monto variable';
+      const dueText = fp.dueDay > 0 ? ` · vence día ${fp.dueDay}` : '';
+      const statusText = paid ? '✅ Pagado' : (overdue ? '⚠️ Atrasado' : '⏳ Pendiente');
+      const statusClass = paid ? 'fp-paid' : (overdue ? 'fp-overdue' : '');
+      card.innerHTML = `
+        <div class="fp-left">
+          <span class="icon">${fp.icon}</span>
+          <div class="fp-info">
+            <div class="fp-name">${escapeHtml(fp.name)}</div>
+            <div class="fp-meta">${cat.icon} ${cat.label} · ${amountText}${dueText}</div>
+          </div>
+        </div>
+        <div class="fp-right">
+          <span class="fp-status ${statusClass}">${statusText}</span>
+          <button class="fp-edit" data-id="${fp.id}" title="Editar pago fijo">✎</button>
+          <button class="fp-del" data-id="${fp.id}" title="Eliminar pago fijo">✕</button>
+        </div>
+      `;
+      card.addEventListener('click', async (e) => {
+        if(e.target.closest('.fp-del') || e.target.closest('.fp-edit')) return;
+        await toggleFixedPaid(fp);
+        render();
+      });
+      card.querySelector('.fp-edit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openFpEdit(fp.id);
+      });
+      card.querySelector('.fp-del').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openConfirmModal(
+          `¿Eliminar "${fp.name}"?`,
+          'Esta acción no se puede deshacer.',
+          async () => {
+            fixedPayments = fixedPayments.filter(x => x.id !== fp.id);
+            await saveFixedPayments();
+            render();
+          }
+        );
+      });
+      fixedPaymentsEl.appendChild(card);
+    });
+  }
+
   function render(){
     monthLabelEl.textContent = monthLabel(viewDate);
     const now = new Date();
@@ -1280,6 +1468,7 @@
       });
     });
 
+    renderFixedPayments();
     renderMovements();
   }
 
@@ -1524,7 +1713,7 @@
   }
 
   function exportBackup(){
-    const data = { movements, categories, quickButtons, exportedAt: new Date().toISOString() };
+    const data = { movements, categories, quickButtons, fixedPayments, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `moneda-backup-${todayKey()}.json`; a.click();
@@ -1542,7 +1731,8 @@
       movements = data.movements;
       categories = data.categories;
       quickButtons = Array.isArray(data.quickButtons) ? data.quickButtons : [];
-      await saveMovements(); await saveCategories(); await saveQuickButtons();
+      fixedPayments = Array.isArray(data.fixedPayments) ? data.fixedPayments : [];
+      await saveMovements(); await saveCategories(); await saveQuickButtons(); await saveFixedPayments();
       populateFilterOptions(); renderBanners(); render(); renderQuickButtons(); updateRawHistory();
       alert('Backup restaurado con éxito.');
     }catch(e){
@@ -1621,6 +1811,55 @@
     setCatSectionOpen(catSectionBody.style.display === 'none');
   });
   catSummary.addEventListener('click', () => setCatSectionOpen(true));
+
+  function setFpSectionOpen(open){
+    fpSectionBody.style.display = open ? 'block' : 'none';
+    fpSummary.style.display = open ? 'none' : 'flex';
+    fpSectionCaret.classList.toggle('open', open);
+    try{ localStorage.setItem('moneda_fpsection_open', open ? '1' : '0'); }catch(e){}
+  }
+  fpSectionToggle.querySelector('span:first-child').addEventListener('click', () => {
+    setFpSectionOpen(fpSectionBody.style.display === 'none');
+  });
+  fpSummary.addEventListener('click', () => setFpSectionOpen(true));
+
+  toggleNewFp.addEventListener('click', () => {
+    const opening = newFpRow.style.display === 'none';
+    if(opening){ document.getElementById('newFpCat').innerHTML = categories.map(c => `<option value="${c.key}">${c.icon} ${c.label}</option>`).join(''); }
+    document.getElementById('editFpRow').style.display = 'none';
+    newFpRow.style.display = opening ? 'flex' : 'none';
+  });
+  addFpBtn.addEventListener('click', async () => {
+    const icon = document.getElementById('newFpIcon').value.trim() || '📌';
+    const name = document.getElementById('newFpName').value.trim();
+    const amount = parseFloat(document.getElementById('newFpAmount').value.replace(/[^\d.]/g,'')) || 0;
+    const dueDay = parseInt(document.getElementById('newFpDueDay').value.replace(/[^\d]/g,''), 10) || 0;
+    const category = document.getElementById('newFpCat').value;
+    if(!name){ alert('Ponele un nombre al pago fijo.'); return; }
+    fixedPayments.push({ id: 'fp_' + Date.now(), icon, name, category, amount, dueDay, paidMonths: [] });
+    await saveFixedPayments();
+    document.getElementById('newFpIcon').value=''; document.getElementById('newFpName').value=''; document.getElementById('newFpAmount').value=''; document.getElementById('newFpDueDay').value='';
+    newFpRow.style.display = 'none';
+    render();
+  });
+  document.getElementById('saveFpEditBtn').addEventListener('click', async () => {
+    const id = document.getElementById('editFpRow').dataset.id;
+    const fp = fixedPayments.find(x => x.id === id);
+    if(!fp) return;
+    const icon = document.getElementById('editFpIcon').value.trim() || '📌';
+    const name = document.getElementById('editFpName').value.trim();
+    const amount = parseFloat(document.getElementById('editFpAmount').value.replace(/[^\d.]/g,'')) || 0;
+    const dueDay = parseInt(document.getElementById('editFpDueDay').value.replace(/[^\d]/g,''), 10) || 0;
+    const category = document.getElementById('editFpCat').value;
+    if(!name){ alert('Ponele un nombre al pago fijo.'); return; }
+    fp.icon = icon; fp.name = name; fp.amount = amount; fp.dueDay = dueDay; fp.category = category;
+    await saveFixedPayments();
+    document.getElementById('editFpRow').style.display = 'none';
+    render();
+  });
+  document.getElementById('cancelFpEditBtn').addEventListener('click', () => {
+    document.getElementById('editFpRow').style.display = 'none';
+  });
 
   toggleNewCat.addEventListener('click', () => { newCatRow.style.display = newCatRow.style.display === 'none' ? 'flex' : 'none'; });
   addCatBtn.addEventListener('click', async () => {
