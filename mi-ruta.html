@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Mi Ruta — Comisiones Mauri</title>
 <meta name="theme-color" content="#0d1113">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230d1113'/%3E%3Cpath d='M20 70 L50 25 L80 70' stroke='%23f2a93b' stroke-width='9' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='50' cy='78' r='6' fill='%23f2a93b'/%3E%3C/svg%3E">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
@@ -388,6 +390,7 @@
 
     <div class="ruta-toolbar">
       <button class="chip-btn" onclick="optimizarRuta()">🧭 Optimizar</button>
+      <button class="chip-btn" onclick="abrirMapaRuta()">🗺️ Mapa</button>
       <button class="chip-btn" onclick="abrirBuscadorParadas()">🔎 Buscar</button>
       <button class="chip-btn" onclick="abrirCierreDia()">🏁 Cerrar día</button>
     </div>
@@ -411,6 +414,20 @@
       <button class="icon-btn" id="paradaEditToggle" onclick="toggleEdicionParada()">✎</button>
     </div>
     <div id="paradaContenido"></div>
+  </div>
+
+  <!-- ===================== MAPA DE LA RUTA ===================== -->
+  <div class="view" id="view-mapa">
+    <div class="topbar">
+      <button class="back" onclick="goView('view-ruta')">←</button>
+      <div style="flex:1">
+        <h1 style="font-size:16px;">Mapa de la ruta</h1>
+        <div class="sub" id="mapaSubtitulo"></div>
+      </div>
+      <button class="icon-btn" onclick="renderMapaRuta(true)" title="Volver a ubicar">↻</button>
+    </div>
+    <div id="mapaStatus" style="padding:10px 16px;color:var(--ink-soft);font-size:12.5px;"></div>
+    <div id="mapaLeaflet" style="width:100%;height:calc(100vh - 110px);background:var(--bg-elev);"></div>
   </div>
 
   <!-- ===================== HISTORIAL / EXPORTAR ===================== -->
@@ -638,6 +655,7 @@ function abrirMenuRuta(){
     <button class="btn-secondary" onclick="guardarNombreRuta()" style="margin-bottom:10px;">💾 Guardar nombre</button>
     <button class="btn-secondary" onclick="closeSheet();duplicarRutaComoNueva('${currentRutaId}')" style="margin-bottom:10px;">🗓️ Duplicar a otro día</button>
     <button class="btn-secondary" onclick="closeSheet();abrirExportar('${currentRutaId}')" style="margin-bottom:10px;">📤 Compartir / exportar a planilla</button>
+    <button class="btn-secondary" onclick="closeSheet();abrirDiagnosticoUbicaciones()" style="margin-bottom:10px;">🛰️ Revisar ubicaciones detectadas</button>
     <button class="btn-secondary" onclick="closeSheet();marcarRutaCompletada()" style="margin-bottom:10px;">✅ Marcar ruta como completada</button>
     <button class="btn-danger-outline" onclick="closeSheet();eliminarRuta('${currentRutaId}');goView('view-home')">🗑️ Eliminar ruta</button>
   `);
@@ -975,6 +993,140 @@ async function geocodificarGrupo(paradas, onNueva){
   return resultados;
 }
 
+/* --- Mapa embebido de la ruta (Leaflet + OpenStreetMap, gratis, sin salir de la app) --- */
+let _mapaLeaflet = null;
+let _mapaCapaMarcadores = null;
+let _mapaCapaLinea = null;
+
+function abrirMapaRuta(){
+  goView('view-mapa');
+  renderMapaRuta(false);
+}
+
+async function renderMapaRuta(forzarReubicar){
+  const r = rutas[currentRutaId];
+  const statusEl = document.getElementById('mapaStatus');
+  const subEl = document.getElementById('mapaSubtitulo');
+  if(!r || !r.paradas.length){ if(statusEl) statusEl.textContent = 'Esta ruta todavía no tiene paradas.'; return; }
+  if(subEl) subEl.textContent = fmtFechaLarga(currentRutaId);
+  if(statusEl) statusEl.textContent = 'Ubicando paradas…';
+
+  if(forzarReubicar){
+    r.paradas.forEach(p=>{
+      const dir = normalizarDireccion(p.direccion || p.nombre, p.localidad);
+      if(dir) delete geocodeCache[claveGeocode(dir)];
+    });
+    saveGeocodeCache();
+  }
+
+  const coords = await geocodificarGrupo(r.paradas, ()=>{});
+  const conCoord = r.paradas.map((p,i)=>({p, i, coord:coords[p.id]})).filter(x=>x.coord);
+  const sinCoord = r.paradas.filter(p=>!coords[p.id]);
+
+  if(!conCoord.length){
+    if(statusEl) statusEl.textContent = 'No se pudo ubicar ninguna dirección (¿sin internet?).';
+    return;
+  }
+
+  if(!_mapaLeaflet){
+    _mapaLeaflet = L.map('mapaLeaflet');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 19
+    }).addTo(_mapaLeaflet);
+  }
+  setTimeout(()=>_mapaLeaflet.invalidateSize(), 50);
+
+  if(_mapaCapaMarcadores) _mapaLeaflet.removeLayer(_mapaCapaMarcadores);
+  if(_mapaCapaLinea) _mapaLeaflet.removeLayer(_mapaCapaLinea);
+  _mapaCapaMarcadores = L.layerGroup().addTo(_mapaLeaflet);
+
+  const colorPorEstado = (p)=> p.estado==='completada' ? '#4caf7d' : (p.estado==='fallida' ? '#e2604f' : '#f2a93b');
+
+  conCoord.forEach(x=>{
+    const color = colorPorEstado(x.p);
+    const icono = L.divIcon({
+      className: '',
+      html: `<div style="background:${color};color:#0d1113;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;border:2px solid #0d1113;box-shadow:0 2px 6px rgba(0,0,0,.4);">${x.i+1}</div>`,
+      iconSize:[26,26], iconAnchor:[13,13]
+    });
+    L.marker([x.coord.lat, x.coord.lon], {icon: icono})
+      .bindPopup(`<b>${x.i+1}. ${(x.p.nombre||'(sin nombre)').replace(/</g,'')}</b><br>${(x.p.direccion||'').replace(/</g,'')}`)
+      .addTo(_mapaCapaMarcadores);
+  });
+
+  const bounds = L.latLngBounds(conCoord.map(x=>[x.coord.lat, x.coord.lon]));
+  _mapaLeaflet.fitBounds(bounds, {padding:[30,30]});
+
+  // Línea de la ruta: real por calle si OpenRouteService la puede calcular, si no, recta.
+  let statusMsg = `${conCoord.length} de ${r.paradas.length} paradas ubicadas.`;
+  if(sinCoord.length) statusMsg += ` ${sinCoord.length} sin ubicar.`;
+  if(statusEl) statusEl.textContent = statusMsg;
+
+  if(conCoord.length >= 2){
+    const puntosOrdenados = conCoord.map(x=>x.coord);
+    const geometriaReal = await pedirGeometriaRuta(puntosOrdenados);
+    const latlngs = geometriaReal || puntosOrdenados.map(c=>[c.lat, c.lon]);
+    _mapaCapaLinea = L.polyline(latlngs, { color:'#5aa9e6', weight:4, opacity:.75, dashArray: geometriaReal?null:'6,8' }).addTo(_mapaLeaflet);
+    if(!geometriaReal && statusEl) statusEl.textContent = statusMsg + ' (línea recta orientativa)';
+  }
+}
+
+// Pide a OpenRouteService el trazado real por calle entre los puntos en el orden dado
+// (no la matriz de distancias, sino la geometría de la ruta para dibujarla en el mapa).
+async function pedirGeometriaRuta(puntos){
+  if(puntos.length > ORS_MAX_PUNTOS) return null;
+  try{
+    const resp = await fetch('https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson', {
+      method:'POST',
+      headers: { 'Authorization': ORS_API_KEY, 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ coordinates: puntos.map(c=>[c.lon, c.lat]) })
+    });
+    if(!resp.ok) return null;
+    const data = await resp.json();
+    const coordsRuta = data && data.features && data.features[0] && data.features[0].geometry && data.features[0].geometry.coordinates;
+    if(!coordsRuta) return null;
+    return coordsRuta.map(([lon,lat])=>[lat,lon]);
+  }catch(e){
+    return null;
+  }
+}
+
+/* --- Diagnóstico: ver dónde ubicó cada dirección ---
+   No tengo forma de chequear yo mismo si Nominatim geolocalizó bien una dirección
+   (necesitaría internet hacia ese servicio). Esta pantalla te deja revisarlo vos:
+   muestra la ubicación que quedó guardada para cada parada y un link para verla en
+   el mapa, así detectás de un vistazo si alguna cayó en el lugar equivocado. */
+function abrirDiagnosticoUbicaciones(){
+  const r = rutas[currentRutaId];
+  if(!r || !r.paradas.length){ toast('No hay paradas para revisar'); return; }
+  openSheet(`
+    <h3 style="margin-bottom:6px;">Revisando ubicaciones…</h3>
+    <p id="diagStatus" style="color:var(--ink-soft);font-size:13.5px;">Un momento…</p>
+  `, {center:true, dismissible:false});
+  diagnosticarUbicaciones(r.paradas);
+}
+async function diagnosticarUbicaciones(paradas){
+  const setStatus = (m)=>{ const el = document.getElementById('diagStatus'); if(el) el.textContent = m; };
+  let nuevas = 0;
+  const coords = await geocodificarGrupo(paradas, ()=>{ nuevas++; setStatus(`Ubicando direcciones nuevas… (${nuevas})`); });
+  let filas = '';
+  paradas.forEach(p=>{
+    const c = coords[p.id];
+    const dirMostrada = normalizarDireccion(p.direccion || p.nombre, p.localidad);
+    if(c){
+      const link = `https://www.openstreetmap.org/?mlat=${c.lat}&mlon=${c.lon}#map=17/${c.lat}/${c.lon}`;
+      filas += `<div class="route-row"><div class="info"><div class="name">${(p.nombre||'(sin nombre)')}</div><div class="meta"><span>${dirMostrada}</span></div></div><a href="${link}" target="_blank" rel="noopener" class="btn-secondary" style="padding:8px 12px;font-size:12.5px;white-space:nowrap;">Ver mapa ↗</a></div>`;
+    } else {
+      filas += `<div class="route-row" style="border-color:var(--danger);"><div class="info"><div class="name">${(p.nombre||'(sin nombre)')}</div><div class="meta"><span style="color:var(--danger);">No se pudo ubicar — ${dirMostrada || 'sin dirección cargada'}</span></div></div></div>`;
+    }
+  });
+  openSheet(`
+    <h3>Ubicaciones detectadas</h3>
+    <p style="color:var(--ink-soft);font-size:12.5px;margin:0 0 12px 0;line-height:1.5;">Tocá "Ver mapa" en cada una. Si algún pin cae en la calle equivocada (otra localidad, otro barrio), esa es la dirección que está rompiendo la optimización — corregila en Locales/Clientes agregando más referencia (ej. "y Bv. Oroño") y optimizá de nuevo.</p>
+    ${filas}
+  `);
+}
+
 function haversineKm(a, b){
   if(!a || !b) return null;
   const R = 6371;
@@ -1217,9 +1369,20 @@ async function optimizarRuta(){
   if(r.paradas.length < 2){ toast('Necesitás al menos 2 paradas para optimizar'); return; }
   window._optimizando = true;
 
-  const primero = r.paradas.filter(p=>p.orden==='primero');
-  const ultimo = r.paradas.filter(p=>p.orden==='ultimo');
-  const normal = r.paradas.filter(p=>p.orden!=='primero' && p.orden!=='ultimo');
+  // Las paradas ya resueltas (completadas o fallidas) NO se tocan: quedan tal cual
+  // están, en su posición. Solo se reordenan las pendientes — así podés ir sumando
+  // direcciones a la mañana y volver a optimizar sin que se te mezclen las que ya
+  // hiciste con las que faltan.
+  const yaResueltas = r.paradas.filter(p=>p.estado!=='pendiente');
+  const idxPendientes = [];
+  r.paradas.forEach((p,i)=>{ if(p.estado==='pendiente') idxPendientes.push(i); });
+  const pendientesTodas = idxPendientes.map(i=>r.paradas[i]);
+
+  if(pendientesTodas.length < 2){ window._optimizando=false; toast('Necesitás al menos 2 paradas pendientes para optimizar'); return; }
+
+  const primero = pendientesTodas.filter(p=>p.orden==='primero');
+  const ultimo = pendientesTodas.filter(p=>p.orden==='ultimo');
+  const normal = pendientesTodas.filter(p=>p.orden!=='primero' && p.orden!=='ultimo');
 
   const gruposOrdenCarga = [];
   const grupos = {};
@@ -1239,9 +1402,19 @@ async function optimizarRuta(){
   let totalNuevas = 0;
   const normalOrdenado = [];
   try{
-    // Ancla de entrada: dónde termina la última parada "primero" (si hay), para no
-    // arrancar la primera localidad en cualquier punta del mapa.
-    let puntoAnteriorCoord = primero.length ? await geocodePuntoAncla(primero[primero.length-1]) : null;
+    // Ancla de entrada: si hay una parada "primero" pendiente, se usa esa (como antes).
+    // Si no, pero ya completaste o fallaste alguna parada hoy, se usa la ÚLTIMA que
+    // marcaste (por horario real de la acción, no por posición en la lista) como punto
+    // de entrada — así las pendientes se ordenan desde donde estás parado ahora, en vez
+    // de recalcular todo desde cero como si arrancaras de la nada.
+    let puntoAnteriorCoord = null;
+    if(primero.length){
+      puntoAnteriorCoord = await geocodePuntoAncla(primero[primero.length-1]);
+    } else if(yaResueltas.length){
+      let ultimaAccion = null, ultimoTs = -Infinity;
+      yaResueltas.forEach(p=>{ const ts = (p.horarios && p.horarios.accion) || 0; if(ts >= ultimoTs){ ultimoTs = ts; ultimaAccion = p; } });
+      if(ultimaAccion) puntoAnteriorCoord = await geocodePuntoAncla(ultimaAccion);
+    }
     // Ancla de salida: dónde empieza la primera parada "último" (si hay), para que la
     // última localidad termine cerca de ahí.
     const anclaSalida = ultimo.length ? await geocodePuntoAncla(ultimo[0]) : null;
@@ -1311,7 +1484,10 @@ async function optimizarRuta(){
       normalOrdenado.push(...ordenGrupoConCoord.map(x=>x.p), ...sinCoord);
     }
 
-    r.paradas = [...primero, ...normalOrdenado, ...ultimo];
+    const pendientesOrdenadas = [...primero, ...normalOrdenado, ...ultimo];
+    // Las pendientes reordenadas vuelven exactamente a las posiciones que ocupaban las
+    // pendientes antes de optimizar; las ya resueltas no se mueven de donde estaban.
+    idxPendientes.forEach((idx, i)=>{ r.paradas[idx] = pendientesOrdenadas[i]; });
     saveRutas();
     renderRuta();
     closeSheet();
