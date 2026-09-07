@@ -785,8 +785,8 @@
     catch(e){ quickButtons = []; }
     try{ const f = localStorage.getItem('moneda_fixedpayments'); fixedPayments = f ? JSON.parse(f) : []; }
     catch(e){ fixedPayments = []; }
-    await applyCategoryUpgrades();
     await pullFromCloud();
+    await applyCategoryUpgrades();
     populateFilterOptions();
     renderBanners();
     render();
@@ -815,10 +815,10 @@
       const cloud = await res.json();
       const localUpdatedAt = localStorage.getItem('moneda_updated_at') || '';
       if(cloud && cloud.updatedAt && (forceOverride || !localUpdatedAt || cloud.updatedAt > localUpdatedAt)){
-        movements = Array.isArray(cloud.movements) ? cloud.movements : movements;
+        if(Array.isArray(cloud.movements) && (cloud.movements.length || !movements.length)) movements = cloud.movements;
         if(Array.isArray(cloud.categories) && cloud.categories.length) categories = cloud.categories;
-        quickButtons = Array.isArray(cloud.quickButtons) ? cloud.quickButtons : quickButtons;
-        fixedPayments = Array.isArray(cloud.fixedPayments) ? cloud.fixedPayments : fixedPayments;
+        if(Array.isArray(cloud.quickButtons) && (cloud.quickButtons.length || !quickButtons.length)) quickButtons = cloud.quickButtons;
+        if(Array.isArray(cloud.fixedPayments) && (cloud.fixedPayments.length || !fixedPayments.length)) fixedPayments = cloud.fixedPayments;
         try{
           localStorage.setItem('moneda_movements', JSON.stringify(movements));
           localStorage.setItem('moneda_categories', JSON.stringify(categories));
