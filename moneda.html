@@ -974,6 +974,19 @@
       return false;
     });
   }
+  function fixedPaymentActualAmount(fp, forDate){
+    const d = forDate || viewDate;
+    const nameNorm = normalize(fp.name);
+    const match = monthMovements(d).find(mv => {
+      if(mv.isIncome) return false;
+      if(nameNorm && containsWholeWord(normalize(mv.raw), nameNorm)) return true;
+      if(fp.amount > 0 && mv.category === fp.category){
+        return Math.abs(mv.amount - fp.amount) <= Math.max(fp.amount * 0.15, 500);
+      }
+      return false;
+    });
+    return match ? match.amount : null;
+  }
   async function toggleFixedPaid(fp){
     const mk = monthKeyOf(viewDate);
     fp.paidMonths = fp.paidMonths || [];
@@ -1268,12 +1281,18 @@
       fpSummary.innerHTML = '<span class="cat-summary-chip" style="cursor:default;">Sin pagos fijos cargados todavía</span>';
     } else {
       const paidCount = results.filter(r => r.paid).length;
+      const totalFixed = fixedPayments.reduce((s, fp) => {
+        if(fp.amount > 0) return s + fp.amount;
+        const actual = fixedPaymentActualAmount(fp);
+        return s + (actual || 0);
+      }, 0);
+      const totalChip = `<span class="cat-summary-chip" style="cursor:default;">💰 Total: ${fmt(totalFixed)}/mes</span>`;
       const summaryChip = `<span class="cat-summary-chip" style="cursor:default;">${paidCount}/${fixedPayments.length} al día</span>`;
       const chips = results.map(({fp, paid, overdue}) => {
         const mark = paid ? '✅' : (overdue ? '⚠️' : '⏳');
         return `<span class="cat-summary-chip ${overdue ? 'over' : ''}">${fp.icon} ${mark}</span>`;
       }).join('');
-      fpSummary.innerHTML = summaryChip + chips;
+      fpSummary.innerHTML = totalChip + summaryChip + chips;
     }
 
     fixedPaymentsEl.innerHTML = '';
@@ -1281,7 +1300,13 @@
       const cat = findCategory(fp.category);
       const card = document.createElement('div');
       card.className = 'fp-card ' + (paid ? 'fp-paid' : (overdue ? 'fp-overdue' : ''));
-      const amountText = fp.amount > 0 ? fmt(fp.amount) : 'monto variable';
+      let amountText;
+      if(fp.amount > 0){
+        amountText = fmt(fp.amount);
+      } else {
+        const actual = fixedPaymentActualAmount(fp);
+        amountText = actual ? `${fmt(actual)} (este mes)` : 'monto variable';
+      }
       const dueText = fp.dueDay > 0 ? ` · vence día ${fp.dueDay}` : '';
       const statusText = paid ? '✅ Pagado' : (overdue ? '⚠️ Atrasado' : '⏳ Pendiente');
       const statusClass = paid ? 'fp-paid' : (overdue ? 'fp-overdue' : '');
