@@ -351,6 +351,13 @@
   .fp-del:hover{ color:var(--danger); }
   .fp-edit{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; flex-shrink:0; }
   .fp-edit:hover{ color:var(--coin); }
+  .fp-amount-edit{ cursor:pointer; border-bottom:1px dotted var(--ink-soft); }
+  .fp-amount-edit:hover{ color:var(--coin); border-color:var(--coin); }
+  .fp-amount-input{
+    font-family:'JetBrains Mono', monospace; font-size:11px; width:80px;
+    border:1px solid var(--coin); border-radius:4px; padding:1px 4px;
+    background:var(--paper); color:var(--ink);
+  }
 
   .filter-row{ display:flex; gap:8px; margin-bottom:4px; flex-wrap:wrap; }
   .filter-total{ font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--ink-soft); background:var(--card); border:1px solid var(--paper-line); border-radius:8px; padding:8px 12px; margin-bottom:10px; }
@@ -1276,6 +1283,10 @@
       const overdue = !paid && isCurrentMonth && fp.dueDay > 0 && now.getDate() > fp.dueDay;
       return { fp, paid, overdue };
     });
+    results.sort((a, b) => {
+      const rank = r => r.paid ? 2 : (r.overdue ? 0 : 1);
+      return rank(a) - rank(b);
+    });
 
     if(fixedPayments.length === 0){
       fpSummary.innerHTML = '<span class="cat-summary-chip" style="cursor:default;">Sin pagos fijos cargados todavía</span>';
@@ -1315,7 +1326,7 @@
           <span class="icon">${fp.icon}</span>
           <div class="fp-info">
             <div class="fp-name">${escapeHtml(fp.name)}</div>
-            <div class="fp-meta">${cat.icon} ${cat.label} · ${amountText}${dueText}</div>
+            <div class="fp-meta">${cat.icon} ${cat.label} · <span class="fp-amount-edit" title="Tocar para editar el monto">${amountText}</span>${dueText}</div>
           </div>
         </div>
         <div class="fp-right">
@@ -1325,13 +1336,17 @@
         </div>
       `;
       card.addEventListener('click', async (e) => {
-        if(e.target.closest('.fp-del') || e.target.closest('.fp-edit')) return;
+        if(e.target.closest('.fp-del') || e.target.closest('.fp-edit') || e.target.closest('.fp-amount-edit')) return;
         await toggleFixedPaid(fp);
         render();
       });
       card.querySelector('.fp-edit').addEventListener('click', (e) => {
         e.stopPropagation();
         openFpEdit(fp.id);
+      });
+      card.querySelector('.fp-amount-edit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        startInlineAmountEdit(e.target, fp);
       });
       card.querySelector('.fp-del').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1347,6 +1362,34 @@
       });
       fixedPaymentsEl.appendChild(card);
     });
+  }
+
+  function startInlineAmountEdit(span, fp){
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.inputMode = 'decimal';
+    input.className = 'fp-amount-input';
+    const prefill = fp.amount > 0 ? fp.amount : (fixedPaymentActualAmount(fp) || '');
+    input.value = prefill;
+    input.placeholder = 'Monto';
+    span.replaceWith(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const commit = async () => {
+      if(done) return;
+      done = true;
+      const raw = input.value.replace(/[^\d.]/g,'');
+      const val = parseFloat(raw) || 0;
+      fp.amount = val;
+      await saveFixedPayments();
+      render();
+    };
+    input.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){ e.preventDefault(); commit(); }
+      if(e.key === 'Escape'){ done = true; render(); }
+    });
+    input.addEventListener('blur', commit);
   }
 
   function render(){
