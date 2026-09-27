@@ -235,9 +235,9 @@
     display:flex; justify-content:space-between; align-items:center;
   }
   .section-title .add-link{ color:var(--coin); cursor:pointer; text-transform:none; letter-spacing:0; font-size:12px; }
-  .cat-section-toggle > span:first-child{ cursor:pointer; }
-  #catSectionCaret{ display:inline-block; transition:transform .2s ease; font-size:10px; }
-  #catSectionCaret.open{ transform:rotate(90deg); }
+  .cat-section-toggle > span:first-child, .fp-section-toggle > span:first-child, .veh-section-toggle > span:first-child{ cursor:pointer; }
+  #catSectionCaret, #fpSectionCaret, #vehSectionCaret{ display:inline-block; transition:transform .2s ease; font-size:10px; }
+  #catSectionCaret.open, #fpSectionCaret.open, #vehSectionCaret.open{ transform:rotate(90deg); }
   .cat-summary{
     display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; cursor:pointer;
   }
@@ -460,6 +460,34 @@
   .day-body{ overflow:hidden; }
   .day-body.collapsed{ display:none; }
 
+  .veh-type-btns{ display:flex; gap:8px; margin-bottom:12px; }
+  .veh-type-btn{
+    flex:1; border:1px solid var(--paper-line); background:var(--paper); color:var(--ink-soft);
+    border-radius:10px; padding:8px; font-family:'Space Grotesk', sans-serif; font-weight:600;
+    font-size:13px; cursor:pointer;
+  }
+  .veh-type-btn.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .veh-form .new-cat-row{ margin-bottom:8px; }
+  .veh-photo-label{
+    flex:1; border:1px dashed var(--paper-line); border-radius:10px; padding:9px 10px;
+    font-size:12px; color:var(--ink-soft); cursor:pointer; text-align:center;
+  }
+  .veh-photo-preview{ margin:6px 0 10px 0; }
+  .veh-photo-preview img{ max-width:90px; max-height:90px; border-radius:8px; border:1px solid var(--paper-line); }
+  .veh-entry{
+    display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--paper-line);
+  }
+  .veh-entry-thumb{ width:36px; height:36px; border-radius:8px; object-fit:cover; flex-shrink:0; cursor:pointer; border:1px solid var(--paper-line); }
+  .veh-entry-icon{ width:36px; height:36px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--paper); font-size:17px; }
+  .veh-entry-info{ flex:1; min-width:0; }
+  .veh-entry-title{ font-size:13px; font-weight:600; }
+  .veh-entry-sub{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-soft); }
+  .veh-entry-amount{ font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; }
+  .veh-entry-del{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:14px; padding:2px 4px; }
+  .veh-entry-del:hover{ color:var(--danger); }
+  .veh-photo-modal-img{ max-width:100%; max-height:70vh; border-radius:10px; display:block; }
+  .veh-local-note{ font-size:11px; color:var(--ink-soft); margin:4px 0 12px 0; line-height:1.4; }
+
   @media (max-width:400px){
     header h1{ font-size:22px; }
     .summary{ flex-wrap:wrap; }
@@ -569,6 +597,64 @@
     </div>
     <div id="fixedPayments"></div>
   </div>
+
+  <div class="section-title veh-section-toggle" id="vehSectionToggle">
+    <span>Vehículo <span id="vehSectionCaret">▸</span></span>
+  </div>
+  <div id="vehSectionBody" style="display:none;">
+    <div class="veh-local-note">Las fotos quedan guardadas solo en este dispositivo (no se sincronizan entre celu y PC); los datos numéricos sí se sincronizan como cualquier movimiento.</div>
+    <div class="veh-type-btns">
+      <button type="button" class="veh-type-btn active" id="vehShowFuelBtn">⛽ Combustible</button>
+      <button type="button" class="veh-type-btn" id="vehShowMaintBtn">🔧 Mantenimiento</button>
+    </div>
+    <div class="veh-form" id="vehFuelForm">
+      <div class="new-cat-row">
+        <input type="date" id="vehFuelDate">
+        <input type="text" class="budget-input" id="vehFuelKm" placeholder="Odómetro (km)" inputmode="numeric">
+      </div>
+      <div class="new-cat-row">
+        <input type="text" class="budget-input" id="vehFuelLiters" placeholder="Litros" inputmode="decimal">
+        <input type="text" class="budget-input" id="vehFuelPrice" placeholder="Precio x litro" inputmode="decimal">
+        <input type="text" class="budget-input" id="vehFuelTotal" placeholder="Total" readonly>
+      </div>
+      <div class="new-cat-row">
+        <label class="veh-photo-label" for="vehFuelPhoto">📷 Foto del surtidor (opcional)</label>
+        <input type="file" accept="image/*" capture="environment" id="vehFuelPhoto" style="display:none;">
+      </div>
+      <div class="veh-photo-preview" id="vehFuelPhotoPreview"></div>
+      <button id="addFuelBtn" style="width:100%;">Guardar carga</button>
+    </div>
+    <div class="veh-form" id="vehMaintForm" style="display:none;">
+      <div class="new-cat-row">
+        <input type="date" id="vehMaintDate">
+        <select id="vehMaintType">
+          <option value="Service">Service</option>
+          <option value="Cambio de aceite">Cambio de aceite</option>
+          <option value="Cubiertas">Cubiertas</option>
+          <option value="Frenos">Frenos</option>
+          <option value="VTV">VTV</option>
+          <option value="Seguro">Seguro</option>
+          <option value="Repuesto">Repuesto</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="new-cat-row">
+        <input type="text" class="budget-input" id="vehMaintKm" placeholder="Km" inputmode="numeric">
+        <input type="text" class="budget-input" id="vehMaintCost" placeholder="Costo" inputmode="decimal">
+      </div>
+      <div class="new-cat-row">
+        <input type="text" class="name-input" id="vehMaintNote" placeholder="Detalle (ej: repuesto tal)">
+      </div>
+      <div class="new-cat-row">
+        <label class="veh-photo-label" for="vehMaintPhoto">📷 Foto (opcional)</label>
+        <input type="file" accept="image/*" capture="environment" id="vehMaintPhoto" style="display:none;">
+      </div>
+      <div class="veh-photo-preview" id="vehMaintPhotoPreview"></div>
+      <button id="addMaintBtn" style="width:100%;">Guardar mantenimiento</button>
+    </div>
+    <div id="vehEntries"></div>
+  </div>
+  <div id="vehPhotoModalWrap"></div>
 
   <div class="section-title cat-section-toggle" id="catSectionToggle">
     <span>Presupuestos por categoría <span id="catSectionCaret">▸</span></span>
@@ -684,6 +770,14 @@
   const newFpRow = document.getElementById('newFpRow');
   const addFpBtn = document.getElementById('addFpBtn');
   const fixedPaymentsEl = document.getElementById('fixedPayments');
+  const vehSectionToggle = document.getElementById('vehSectionToggle');
+  const vehSectionBody = document.getElementById('vehSectionBody');
+  const vehSectionCaret = document.getElementById('vehSectionCaret');
+  const vehEntriesEl = document.getElementById('vehEntries');
+  const vehPhotoModalWrap = document.getElementById('vehPhotoModalWrap');
+  let vehiclePhotos = {};
+  let pendingFuelPhoto = null;
+  let pendingMaintPhoto = null;
 
   function openConfirmModal(title, text, onConfirm){
     confirmModalWrap.innerHTML = `
@@ -792,16 +886,22 @@
     catch(e){ quickButtons = []; }
     try{ const f = localStorage.getItem('moneda_fixedpayments'); fixedPayments = f ? JSON.parse(f) : []; }
     catch(e){ fixedPayments = []; }
+    try{ const vp = localStorage.getItem('moneda_vehicle_photos'); vehiclePhotos = vp ? JSON.parse(vp) : {}; }
+    catch(e){ vehiclePhotos = {}; }
     await pullFromCloud();
     await applyCategoryUpgrades();
     populateFilterOptions();
     renderBanners();
     render();
     renderQuickButtons();
+    renderVehEntries();
     updateRawHistory();
     composerDate.value = new Date().toISOString().slice(0,10);
+    document.getElementById('vehFuelDate').value = new Date().toISOString().slice(0,10);
+    document.getElementById('vehMaintDate').value = new Date().toISOString().slice(0,10);
     setCatSectionOpen(false);
     setFpSectionOpen(false);
+    setVehSectionOpen(false);
   }
 
   // ---- Sincronización con Google Sheets ----
@@ -922,6 +1022,150 @@
   async function saveCategories(){ try{ localStorage.setItem('moneda_categories', JSON.stringify(categories)); markLocalChange(); } catch(e){ console.error(e); } }
   async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); markLocalChange(); } catch(e){ console.error(e); } }
   async function saveFixedPayments(){ try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); markLocalChange(); } catch(e){ console.error(e); } }
+  // Las fotos de vehículo quedan solo en este dispositivo: no forman parte del payload de sync (evita mandar
+  // imágenes pesadas al backend de Google Sheets), a diferencia de todo lo demás que sí se sincroniza.
+  function saveVehiclePhotos(){ try{ localStorage.setItem('moneda_vehicle_photos', JSON.stringify(vehiclePhotos)); } catch(e){ console.error(e); alert('No se pudo guardar la foto (puede que no haya espacio libre en el dispositivo).'); } }
+
+  function resizeImageFile(file, maxDim, quality){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = () => {
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if(w > h && w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
+          else if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function setVehSectionOpen(open){
+    vehSectionBody.style.display = open ? 'block' : 'none';
+    vehSectionCaret.classList.toggle('open', open);
+    try{ localStorage.setItem('moneda_vehsection_open', open ? '1' : '0'); }catch(e){}
+  }
+
+  function openVehPhotoModal(dataURL){
+    vehPhotoModalWrap.innerHTML = `
+      <div class="modal-overlay" id="vehPhotoOverlay">
+        <div class="modal-card" style="max-width:90vw;">
+          <img class="veh-photo-modal-img" src="${dataURL}">
+          <div class="modal-btns" style="margin-top:12px;">
+            <button class="modal-btn-cancel" id="vehPhotoCloseBtn">Cerrar</button>
+          </div>
+        </div>
+      </div>`;
+    const close = () => { vehPhotoModalWrap.innerHTML = ''; };
+    document.getElementById('vehPhotoCloseBtn').addEventListener('click', close);
+    document.getElementById('vehPhotoOverlay').addEventListener('click', (e) => { if(e.target.id === 'vehPhotoOverlay') close(); });
+  }
+
+  function renderVehEntries(){
+    const list = movements.filter(mv => mv.vehType).sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 30);
+    if(list.length === 0){ vehEntriesEl.innerHTML = '<div class="empty">Todavía no cargaste combustible ni mantenimiento.</div>'; return; }
+    vehEntriesEl.innerHTML = '';
+    list.forEach(mv => {
+      const row = document.createElement('div');
+      row.className = 'veh-entry';
+      const d = new Date(mv.date).toLocaleDateString('es-AR');
+      const photo = vehiclePhotos[mv.id];
+      const thumbHtml = photo
+        ? `<img class="veh-entry-thumb" src="${photo}">`
+        : `<div class="veh-entry-icon">${mv.vehType === 'fuel' ? '⛽' : '🔧'}</div>`;
+      const sub = mv.vehType === 'fuel'
+        ? `${d} · ${mv.liters ? mv.liters + ' L' : ''}${mv.km ? ' · ' + mv.km + ' km' : ''}`
+        : `${d}${mv.km ? ' · ' + mv.km + ' km' : ''}`;
+      row.innerHTML = `
+        ${thumbHtml}
+        <div class="veh-entry-info">
+          <div class="veh-entry-title">${escapeHtml(mv.raw)}</div>
+          <div class="veh-entry-sub">${sub}</div>
+        </div>
+        <div class="veh-entry-amount">${fmt(mv.amount)}</div>
+        <button class="veh-entry-del" title="Eliminar">✕</button>
+      `;
+      if(photo) row.querySelector('.veh-entry-thumb').addEventListener('click', () => openVehPhotoModal(photo));
+      row.querySelector('.veh-entry-del').addEventListener('click', () => {
+        openConfirmModal('Eliminar registro', '¿Eliminar este registro de vehículo? También se borra su foto si tiene.', async () => {
+          movements = movements.filter(m => m.id !== mv.id);
+          delete vehiclePhotos[mv.id];
+          await saveMovements();
+          saveVehiclePhotos();
+          renderVehEntries();
+          renderBanners();
+          render();
+        });
+      });
+      vehEntriesEl.appendChild(row);
+    });
+  }
+
+  async function addFuelEntry(){
+    const dateStr = document.getElementById('vehFuelDate').value || todayKey();
+    const km = parseFloat(document.getElementById('vehFuelKm').value.replace(/[^\d.]/g,'')) || 0;
+    const liters = parseFloat(document.getElementById('vehFuelLiters').value.replace(/[^\d.,]/g,'').replace(',','.'));
+    const price = parseFloat(document.getElementById('vehFuelPrice').value.replace(/[^\d.,]/g,'').replace(',','.'));
+    if(!liters || !price){ alert('Cargá litros y precio por litro.'); return; }
+    if(!km){ alert('Cargá el odómetro (km).'); return; }
+    const total = Math.round(liters * price);
+    const d = new Date(); const [yy,mm,dd] = dateStr.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
+    const entry = {
+      id: Date.now(), amount: total, category: 'vehiculo',
+      raw: `Combustible ${liters} L`, note: '', isIncome: false, date: d.toISOString(),
+      vehType: 'fuel', km, liters, pricePerLiter: price
+    };
+    movements.push(entry);
+    await saveMovements();
+    if(pendingFuelPhoto){ vehiclePhotos[entry.id] = pendingFuelPhoto; saveVehiclePhotos(); }
+    pendingFuelPhoto = null;
+    document.getElementById('vehFuelKm').value = '';
+    document.getElementById('vehFuelLiters').value = '';
+    document.getElementById('vehFuelPrice').value = '';
+    document.getElementById('vehFuelTotal').value = '';
+    document.getElementById('vehFuelPhoto').value = '';
+    document.getElementById('vehFuelPhotoPreview').innerHTML = '';
+    document.getElementById('vehFuelDate').value = todayKey();
+    renderVehEntries();
+    renderBanners();
+    render();
+  }
+
+  async function addMaintEntry(){
+    const dateStr = document.getElementById('vehMaintDate').value || todayKey();
+    const maintType = document.getElementById('vehMaintType').value;
+    const km = parseFloat(document.getElementById('vehMaintKm').value.replace(/[^\d.]/g,'')) || 0;
+    const cost = parseFloat(document.getElementById('vehMaintCost').value.replace(/[^\d.,]/g,'').replace(',','.'));
+    const note = document.getElementById('vehMaintNote').value.trim();
+    if(!cost){ alert('Cargá el costo.'); return; }
+    const d = new Date(); const [yy,mm,dd] = dateStr.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
+    const entry = {
+      id: Date.now(), amount: cost, category: 'vehiculo',
+      raw: `${maintType}${note ? ' — ' + note : ''}`, note, isIncome: false, date: d.toISOString(),
+      vehType: 'maint', maintType, km
+    };
+    movements.push(entry);
+    await saveMovements();
+    if(pendingMaintPhoto){ vehiclePhotos[entry.id] = pendingMaintPhoto; saveVehiclePhotos(); }
+    pendingMaintPhoto = null;
+    document.getElementById('vehMaintKm').value = '';
+    document.getElementById('vehMaintCost').value = '';
+    document.getElementById('vehMaintNote').value = '';
+    document.getElementById('vehMaintPhoto').value = '';
+    document.getElementById('vehMaintPhotoPreview').innerHTML = '';
+    document.getElementById('vehMaintDate').value = todayKey();
+    renderVehEntries();
+    renderBanners();
+    render();
+  }
 
   function updateRawHistory(){
     const uniq = [...new Set(movements.map(mv => mv.raw))].slice(-60);
@@ -1928,6 +2172,45 @@
   document.getElementById('cancelFpEditBtn').addEventListener('click', () => {
     document.getElementById('editFpRow').style.display = 'none';
   });
+
+  vehSectionToggle.querySelector('span:first-child').addEventListener('click', () => {
+    setVehSectionOpen(vehSectionBody.style.display === 'none');
+  });
+  document.getElementById('vehShowFuelBtn').addEventListener('click', () => {
+    document.getElementById('vehShowFuelBtn').classList.add('active');
+    document.getElementById('vehShowMaintBtn').classList.remove('active');
+    document.getElementById('vehFuelForm').style.display = 'block';
+    document.getElementById('vehMaintForm').style.display = 'none';
+  });
+  document.getElementById('vehShowMaintBtn').addEventListener('click', () => {
+    document.getElementById('vehShowMaintBtn').classList.add('active');
+    document.getElementById('vehShowFuelBtn').classList.remove('active');
+    document.getElementById('vehMaintForm').style.display = 'block';
+    document.getElementById('vehFuelForm').style.display = 'none';
+  });
+  function recalcFuelTotal(){
+    const liters = parseFloat(document.getElementById('vehFuelLiters').value.replace(/[^\d.,]/g,'').replace(',','.'));
+    const price = parseFloat(document.getElementById('vehFuelPrice').value.replace(/[^\d.,]/g,'').replace(',','.'));
+    document.getElementById('vehFuelTotal').value = (liters && price) ? fmt(Math.round(liters * price)) : '';
+  }
+  document.getElementById('vehFuelLiters').addEventListener('input', recalcFuelTotal);
+  document.getElementById('vehFuelPrice').addEventListener('input', recalcFuelTotal);
+  document.getElementById('vehFuelPhoto').addEventListener('change', async (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    try{
+      pendingFuelPhoto = await resizeImageFile(file, 900, 0.65);
+      document.getElementById('vehFuelPhotoPreview').innerHTML = `<img src="${pendingFuelPhoto}">`;
+    }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
+  });
+  document.getElementById('vehMaintPhoto').addEventListener('change', async (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    try{
+      pendingMaintPhoto = await resizeImageFile(file, 900, 0.65);
+      document.getElementById('vehMaintPhotoPreview').innerHTML = `<img src="${pendingMaintPhoto}">`;
+    }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
+  });
+  document.getElementById('addFuelBtn').addEventListener('click', addFuelEntry);
+  document.getElementById('addMaintBtn').addEventListener('click', addMaintEntry);
 
   toggleNewCat.addEventListener('click', () => { newCatRow.style.display = newCatRow.style.display === 'none' ? 'flex' : 'none'; });
   addCatBtn.addEventListener('click', async () => {
