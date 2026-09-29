@@ -12,32 +12,34 @@
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
   :root{
-    --paper: #f6f4ee;
-    --paper-line: #e3ddc9;
-    --ink: #1f2a24;
-    --ink-soft: #5b6b60;
-    --coin: #c98a2c;
-    --coin-soft: #f0d9ae;
-    --ok: #3f7a5c;
-    --warn: #c98a2c;
-    --danger: #b8462f;
-    --income: #2f7a5c;
-    --card: #ffffff;
-    --shadow-ink: #1f2a24;
+    --paper: #faf8f4;
+    --paper-line: rgba(30,30,30,0.05);
+    --hair: rgba(30,30,30,0.09);
+    --ink: #1e1e1e;
+    --ink-soft: #83807a;
+    --coin: #b5763a;
+    --coin-soft: rgba(181,118,58,0.1);
+    --ok: #4b6b5a;
+    --warn: #b5763a;
+    --danger: #a34a3a;
+    --income: #4b6b5a;
+    --card: var(--paper);
+    --shadow-ink: transparent;
   }
   html[data-theme="dark"]{
-    --paper: #14181a;
-    --paper-line: #262e30;
-    --ink: #eae6da;
-    --ink-soft: #8a9490;
-    --coin: #e0a458;
-    --coin-soft: #3a2f1c;
-    --ok: #5aa483;
-    --warn: #e0a458;
-    --danger: #d97060;
-    --income: #5aa483;
-    --card: #1c2224;
-    --shadow-ink: #e0a458;
+    --paper: #17181a;
+    --paper-line: rgba(255,255,255,0.045);
+    --hair: rgba(255,255,255,0.09);
+    --ink: #ececea;
+    --ink-soft: #8f8d88;
+    --coin: #d99a5c;
+    --coin-soft: rgba(217,154,92,0.12);
+    --ok: #7fa793;
+    --warn: #d99a5c;
+    --danger: #c47867;
+    --income: #7fa793;
+    --card: var(--paper);
+    --shadow-ink: transparent;
   }
 
   *{box-sizing:border-box;}
@@ -46,6 +48,7 @@
     background:var(--paper);
     background-image:
       repeating-linear-gradient(180deg, transparent, transparent 35px, var(--paper-line) 35px, var(--paper-line) 36px);
+    -webkit-font-smoothing:antialiased;
     color:var(--ink);
     font-family:'Space Grotesk', sans-serif;
     min-height:100vh;
@@ -59,41 +62,40 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin-bottom:16px;
-    border-bottom:2px solid var(--ink);
-    padding-bottom:12px;
+    margin-bottom:22px;
+    padding-bottom:0;
   }
-  header h1{ font-size:26px; margin:0; letter-spacing:-0.02em; }
+  header h1{ font-size:20px; margin:0; letter-spacing:-0.01em; font-weight:600; color:var(--ink-soft); }
   header h1 span{ color:var(--coin); }
   .theme-toggle{
-    background:var(--card);
-    border:1px solid var(--paper-line);
-    border-radius:20px;
-    width:38px; height:38px;
+    background:none;
+    border:none;
+    width:30px; height:30px;
     cursor:pointer;
-    font-size:16px;
+    font-size:15px;
+    opacity:0.6;
     display:flex; align-items:center; justify-content:center;
-    transition:background-color .25s ease, border-color .25s ease;
+    transition:opacity .2s ease;
   }
+  .theme-toggle:hover{ opacity:1; }
   .sync-status{
     font-family:'JetBrains Mono', monospace; font-size:14px; line-height:1;
     display:inline-flex; align-items:center; opacity:0.85;
   }
 
-  .month-nav{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .month-nav{ display:flex; align-items:center; gap:14px; margin-bottom:28px; }
   .month-nav button{
-    background:var(--card); border:1px solid var(--paper-line); border-radius:8px;
-    width:30px; height:30px; cursor:pointer; font-size:14px; color:var(--ink);
-    transition:background-color .25s ease, border-color .25s ease;
+    background:none; border:none;
+    width:24px; height:24px; cursor:pointer; font-size:14px; color:var(--ink-soft);
   }
-  .month-nav button:disabled{ opacity:0.3; cursor:default; }
+  .month-nav button:hover{ color:var(--ink); }
+  .month-nav button:disabled{ opacity:0.25; cursor:default; }
   .month-nav .month{
-    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink-soft);
-    text-transform:uppercase; letter-spacing:0.05em; flex:1; text-align:center;
-    cursor:pointer; padding:6px; border-radius:8px;
-    transition:background-color .2s ease;
+    font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:0.1em; flex:1; text-align:center;
+    cursor:pointer; padding:4px;
   }
-  .month-nav .month:active{ background-color:var(--card); }
+  .month-nav .month:hover{ color:var(--ink); }
 
   /* Selector de mes/año */
   .month-picker-card{ width:min(320px, 90vw); }
@@ -177,57 +179,62 @@
 
   /* Chat-style input */
   .composer{
-    background:var(--card); border:2px solid var(--ink); border-radius:14px;
-    padding:14px; margin-bottom:16px; box-shadow:4px 4px 0 var(--shadow-ink);
-    transition:background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
+    background:none; border:none; border-radius:0;
+    padding:0; margin-bottom:34px; box-shadow:none;
   }
   .composer label{
-    display:block; font-family:'JetBrains Mono', monospace; font-size:11px;
-    text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin-bottom:8px;
+    display:block; font-family:'JetBrains Mono', monospace; font-size:10px;
+    text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-soft); margin-bottom:10px;
   }
-  .composer-row{ display:flex; gap:8px; align-items:center; }
-  .composer-row2{ display:flex; gap:8px; margin-top:8px; }
+  .composer-row{ display:flex; gap:10px; align-items:flex-end; border-bottom:1px solid var(--ink); padding-bottom:8px; transition:border-color .15s ease; }
+  .composer-row:focus-within{ border-bottom-color:var(--coin); }
+  .composer-row2{ display:flex; gap:16px; margin-top:12px; }
   .composer-row2 input[type=date]{
-    flex:1; min-width:0; font-family:'Space Grotesk', sans-serif; font-size:13px;
-    border:1px solid var(--paper-line); border-radius:8px; padding:7px 9px;
-    background:var(--paper); color:var(--ink);
+    flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:12px;
+    border:none; border-bottom:1px solid var(--paper-line); border-radius:0; padding:5px 0;
+    background:transparent; color:var(--ink-soft);
   }
+  .composer-row2 input[type=date]:focus{ outline:none; border-bottom-color:var(--coin); color:var(--ink); }
   .composer-row2 .composer-note-inline{
     flex:2; min-width:0; font-family:'Space Grotesk', sans-serif; font-size:13px;
-    border:1px solid var(--paper-line); border-radius:8px; padding:7px 9px;
-    background:var(--paper); color:var(--ink); outline:none;
+    border:none; border-bottom:1px solid var(--paper-line); border-radius:0; padding:5px 0;
+    background:transparent; color:var(--ink); outline:none;
   }
+  .composer-row2 .composer-note-inline:focus{ border-bottom-color:var(--coin); }
   .composer input[type=text]{
     flex:1; border:none; background:transparent; font-family:'Space Grotesk', sans-serif;
-    font-size:16px; color:var(--ink); outline:none; min-width:0;
+    font-size:19px; color:var(--ink); outline:none; min-width:0;
   }
-  .composer input[type=text]::placeholder{ color:#a8a99a; }
+  .composer input[type=text]::placeholder{ color:var(--ink-soft); opacity:.55; }
   .mic-btn{
-    background:transparent; border:1px solid var(--paper-line); color:var(--ink);
-    border-radius:10px; width:38px; height:34px; cursor:pointer; font-size:16px; flex-shrink:0;
+    background:none; border:none; color:var(--ink-soft);
+    border-radius:0; width:auto; height:auto; cursor:pointer; font-size:16px; flex-shrink:0; padding:0 2px 4px;
   }
-  .mic-btn.listening{ background:var(--danger); color:#fff; border-color:var(--danger); animation:pulse 1s infinite; }
-  @keyframes pulse{ 0%{opacity:1;} 50%{opacity:0.6;} 100%{opacity:1;} }
+  .mic-btn:hover{ color:var(--ink); }
+  .mic-btn.listening{ color:var(--danger); animation:pulse 1s infinite; }
+  @keyframes pulse{ 0%{opacity:1;} 50%{opacity:0.4;} 100%{opacity:1;} }
   .composer button.send-btn{
-    background:var(--ink); color:var(--paper); border:none; border-radius:10px; padding:0 18px;
+    background:none; color:var(--coin); border:none; border-radius:0; padding:0 0 4px 0;
     font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:14px; cursor:pointer;
-    transition:transform .1s ease; flex-shrink:0; height:34px;
+    transition:opacity .1s ease; flex-shrink:0; height:auto;
   }
-  .composer button.send-btn:active{ transform:scale(0.95); }
-  .hint{ font-size:12px; color:var(--ink-soft); margin-top:8px; font-family:'JetBrains Mono', monospace; }
-  .parse-preview{ margin-top:10px; padding-top:10px; border-top:1px dashed var(--paper-line); font-size:13px; display:none; }
+  .composer button.send-btn:active{ opacity:.6; }
+  .hint{ font-size:11px; color:var(--ink-soft); margin-top:10px; font-family:'JetBrains Mono', monospace; opacity:.75; }
+  .parse-preview{ margin-top:10px; padding-top:10px; border-top:none; font-size:13px; display:none; }
   .parse-preview.show{ display:block; }
   .parse-preview b{ color:var(--coin); }
   .parse-preview.income b{ color:var(--income); }
 
   /* Summary */
-  .summary{ display:flex; gap:10px; margin-bottom:18px; }
-  .summary-card{ flex:1; background:var(--card); border:1px solid var(--paper-line); border-radius:10px; padding:12px 14px; transition:background-color .25s ease, border-color .25s ease; }
-  .summary-card .label{ font-size:12px; color:var(--ink-soft); }
-  .summary-card .amount{ font-family:'JetBrains Mono', monospace; font-size:19px; font-weight:700; margin-top:2px; }
-  .summary-card.expense .amount{ color:var(--danger); }
-  .summary-card.income .amount{ color:var(--income); }
-  .summary-card.balance .amount{ color:var(--ink); }
+  .summary{ display:flex; align-items:baseline; gap:22px; margin:8px 0 32px 0; flex-wrap:wrap; }
+  .summary-card{ flex:0 0 auto; background:none; border:none; border-radius:0; padding:0; }
+  .summary-card .label{ font-family:'JetBrains Mono', monospace; font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--ink-soft); }
+  .summary-card .amount{ font-family:'JetBrains Mono', monospace; font-size:17px; font-weight:500; margin-top:3px; color:var(--ink-soft); }
+  .summary-card.expense .amount{ color:var(--ink-soft); }
+  .summary-card.income .amount{ color:var(--ink-soft); }
+  .summary-card.balance{ flex:1 1 100%; order:-1; margin-bottom:6px; }
+  .summary-card.balance .label{ font-size:11px; }
+  .summary-card.balance .amount{ font-size:44px; font-weight:600; color:var(--ink); margin-top:4px; letter-spacing:-0.02em; }
 
   .section-title{
     font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
@@ -359,103 +366,111 @@
     background:var(--paper); color:var(--ink);
   }
 
-  .filter-row{ display:flex; gap:8px; margin-bottom:4px; flex-wrap:wrap; }
-  .filter-total{ font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--ink-soft); background:var(--card); border:1px solid var(--paper-line); border-radius:8px; padding:8px 12px; margin-bottom:10px; }
-  .filter-total b{ color:var(--ink); font-size:15px; }
-  .filter-row input{ flex:1; min-width:120px; font-family:'Space Grotesk', sans-serif; font-size:13px; border:1px solid var(--paper-line); border-radius:8px; padding:8px 10px; background:var(--card); color:var(--ink); }
-  .filter-row select{ font-family:'Space Grotesk', sans-serif; font-size:13px; border:1px solid var(--paper-line); border-radius:8px; padding:8px 8px; background:var(--card); color:var(--ink); }
-  .export-btn{ background:var(--card); border:1px solid var(--paper-line); border-radius:8px; padding:8px 12px; font-size:13px; cursor:pointer; color:var(--ink); white-space:nowrap; }
+  .filter-row{ display:flex; gap:14px; margin-bottom:10px; flex-wrap:wrap; align-items:flex-end; }
+  .filter-total{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink-soft); background:none; border:none; padding:0; margin-bottom:14px; }
+  .filter-total b{ color:var(--ink); font-size:13px; }
+  .filter-row input{ flex:1; min-width:120px; font-family:'Space Grotesk', sans-serif; font-size:13px; border:none; border-bottom:1px solid var(--paper-line); border-radius:0; padding:6px 0; background:none; color:var(--ink); }
+  .filter-row input:focus{ outline:none; border-bottom-color:var(--coin); }
+  .filter-row select{ font-family:'JetBrains Mono', monospace; font-size:11px; border:none; border-bottom:1px solid var(--paper-line); border-radius:0; padding:6px 0; background:none; color:var(--ink-soft); }
+  .export-btn{ background:none; border:none; border-radius:0; padding:6px 0; font-size:12px; cursor:pointer; color:var(--ink-soft); white-space:nowrap; font-family:'JetBrains Mono', monospace; }
+  .export-btn:hover{ color:var(--ink); }
 
-  .backup-row{ display:flex; gap:8px; margin:8px 0 4px 0; flex-wrap:wrap; }
+  .backup-row{ display:flex; gap:18px; margin:4px 0 18px 0; flex-wrap:wrap; }
   .backup-row button, .backup-row label{
-    background:var(--card); border:1px solid var(--paper-line); border-radius:8px; padding:8px 12px;
-    font-size:12px; cursor:pointer; color:var(--ink); font-family:'JetBrains Mono', monospace;
+    background:none; border:none; padding:0;
+    font-size:11px; cursor:pointer; color:var(--ink-soft); font-family:'JetBrains Mono', monospace;
   }
+  .backup-row button:hover, .backup-row label:hover{ color:var(--ink); }
   .backup-row input[type=file]{ display:none; }
 
-  .move{ display:flex; align-items:center; justify-content:space-between; padding:10px 4px; border-bottom:1px solid var(--paper-line); font-size:14px; gap:8px; }
-  .move-left{ display:flex; flex-direction:column; min-width:0; }
-  .move-cat{ font-size:11px; color:var(--coin); text-transform:uppercase; letter-spacing:0.04em; font-family:'JetBrains Mono', monospace; display:flex; align-items:center; gap:6px; }
-  .move-cat select{ font-family:'JetBrains Mono', monospace; font-size:11px; border:1px solid transparent; background:transparent; color:var(--coin); text-transform:uppercase; cursor:pointer; }
-  .move-raw{ color:var(--ink-soft); font-size:12px; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
-  .move-note{ color:var(--coin); font-size:11px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
-  .move-date{ color:#b7b6a6; font-size:11px; font-family:'JetBrains Mono', monospace; margin-top:1px; cursor:pointer; }
-  .move-amount{ font-family:'JetBrains Mono', monospace; font-weight:700; flex-shrink:0; cursor:pointer; }
-  .move-amount.income{ color:var(--income); }
-  .move-del{ background:none; border:none; color:#c2c2b5; cursor:pointer; font-size:16px; padding:0 0 0 6px; flex-shrink:0; }
+  .move{ display:flex; align-items:baseline; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--paper-line); font-size:14px; gap:14px; }
+  .move-left{ display:flex; flex-direction:column; min-width:0; gap:2px; }
+  .move-main{ display:flex; align-items:baseline; gap:7px; min-width:0; }
+  .move-cat{ font-size:13px; flex-shrink:0; line-height:1; }
+  .move-cat select{ font-family:inherit; font-size:13px; border:none; background:transparent; color:inherit; cursor:pointer; appearance:none; width:1.3em; }
+  .move-raw{ color:var(--ink); font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; min-width:0; }
+  .move-note{ color:var(--ink-soft); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; font-style:italic; }
+  .move-date{ color:var(--ink-soft); font-size:11px; font-family:'JetBrains Mono', monospace; cursor:pointer; opacity:.8; }
+  .move-right{ display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0; gap:2px; }
+  .move-amount{ font-family:'JetBrains Mono', monospace; font-weight:600; font-size:15px; flex-shrink:0; cursor:pointer; color:var(--ink); }
+  .move-amount.income{ color:var(--coin); }
+  .move-del{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:13px; padding:0; flex-shrink:0; opacity:0; transition:opacity .15s ease; }
+  .move:hover .move-del{ opacity:.55; }
+  .move:hover .move-note[style*="opacity:0"]{ opacity:.4 !important; }
+  .move-note[style*="opacity:0"]::before{ content:'+ nota'; }
   .inline-edit-input{
-    font-family:'Space Grotesk', sans-serif; font-size:12px; border:1px solid var(--coin);
-    border-radius:6px; padding:2px 6px; background:var(--paper); color:var(--ink); outline:none;
+    font-family:'Space Grotesk', sans-serif; font-size:13px; border:none; border-bottom:1px solid var(--coin);
+    border-radius:0; padding:1px 0; background:transparent; color:var(--ink); outline:none;
     width:100%; box-sizing:border-box;
   }
-  .move-amount .inline-edit-input{ width:80px; font-family:'JetBrains Mono', monospace; font-weight:700; text-align:right; }
-  .edit-row{ display:block; padding:10px 4px; }
-  .edit-fields{ display:flex; flex-direction:column; gap:6px; }
+  .move-amount .inline-edit-input{ width:80px; font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right; }
+  .edit-row{ display:block; padding:10px 0; }
+  .edit-fields{ display:flex; flex-direction:column; gap:8px; }
   .edit-fields input, .edit-fields select{
-    font-family:'Space Grotesk', sans-serif; font-size:13px; border:1px solid var(--paper-line);
-    border-radius:8px; padding:7px 9px; background:var(--paper); color:var(--ink);
+    font-family:'Space Grotesk', sans-serif; font-size:13px; border:none; border-bottom:1px solid var(--paper-line);
+    border-radius:0; padding:6px 0; background:none; color:var(--ink);
   }
-  .edit-fields-row{ display:flex; gap:6px; }
+  .edit-fields-row{ display:flex; gap:14px; }
   .edit-fields-row input, .edit-fields-row select{ flex:1; min-width:0; }
   .edit-save, .edit-cancel{
-    border:none; border-radius:8px; padding:7px 12px; font-size:12px; cursor:pointer;
-    font-family:'Space Grotesk', sans-serif; font-weight:600;
+    border:none; border-radius:0; padding:6px 2px; font-size:12px; cursor:pointer;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; background:none;
   }
-  .edit-save{ background:var(--ink); color:var(--paper); }
-  .edit-cancel{ background:var(--paper); color:var(--ink-soft); border:1px solid var(--paper-line); }
+  .edit-save{ color:var(--coin); }
+  .edit-cancel{ color:var(--ink-soft); }
   .quick-confirm{
-    background:var(--card); border:1px solid var(--paper-line); border-radius:10px;
-    padding:12px; margin-bottom:16px; display:flex; flex-direction:column; gap:8px;
+    background:none; border:none; border-bottom:1px solid var(--paper-line);
+    padding:0 0 14px 0; margin-bottom:16px; display:flex; flex-direction:column; gap:8px;
   }
   .quick-confirm-title{ font-weight:600; font-size:14px; }
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:1000;
+    position:fixed; inset:0; background:rgba(30,30,30,0.4); z-index:1000;
     display:flex; align-items:center; justify-content:center; padding:20px;
   }
   .modal-card{
-    background:var(--card); border:2px solid var(--ink); border-radius:14px;
-    padding:20px; max-width:340px; width:100%; box-shadow:5px 5px 0 var(--shadow-ink);
+    background:var(--paper); border:none; border-radius:2px;
+    padding:24px; max-width:340px; width:100%; box-shadow:0 8px 30px rgba(0,0,0,0.14);
   }
-  .modal-title{ font-weight:700; font-size:16px; margin-bottom:8px; }
-  .modal-text{ font-size:13px; color:var(--ink-soft); margin-bottom:16px; line-height:1.5; }
-  .modal-btns{ display:flex; gap:8px; justify-content:flex-end; }
+  .modal-title{ font-weight:600; font-size:16px; margin-bottom:8px; }
+  .modal-text{ font-size:13px; color:var(--ink-soft); margin-bottom:20px; line-height:1.5; }
+  .modal-btns{ display:flex; gap:20px; justify-content:flex-end; }
   .modal-btns button{
-    border:none; border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer;
-    font-family:'Space Grotesk', sans-serif; font-weight:600;
+    border:none; border-radius:0; padding:4px 0; font-size:13px; cursor:pointer;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; background:none;
   }
-  .modal-btn-danger{ background:var(--danger); color:#fff; }
-  .modal-btn-cancel{ background:var(--paper); color:var(--ink-soft); border:1px solid var(--paper-line) !important; }
+  .modal-btn-danger{ background:none; color:var(--danger); }
+  .modal-btn-cancel{ background:none; color:var(--ink-soft); border:none !important; }
   .move-del:hover{ color:var(--danger); }
   .empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px; font-family:'JetBrains Mono', monospace; }
   .day-header{
     font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
-    letter-spacing:0.06em; color:var(--coin); margin:16px 0 4px 0; padding-top:4px;
+    letter-spacing:0.06em; color:var(--ink-soft); margin:16px 0 4px 0; padding-top:4px;
   }
   .day-header:first-child{ margin-top:0; }
   .day-total{
     display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace;
-    font-size:12px; font-weight:700; color:var(--ink-soft); padding:6px 4px 12px 4px;
-    border-bottom:2px solid var(--paper-line);
+    font-size:12px; font-weight:600; color:var(--ink-soft); padding:6px 0 12px 0;
+    border-bottom:1px solid var(--paper-line);
   }
   .day-summary{
-    display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
-    margin:14px 0 0 0; padding:8px 4px; border-bottom:2px solid var(--paper-line);
+    display:flex; align-items:baseline; gap:8px; cursor:pointer; user-select:none;
+    margin:18px 0 0 0; padding:6px 0; border-bottom:1px solid var(--hair);
   }
   .day-summary:first-child{ margin-top:0; }
   .day-summary-arrow{
-    font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-soft);
-    transition:transform 0.15s ease; flex-shrink:0; width:12px; text-align:center;
+    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-soft);
+    transition:transform 0.15s ease; flex-shrink:0; width:10px; text-align:center;
   }
   .day-summary.expanded .day-summary-arrow{ transform:rotate(90deg); }
   .day-summary-label{
     font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
-    letter-spacing:0.06em; color:var(--coin); flex:1;
+    letter-spacing:0.06em; color:var(--ink-soft); flex:1;
   }
   .day-summary-total{
-    font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--ink-soft);
+    font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--ink-soft);
   }
   .day-summary-count{
-    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-soft); opacity:0.6;
+    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-soft); opacity:0.55;
   }
   .day-body{ overflow:hidden; }
   .day-body.collapsed{ display:none; }
@@ -509,6 +524,25 @@
   .veh-kv b{ font-family:'JetBrains Mono', monospace; font-weight:600; text-align:right; }
   .veh-chart{ width:100%; height:auto; display:block; }
   .veh-entry-metrics{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink); }
+  .veh-tpl-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .veh-tpl{ border:1px solid var(--paper-line); border-radius:999px; padding:6px 6px 6px 12px; font-size:12px; background:var(--paper); display:inline-flex; gap:8px; align-items:center; cursor:pointer; }
+  .veh-tpl b{ font-family:'JetBrains Mono', monospace; font-weight:600; }
+  .veh-tpl-act{ color:var(--ink-soft); padding:0 3px; font-size:12px; }
+  .veh-tpl-act:hover{ color:var(--ink); }
+  .veh-remcheck{ display:flex; gap:8px; align-items:center; font-size:12px; padding:4px 0; }
+  .veh-remcheck-row{ display:flex; align-items:center; gap:6px; }
+  .veh-remcheck-row label{ display:flex; gap:8px; align-items:center; flex:1; min-width:0; }
+  .veh-remcheck-act{ color:var(--ink-soft); font-size:12px; padding:2px 3px; cursor:pointer; flex-shrink:0; }
+  .veh-remcheck-act:hover{ color:var(--ink); }
+  .modal-form{ display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+  .modal-field{ display:flex; flex-direction:column; gap:4px; }
+  .modal-field span{ font-family:'JetBrains Mono', monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
+  .modal-field input, .modal-field select{
+    font-family:'Space Grotesk', sans-serif; font-size:14px; border:none; border-bottom:1px solid var(--paper-line);
+    padding:6px 0; background:none; color:var(--ink); outline:none;
+  }
+  .modal-field input:focus, .modal-field select:focus{ border-bottom-color:var(--coin); }
+  .modal-btn-ok{ color:var(--coin) !important; }
   .veh-stats{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
   .veh-stat-card{
     flex:1; min-width:110px; background:var(--card); border:1px solid var(--paper-line); border-radius:10px; padding:10px;
@@ -631,14 +665,16 @@
     <span>Vehículo <span id="vehSectionCaret">▸</span></span>
   </div>
   <div id="vehSectionBody" style="display:none;">
-    <div class="veh-local-note">Las fotos quedan guardadas solo en este dispositivo (no se sincronizan entre celu y PC); los datos numéricos sí se sincronizan como cualquier movimiento. Los recordatorios también quedan solo en este dispositivo.</div>
+    <div class="veh-local-note">Las fotos quedan guardadas solo en este dispositivo (no se sincronizan entre celu y PC); los datos numéricos sí se sincronizan como cualquier movimiento. Los recordatorios, las plantillas y las patentes también quedan solo en este dispositivo.</div>
     <div class="veh-veh-row">
       <select id="vehSelect"></select>
+      <button type="button" class="veh-type-btn" id="vehPlateBtn" style="flex:0 0 auto;">✎ Patente</button>
       <button type="button" class="veh-type-btn" id="vehAddVehicleBtn" style="flex:0 0 auto;">+ Vehículo</button>
     </div>
     <div class="veh-type-btns">
       <button type="button" class="veh-type-btn active" id="vehShowFuelBtn">⛽ Combustible</button>
-      <button type="button" class="veh-type-btn" id="vehShowMaintBtn">🔧 Mantenimiento</button>
+      <button type="button" class="veh-type-btn" id="vehShowTollBtn">🛣️ Peaje</button>
+      <button type="button" class="veh-type-btn" id="vehShowMaintBtn">🔧 Mant.</button>
     </div>
     <div class="veh-form" id="vehFuelForm">
       <div class="new-cat-row">
@@ -665,13 +701,30 @@
       <div class="veh-photo-preview" id="vehFuelPhotoPreview"></div>
       <button id="addFuelBtn" style="width:100%;">Guardar carga</button>
     </div>
+    <div class="veh-form" id="vehTollForm" style="display:none;">
+      <div class="veh-local-note" style="margin-top:0;">Tocá una plantilla para cargar el peaje al instante con la fecha de hoy.</div>
+      <div id="vehTollTemplates" class="veh-tpl-row"></div>
+      <div class="veh-local-note" id="vehTollMsg" style="min-height:14px;"></div>
+      <div class="new-cat-row">
+        <input type="date" id="vehTollDate">
+        <input type="text" class="budget-input" id="vehTollAmount" placeholder="Monto" inputmode="decimal">
+      </div>
+      <div class="new-cat-row"><input type="text" class="name-input" id="vehTollName" placeholder="Peaje (ej: Rosario - Ruta 33)" list="vehTollNameList"><datalist id="vehTollNameList"></datalist></div>
+      <div class="new-cat-row">
+        <button id="addTollBtn" style="flex:1;">Guardar peaje</button>
+        <button type="button" class="veh-type-btn" id="saveTollTplBtn" style="flex:1;">★ Guardar como plantilla</button>
+      </div>
+    </div>
     <div class="veh-form" id="vehMaintForm" style="display:none;">
+      <div class="veh-local-note" style="margin-top:0;">Plantillas (completan el formulario; después ponés el km y guardás):</div>
+      <div id="vehMaintTemplates" class="veh-tpl-row"></div>
       <div class="new-cat-row">
         <input type="date" id="vehMaintDate">
         <select id="vehMaintType">
           <option value="Service">Service</option>
           <option value="Cambio de aceite">Cambio de aceite</option>
-          <option value="Cubiertas">Cubiertas</option>
+          <option value="Neumáticos">Neumáticos (compra)</option>
+          <option value="Servicio de gomería">Servicio de gomería</option>
           <option value="Frenos">Frenos</option>
           <option value="VTV">VTV</option>
           <option value="Seguro">Seguro</option>
@@ -691,10 +744,15 @@
         <input type="file" accept="image/*" capture="environment" id="vehMaintPhoto" style="display:none;">
       </div>
       <div class="veh-photo-preview" id="vehMaintPhotoPreview"></div>
-      <button id="addMaintBtn" style="width:100%;">Guardar mantenimiento</button>
+      <div id="vehMaintRemBox"></div>
+      <button id="addMaintBtn" style="width:100%;margin-top:6px;">Guardar mantenimiento</button>
+      <button type="button" class="veh-type-btn" id="saveMaintTplBtn" style="width:100%;margin-top:6px;">★ Guardar como plantilla</button>
     </div>
     <div id="vehStats"></div>
-    <div id="vehEntries"></div>
+    <div class="veh-section-toggle" id="vehEntriesToggle" style="cursor:pointer;margin:16px 0 4px;">
+      <span style="display:flex;align-items:center;gap:6px;">Últimas cargas <span id="vehEntriesCaret" style="font-size:10px;transition:transform .2s ease;">▸</span></span>
+    </div>
+    <div id="vehEntriesWrap"><div id="vehEntries"></div></div>
 
     <div class="veh-subtitle">Estadísticas</div>
     <div class="veh-type-btns">
@@ -720,7 +778,8 @@
         <select id="vehRemType">
           <option value="Service">Servicio</option>
           <option value="Cambio de aceite">Cambio de aceite</option>
-          <option value="Cubiertas">Cubiertas</option>
+          <option value="Neumáticos">Neumáticos</option>
+          <option value="Servicio de gomería">Servicio de gomería</option>
           <option value="Frenos">Frenos</option>
           <option value="VTV">VTV</option>
           <option value="Seguro">Seguro</option>
@@ -883,12 +942,45 @@
   let currentVehicle = '';
   let vehicleReminders = [];
   let remMode = 'once';
+  let deletedIds = [];
+  let prevIds = new Set();
   let statTab = 'cargas';
   let chartTab = 'consumo';
-  let vehListLimit = 30;
+  let vehListOpen = false;
+  let vehEntriesOpen = true;
+  let vehiclePlates = {};
+  let vehTemplates = [];
   let pendingFuelPhoto = null;
   let pendingMaintPhoto = null;
 
+  // Reemplaza prompt()/confirm(), que muchos celus bloquean cuando la app está instalada como ícono.
+  // fields: [{id,label,type,value,placeholder}]. onSubmit(values) devuelve false para dejar el modal abierto (error de validación).
+  function openFormModal(title, fields, onSubmit, submitLabel){
+    confirmModalWrap.innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal-card">
+          <div class="modal-title">${title}</div>
+          <div class="modal-form">${fields.map(f => `
+            <label class="modal-field"><span>${escapeHtml(f.label)}</span>
+              <input type="${f.type || 'text'}" id="mf_${f.id}" value="${f.value != null ? escapeHtml(String(f.value)) : ''}" placeholder="${escapeHtml(f.placeholder || '')}" inputmode="${f.type === 'number' ? 'decimal' : ''}">
+            </label>`).join('')}</div>
+          <div class="modal-btns">
+            <button class="modal-btn-cancel" id="modalCancelBtn">Cancelar</button>
+            <button class="modal-btn-danger modal-btn-ok" id="modalOkBtn">${submitLabel || 'Guardar'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const close = () => { confirmModalWrap.innerHTML = ''; };
+    document.getElementById('modalCancelBtn').addEventListener('click', close);
+    confirmModalWrap.querySelector('.modal-overlay').addEventListener('click', (e) => { if(e.target.classList.contains('modal-overlay')) close(); });
+    document.getElementById('modalOkBtn').addEventListener('click', async () => {
+      const values = {};
+      fields.forEach(f => { values[f.id] = document.getElementById('mf_' + f.id).value.trim(); });
+      const ok = await onSubmit(values);
+      if(ok !== false) close();
+    });
+  }
   function openConfirmModal(title, text, onConfirm){
     confirmModalWrap.innerHTML = `
       <div class="modal-overlay">
@@ -988,6 +1080,8 @@
   async function loadData(){
     try{ const m = localStorage.getItem('moneda_movements'); movements = m ? JSON.parse(m) : []; }
     catch(e){ movements = []; }
+    try{ deletedIds = JSON.parse(localStorage.getItem('moneda_deleted_ids') || '[]'); }catch(e){ deletedIds = []; }
+    prevIds = new Set(movements.map(m => m.id));
     try{ const c = localStorage.getItem('moneda_categories'); categories = c ? JSON.parse(c) : JSON.parse(JSON.stringify(DEFAULT_CATS)); }
     catch(e){ categories = JSON.parse(JSON.stringify(DEFAULT_CATS)); }
     try{ const t = localStorage.getItem('moneda_theme'); if(t === 'dark'){ document.documentElement.setAttribute('data-theme','dark'); themeToggle.textContent = '☀️'; } }
@@ -1000,6 +1094,9 @@
     catch(e){ vehiclePhotos = {}; }
     try{ vehicles = JSON.parse(localStorage.getItem('moneda_vehicles') || '[]'); }catch(e){ vehicles = []; }
     try{ vehicleReminders = JSON.parse(localStorage.getItem('moneda_vehicle_reminders') || '[]'); }catch(e){ vehicleReminders = []; }
+    try{ vehiclePlates = JSON.parse(localStorage.getItem('moneda_vehicle_plates') || '{}'); }catch(e){ vehiclePlates = {}; }
+    try{ vehTemplates = JSON.parse(localStorage.getItem('moneda_vehicle_templates') || '[]'); }catch(e){ vehTemplates = []; }
+    vehEntriesOpen = localStorage.getItem('moneda_vehentries_open') !== '0';
     if(vehicles.length === 0) vehicles = ['Kangoo 21'];
     currentVehicle = localStorage.getItem('moneda_vehicle_current') || vehicles[0];
     await pullFromCloud();
@@ -1036,13 +1133,18 @@
       if(!res.ok) throw new Error('bad status');
       const cloud = await res.json();
       const localUpdatedAt = localStorage.getItem('moneda_updated_at') || '';
-      if(cloud && cloud.updatedAt && (forceOverride || !localUpdatedAt || cloud.updatedAt > localUpdatedAt)){
-        if(Array.isArray(cloud.movements) && (cloud.movements.length || !movements.length)) movements = cloud.movements;
+      if(!cloud || !cloud.updatedAt){ scheduleSync(); setSyncStatus('ok'); return false; }
+      if(forceOverride){
+        // "Traer de la nube": reemplaza todo por lo que hay en la nube (acción manual)
+        if(Array.isArray(cloud.movements)) movements = cloud.movements;
+        if(Array.isArray(cloud.deleted)) deletedIds = cloud.deleted;
         if(Array.isArray(cloud.categories) && cloud.categories.length) categories = cloud.categories;
-        if(Array.isArray(cloud.quickButtons) && (cloud.quickButtons.length || !quickButtons.length)) quickButtons = cloud.quickButtons;
-        if(Array.isArray(cloud.fixedPayments) && (cloud.fixedPayments.length || !fixedPayments.length)) fixedPayments = cloud.fixedPayments;
+        if(Array.isArray(cloud.quickButtons)) quickButtons = cloud.quickButtons;
+        if(Array.isArray(cloud.fixedPayments)) fixedPayments = cloud.fixedPayments;
+        prevIds = new Set(movements.map(m => m.id));
         try{
           localStorage.setItem('moneda_movements', JSON.stringify(movements));
+          localStorage.setItem('moneda_deleted_ids', JSON.stringify(deletedIds));
           localStorage.setItem('moneda_categories', JSON.stringify(categories));
           localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons));
           localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments));
@@ -1050,11 +1152,40 @@
         }catch(e){}
         setSyncStatus('ok');
         return true;
-      } else {
-        if(!cloud || !cloud.updatedAt) scheduleSync();
-        setSyncStatus('ok');
-        return false;
       }
+      // Fusión: nunca se pierden movimientos por una copia más nueva de otro dispositivo.
+      // Se combinan por id; los borrados viajan como "lápidas" (deleted) para que no reaparezcan.
+      const cloudMov = Array.isArray(cloud.movements) ? cloud.movements : [];
+      const del = new Set([].concat(deletedIds, Array.isArray(cloud.deleted) ? cloud.deleted : []));
+      const cloudNewer = cloud.updatedAt > localUpdatedAt;
+      const map = new Map();
+      cloudMov.forEach(m => map.set(m.id, m));
+      movements.forEach(m => { if(!map.has(m.id) || !cloudNewer) map.set(m.id, m); });
+      const merged = Array.from(map.values()).filter(m => !del.has(m.id));
+      const localIds = new Set(movements.map(m => m.id));
+      const cloudIds = new Set(cloudMov.filter(m => !del.has(m.id)).map(m => m.id));
+      const changedLocal = merged.length !== movements.length || merged.some(m => !localIds.has(m.id));
+      const needsPush = merged.length !== cloudIds.size || merged.some(m => !cloudIds.has(m.id)) || del.size !== (Array.isArray(cloud.deleted) ? new Set(cloud.deleted).size : 0);
+      movements = merged;
+      deletedIds = Array.from(del);
+      prevIds = new Set(movements.map(m => m.id));
+      let otherChanged = false;
+      if(cloudNewer){
+        if(Array.isArray(cloud.categories) && cloud.categories.length){ categories = cloud.categories; otherChanged = true; }
+        if(Array.isArray(cloud.quickButtons) && (cloud.quickButtons.length || !quickButtons.length)){ quickButtons = cloud.quickButtons; otherChanged = true; }
+        if(Array.isArray(cloud.fixedPayments) && (cloud.fixedPayments.length || !fixedPayments.length)){ fixedPayments = cloud.fixedPayments; otherChanged = true; }
+      }
+      try{
+        localStorage.setItem('moneda_movements', JSON.stringify(movements));
+        localStorage.setItem('moneda_deleted_ids', JSON.stringify(deletedIds));
+        localStorage.setItem('moneda_categories', JSON.stringify(categories));
+        localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons));
+        localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments));
+        if(cloudNewer) localStorage.setItem('moneda_updated_at', cloud.updatedAt);
+      }catch(e){}
+      if(needsPush){ markLocalChange(); scheduleSync(); }
+      setSyncStatus('ok');
+      return changedLocal || otherChanged;
     }catch(e){
       console.error(e);
       setSyncStatus('offline');
@@ -1069,11 +1200,15 @@
     setSyncStatus('syncing');
     try{
       const payload = {
-        movements, categories, quickButtons, fixedPayments,
+        movements, categories, quickButtons, fixedPayments, deleted: deletedIds,
         updatedAt: localStorage.getItem('moneda_updated_at') || new Date().toISOString()
       };
       const res = await fetch(SYNC_URL, { method:'POST', body: JSON.stringify(payload), cache:'no-store' });
       if(!res.ok) throw new Error('bad status');
+      // El script nuevo responde {ok:true|false}; si no se puede leer la respuesta se asume ok (script viejo)
+      let verdict = null;
+      try{ verdict = JSON.parse(await res.text()); }catch(e){}
+      if(verdict && verdict.ok === false) throw new Error('el script de Google rechazó el guardado: ' + (verdict.error || ''));
       setSyncStatus('ok');
     }catch(e){
       console.error(e);
@@ -1133,8 +1268,15 @@
     }
     if(changed) await saveCategories();
   }
-  async function saveMovements(){ try{ localStorage.setItem('moneda_movements', JSON.stringify(movements)); markLocalChange(); } catch(e){ console.error(e); alert('No se pudo guardar. Puede que el navegador esté sin espacio o en modo incógnito.'); } }
-  async function saveCategories(){ try{ localStorage.setItem('moneda_categories', JSON.stringify(categories)); markLocalChange(); } catch(e){ console.error(e); } }
+  function trackDeletions(){
+    const now = new Set(movements.map(m => m.id));
+    prevIds.forEach(id => { if(!now.has(id) && !deletedIds.includes(id)) deletedIds.push(id); });
+    if(deletedIds.length > 3000) deletedIds = deletedIds.slice(-3000);
+    prevIds = now;
+    try{ localStorage.setItem('moneda_deleted_ids', JSON.stringify(deletedIds)); }catch(e){}
+  }
+  async function saveMovements(){ try{ trackDeletions(); localStorage.setItem('moneda_movements', JSON.stringify(movements)); markLocalChange(); } catch(e){ console.error(e); alert('No se pudo guardar. Puede que el navegador esté sin espacio o en modo incógnito.'); } }
+  async function saveCategories(){ try{ localStorage.setItem('moneda_categories', JSON.stringify(categories)); markLocalChange(); updateRawHistory(); } catch(e){ console.error(e); } }
   async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); markLocalChange(); } catch(e){ console.error(e); } }
   async function saveFixedPayments(){ try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); markLocalChange(); } catch(e){ console.error(e); } }
   // Las fotos de vehículo quedan solo en este dispositivo: no forman parte del payload de sync (evita mandar
@@ -1189,6 +1331,8 @@
       localStorage.setItem('moneda_vehicles', JSON.stringify(vehicles));
       localStorage.setItem('moneda_vehicle_current', currentVehicle);
       localStorage.setItem('moneda_vehicle_reminders', JSON.stringify(vehicleReminders));
+      localStorage.setItem('moneda_vehicle_plates', JSON.stringify(vehiclePlates));
+      localStorage.setItem('moneda_vehicle_templates', JSON.stringify(vehTemplates));
     }catch(e){ console.error(e); }
   }
   function entryVehicle(mv){ return mv.vehicle || vehicles[0]; }
@@ -1205,7 +1349,7 @@
     const list = allVehicles();
     if(!list.includes(currentVehicle)) currentVehicle = list[0];
     const sel = document.getElementById('vehSelect');
-    sel.innerHTML = list.map(v => `<option value="${escapeHtml(v)}"${v === currentVehicle ? ' selected' : ''}>${escapeHtml(v)} · ${currentKm(v) ? currentKm(v) + ' km' : 'sin km'}</option>`).join('');
+    sel.innerHTML = list.map(v => `<option value="${escapeHtml(v)}"${v === currentVehicle ? ' selected' : ''}>${escapeHtml(v)}${vehiclePlates[v] ? ' · ' + escapeHtml(vehiclePlates[v]) : ''} · ${currentKm(v) ? currentKm(v) + ' km' : 'sin km'}</option>`).join('');
   }
 
   // Estado de un recordatorio: calcula vencimiento por km y/o fecha
@@ -1271,8 +1415,12 @@
           <div class="veh-rem-sub">${info.text}</div>
           ${info.pct != null ? `<div class="veh-bar"><i style="width:${Math.round(info.pct * 100)}%"></i></div>` : ''}
         </div>
-        <button class="veh-entry-del" title="Eliminar">✕</button>`;
-      row.querySelector('.veh-entry-del').addEventListener('click', () => {
+        <button class="veh-entry-del veh-rem-done" title="Marcar hecho ahora">✓</button>
+        <button class="veh-entry-del veh-rem-edit" title="Editar">✎</button>
+        <button class="veh-entry-del veh-rem-remove" title="Eliminar">✕</button>`;
+      row.querySelector('.veh-rem-done').addEventListener('click', () => doneReminderNow(r));
+      row.querySelector('.veh-rem-edit').addEventListener('click', () => editReminder(r));
+      row.querySelector('.veh-rem-remove').addEventListener('click', () => {
         openConfirmModal('Eliminar recordatorio', '¿Eliminar este recordatorio?', () => {
           vehicleReminders = vehicleReminders.filter(x => x.id !== r.id);
           saveVehicleState(); renderVehReminders(); renderBanners();
@@ -1309,15 +1457,201 @@
     renderVehReminders(); renderBanners();
   }
 
-  // Al registrar un mantenimiento del mismo tipo, los recordatorios se reinician (repetir) o se cumplen (una vez)
-  function applyMaintToReminders(entry){
+  // Los recordatorios que el usuario marca al guardar un mantenimiento se reinician desde el km real (repetir) o se cumplen (una vez)
+  function applyEntryToReminders(entry, ids){
     vehicleReminders.forEach(r => {
-      if(r.vehicle !== entry.vehicle || r.type !== entry.maintType || r.done) return;
+      if(!ids.includes(r.id) || r.done) return;
       if(r.mode === 'repeat'){ r.startKm = entry.km || currentKm(entry.vehicle); r.startDate = entry.date.slice(0,10); delete r.dueKm; delete r.dueDate; }
       else r.done = true;
     });
     saveVehicleState();
   }
+  function renderMaintRemBox(){
+    const box = document.getElementById('vehMaintRemBox');
+    const type = document.getElementById('vehMaintType').value;
+    const list = vehicleReminders.filter(r => !r.done && r.vehicle === currentVehicle);
+    const matching = list.filter(r => r.type === type);
+    let html = '';
+    if(list.length){
+      html += '<div class="veh-local-note" style="margin:6px 0 2px;">Este mantenimiento cumple estos recordatorios (tildá los que se hicieron):</div>' +
+        list.map(r => `<div class="veh-remcheck-row">
+          <label><input type="checkbox" data-rid="${r.id}"${r.type === type ? ' checked' : ''}> <span>${escapeHtml(r.title || r.type)} <span class="veh-rem-sub">(${escapeHtml(r.type)})</span></span></label>
+          <span class="veh-remcheck-act" data-act="edit" data-rid="${r.id}" title="Editar">✎</span>
+          <span class="veh-remcheck-act" data-act="del" data-rid="${r.id}" title="Quitar">✕</span>
+        </div>`).join('');
+    }
+    html += `<span class="veh-remcheck-act" data-act="new" style="display:inline-block;margin-top:6px;">+ agregar recordatorio</span>`;
+    // Si el tipo elegido todavía no tiene ningún recordatorio, ofrece crear uno de una vez, sin salir del formulario
+    if(!matching.length){
+      html += `<div class="veh-local-note" style="margin:10px 0 4px;">"${escapeHtml(type)}" todavía no tiene un recordatorio. Si querés que avise cada tantos km o meses, completá esto (opcional):</div>
+        <div class="new-cat-row">
+          <input type="text" class="budget-input" id="vehQuickRemKm" placeholder="Repetir cada X km" inputmode="numeric">
+          <input type="text" class="budget-input" id="vehQuickRemMonths" placeholder="o cada X meses" inputmode="numeric">
+        </div>`;
+    }
+    box.innerHTML = html;
+    box.querySelectorAll('.veh-remcheck-act[data-act=edit]').forEach(el => el.addEventListener('click', () => {
+      const r = vehicleReminders.find(x => x.id === Number(el.dataset.rid)); if(r) editReminder(r);
+    }));
+    box.querySelectorAll('.veh-remcheck-act[data-act=del]').forEach(el => el.addEventListener('click', () => {
+      const r = vehicleReminders.find(x => x.id === Number(el.dataset.rid)); if(!r) return;
+      openConfirmModal('Quitar recordatorio', `¿Quitar "${escapeHtml(r.title || r.type)}"?`, () => {
+        vehicleReminders = vehicleReminders.filter(x => x.id !== r.id);
+        saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+      });
+    }));
+    const newBtn = box.querySelector('.veh-remcheck-act[data-act=new]');
+    if(newBtn) newBtn.addEventListener('click', () => {
+      openFormModal('Nuevo recordatorio', [
+        { id:'ti', label:'Título', value:type },
+        { id:'km', label:'Repetir cada cuántos km (opcional)', type:'number' },
+        { id:'mo', label:'Repetir cada cuántos meses (opcional)', type:'number' }
+      ], (v) => {
+        const ek = parseMoney(v.km), em = parseMoney(v.mo);
+        if(!ek && !em){ alert('Cargá los km o los meses.'); return false; }
+        vehicleReminders.push({ id: Date.now(), vehicle: currentVehicle, mode:'repeat', type, title: v.ti || type,
+          note:'', everyKm: ek, everyMonths: em, startKm: currentKm(currentVehicle), startDate: todayKey() });
+        saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+      }, 'Crear');
+    });
+  }
+
+  // Marca un recordatorio como recién cumplido sin pasar por el formulario grande de Mantenimiento.
+  // Si se carga un monto, además queda registrado como gasto.
+  function doneReminderNow(r){
+    openFormModal('Marcar "' + (r.title || r.type) + '" como hecho', [
+      { id:'km', label:'Km actual', type:'number', value: currentKm(r.vehicle) || '' },
+      { id:'mo', label:'Monto (opcional, si también querés registrar el gasto)', type:'number' }
+    ], async (v) => {
+      const km = parseMoney(v.km) || currentKm(r.vehicle);
+      const amount = parseMoney(v.mo);
+      const nowIso = new Date().toISOString();
+      if(amount > 0){
+        const entry = { id: Date.now(), amount, category: 'vehiculo', raw: `${r.type} — hecho`, note: '', isIncome: false,
+          date: nowIso, vehType: 'maint', maintType: r.type, km, vehicle: r.vehicle };
+        movements.push(entry);
+        await saveMovements();
+        renderVehEntries(); renderBanners(); render();
+      }
+      if(r.mode === 'repeat'){ r.startKm = km; r.startDate = todayKey(); delete r.dueKm; delete r.dueDate; }
+      else r.done = true;
+      saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+    }, 'Marcar hecho');
+  }
+
+  function editReminder(r){
+    const info = reminderInfo(r);
+    if(r.mode === 'repeat'){
+      if(r.startKm == null && info.dueKm != null && r.everyKm) r.startKm = info.dueKm - r.everyKm;
+      if(!r.startDate && info.dueDate && r.everyMonths){ const d = new Date(info.dueDate); d.setMonth(d.getMonth() - r.everyMonths); r.startDate = d.toISOString().slice(0, 10); }
+      openFormModal('Editar recordatorio', [
+        { id:'km', label:'Repetir cada cuántos km (vacío = no usar km)', type:'number', value:r.everyKm || '' },
+        { id:'mo', label:'Repetir cada cuántos meses (vacío = no usar meses)', type:'number', value:r.everyMonths || '' }
+      ], (v) => {
+        const ek = parseMoney(v.km), em = parseMoney(v.mo);
+        if(!ek && !em){ alert('Dejá al menos los km o los meses.'); return false; }
+        r.everyKm = ek; r.everyMonths = em;
+        delete r.dueKm; delete r.dueDate;
+        if(r.startKm == null) r.startKm = currentKm(r.vehicle);
+        if(!r.startDate) r.startDate = todayKey();
+        saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+      });
+    } else {
+      openFormModal('Editar recordatorio', [
+        { id:'km', label:'Odómetro objetivo en km (vacío = ninguno)', type:'number', value:r.kmTarget || r.dueKm || '' },
+        { id:'da', label:'Fecha objetivo AAAA-MM-DD (vacío = ninguna)', type:'text', value:r.dateTarget || r.dueDate || '' }
+      ], (v) => {
+        const kt = parseMoney(v.km);
+        if(!kt && !v.da){ alert('Dejá un odómetro o una fecha.'); return false; }
+        r.kmTarget = kt; r.dateTarget = v.da;
+        delete r.dueKm; delete r.dueDate;
+        saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+      });
+    }
+  }
+
+  function parseMoney(v){
+    let t = String(v).replace(/[^\d.,]/g, '');
+    if(!t) return 0;
+    const ld = t.lastIndexOf('.'), lc = t.lastIndexOf(',');
+    if(ld > -1 && lc > -1){
+      const dec = Math.max(ld, lc);
+      t = t.slice(0, dec).replace(/[.,]/g, '') + '.' + t.slice(dec + 1);
+    } else if(lc > -1){
+      const single = (t.match(/,/g) || []).length === 1;
+      t = (single && t.length - lc - 1 !== 3) ? t.replace(',', '.') : t.replace(/,/g, '');
+    } else if(ld > -1){
+      const parts = t.split('.');
+      if(parts.length > 2 || parts[parts.length - 1].length === 3) t = t.replace(/\./g, '');
+    }
+    return parseFloat(t) || 0;
+  }
+  // ---------- Peajes y plantillas ----------
+  function vehDate(dateStr){ const d = new Date(); const [yy, mm, dd] = (dateStr || todayKey()).split('-').map(Number); d.setFullYear(yy, mm - 1, dd); return d; }
+  async function saveToll(name, amount, dateStr){
+    const entry = { id: Date.now(), amount, category: 'vehiculo', raw: 'Peaje' + (name ? ' — ' + name : ''), note: '', isIncome: false,
+      date: vehDate(dateStr).toISOString(), vehType: 'toll', tollName: name, vehicle: currentVehicle };
+    movements.push(entry);
+    await saveMovements();
+    renderVehEntries(); renderBanners(); render();
+    return entry;
+  }
+  function flashTollMsg(text){
+    const el = document.getElementById('vehTollMsg'); el.textContent = text;
+    setTimeout(() => { if(el.textContent === text) el.textContent = ''; }, 3500);
+  }
+  function updateVehTollNameList(){
+    const el = document.getElementById('vehTollNameList');
+    if(!el) return;
+    el.innerHTML = vehTemplates.filter(t => t.kind === 'toll')
+      .map(t => `<option value="${escapeHtml(t.name)}">${fmt(t.amount)}</option>`).join('');
+  }
+  function renderVehTemplates(){
+    updateVehTollNameList();
+    [['toll', 'vehTollTemplates'], ['maint', 'vehMaintTemplates']].forEach(([kind, id]) => {
+      const el = document.getElementById(id);
+      const list = vehTemplates.filter(t => t.kind === kind);
+      if(!list.length){ el.innerHTML = '<div class="veh-local-note" style="margin:0;">Todavía no tenés plantillas: completá los datos y tocá “★ Guardar como plantilla”.</div>'; return; }
+      el.innerHTML = '';
+      list.forEach(t => {
+        const chip = document.createElement('div');
+        chip.className = 'veh-tpl';
+        chip.innerHTML = `<span>${escapeHtml(t.name)} · <b>${fmt(t.amount)}</b></span><span class="veh-tpl-act" data-a="edit" title="Editar">✎</span><span class="veh-tpl-act" data-a="del" title="Borrar">✕</span>`;
+        chip.addEventListener('click', async (e) => {
+          const act = e.target.dataset && e.target.dataset.a;
+          if(act === 'del'){
+            openConfirmModal('Borrar plantilla', `¿Borrar la plantilla "${escapeHtml(t.name)}"?`, () => { vehTemplates = vehTemplates.filter(x => x.id !== t.id); saveVehicleState(); renderVehTemplates(); });
+            return;
+          }
+          if(act === 'edit'){
+            const n = prompt('Nombre de la plantilla', t.name); if(n === null) return;
+            const a = prompt('Monto', t.amount); if(a === null) return;
+            const amt = parseMoney(a);
+            if(n.trim()) t.name = n.trim();
+            if(amt > 0) t.amount = amt;
+            saveVehicleState(); renderVehTemplates();
+            return;
+          }
+          if(kind === 'toll'){ await saveToll(t.name, t.amount, todayKey()); flashTollMsg('✓ Cargado: ' + t.name + ' · ' + fmt(t.amount)); }
+          else {
+            document.getElementById('vehMaintType').value = t.maintType || 'Otro';
+            document.getElementById('vehMaintNote').value = t.note || '';
+            document.getElementById('vehMaintCost').value = t.amount;
+            renderMaintRemBox();
+          }
+        });
+        el.appendChild(chip);
+      });
+    });
+  }
+  function showVehForm(kind){
+    [['fuel', 'vehShowFuelBtn', 'vehFuelForm'], ['toll', 'vehShowTollBtn', 'vehTollForm'], ['maint', 'vehShowMaintBtn', 'vehMaintForm']].forEach(([k, b, f]) => {
+      document.getElementById(b).classList.toggle('active', k === kind);
+      document.getElementById(f).style.display = k === kind ? 'block' : 'none';
+    });
+    if(kind === 'maint') renderMaintRemBox();
+  }
+  function vehIcon(mv){ return mv.vehType === 'fuel' ? '⛽' : (mv.vehType === 'toll' ? '🛣️' : '🔧'); }
 
   const FUEL_LABELS = { nafta_super:'Nafta Súper', nafta_premium:'Nafta Infinia', diesel:'Diesel', gnc:'GNC' };
 
@@ -1404,6 +1738,9 @@
           (cheap ? kv('Carga más barata', fmt(cheap.amount)) : '') + '</div>';
       });
       const other = vehMovs().filter(m => m.vehType === 'maint');
+      const tolls = vehMovs().filter(m => m.vehType === 'toll');
+      html += `<div class="veh-stat-card" style="margin-bottom:8px;"><div class="veh-stat-fuel">Peajes</div>` +
+        P.map(([lbl, k]) => kv(lbl, fmt(tolls.filter(m => periodMatch(m.date, k)).reduce((s, m) => s + m.amount, 0)))).join('') + '</div>';
       html += `<div class="veh-stat-card"><div class="veh-stat-fuel">Otros gastos (service, seguro, etc.)</div>` +
         P.map(([lbl, k]) => kv(lbl, fmt(other.filter(m => periodMatch(m.date, k)).reduce((s, m) => s + m.amount, 0)))).join('') + '</div>';
     } else {
@@ -1447,7 +1784,7 @@
       out += `<rect x="${x}" y="${sy(m.a + m.b)}" width="${bw}" height="${sy(m.a) - sy(m.a + m.b)}" style="fill:var(--ink-soft);opacity:.55"/>`;
       if(i % 2 === months.length % 2) out += `<text x="${x + bw / 2}" y="${H-6}" text-anchor="middle" style="fill:var(--ink-soft);font-size:8px">${m.label}</text>`;
     });
-    return `<svg viewBox="0 0 ${W} ${H}" class="veh-chart">${out}</svg><div class="veh-local-note">■ combustible &nbsp; ▪ otros gastos del vehículo (service, seguro, etc.)</div>`;
+    return `<svg viewBox="0 0 ${W} ${H}" class="veh-chart">${out}</svg><div class="veh-local-note">■ combustible &nbsp; ▪ otros gastos del vehículo (peajes, service, seguro, etc.)</div>`;
   }
   function renderVehChart(){
     const el = document.getElementById('vehChart'), sel = document.getElementById('vehChartFuel');
@@ -1472,7 +1809,7 @@
         const inM = m => { const x = new Date(m.date); return x.getFullYear() === d.getFullYear() && x.getMonth() === d.getMonth(); };
         const mv = vehMovs().filter(inM);
         months.push({ label: String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getFullYear()).slice(2),
-          a: mv.filter(m => m.vehType === 'fuel').reduce((s, m) => s + m.amount, 0), b: mv.filter(m => m.vehType === 'maint').reduce((s, m) => s + m.amount, 0) });
+          a: mv.filter(m => m.vehType === 'fuel').reduce((s, m) => s + m.amount, 0), b: mv.filter(m => m.vehType !== 'fuel').reduce((s, m) => s + m.amount, 0) });
       }
       el.innerHTML = months.some(m => m.a + m.b > 0) ? svgBars(months) : '<div class="empty">Sin gastos de vehículo en los últimos 12 meses.</div>';
     }
@@ -1517,6 +1854,7 @@
     const gasType = hasGas && !confirm('La gasolina de tu historial, ¿fue Nafta Súper?\n\nAceptar = Súper · Cancelar = Infinia') ? 'nafta_premium' : 'nafta_super';
     const name = veh.Name || 'Vehículo';
     if(!allVehicles().includes(name)) vehicles.push(name);
+    if(veh.Plate && !vehiclePlates[name]) vehiclePlates[name] = veh.Plate;
     const known = new Set(movements.filter(m => m.fuelioId).map(m => m.fuelioId));
     const knownR = new Set(vehicleReminders.filter(r => r.fuelioId).map(r => r.fuelioId));
     const cats = {}; (sec.CostCategories || []).forEach(c => { cats[c.CostTypeID] = c.Name; });
@@ -1558,24 +1896,34 @@
     await saveMovements(); saveVehicleState(); populateVehSelect(); renderVehEntries(); renderBanners(); render();
     alert(`Importación lista para "${name}":\n• ${nFuel} cargas de combustible\n• ${nCost} gastos (service, seguro, etc.)\n• ${nRem} recordatorios\n• ${skipped} ya estaban cargados`);
   }
+  function setVehEntriesOpen(open){
+    vehEntriesOpen = open;
+    document.getElementById('vehEntriesWrap').style.display = open ? 'block' : 'none';
+    document.getElementById('vehEntriesCaret').style.transform = open ? 'rotate(90deg)' : 'none';
+    try{ localStorage.setItem('moneda_vehentries_open', open ? '1' : '0'); }catch(e){}
+  }
   function renderVehEntries(){
+    setVehEntriesOpen(vehEntriesOpen);
     renderVehStats();
     renderVehReminders();
     populateVehSelect();
     renderVehStatPanel();
     renderVehChart();
+    renderVehTemplates();
+    renderMaintRemBox();
     const met = fuelMetrics();
     const all = vehMovs().sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     if(all.length === 0){ vehEntriesEl.innerHTML = '<div class="empty">Todavía no cargaste combustible ni mantenimiento.</div>'; return; }
     vehEntriesEl.innerHTML = '';
-    all.slice(0, vehListLimit).forEach(mv => {
+    const shown = vehListOpen ? all : all.slice(0, 5);
+    shown.forEach(mv => {
       const row = document.createElement('div');
       row.className = 'veh-entry';
       const d = new Date(mv.date).toLocaleDateString('es-AR');
       const photo = vehiclePhotos[mv.id];
       const thumbHtml = photo
         ? `<img class="veh-entry-thumb" src="${photo}">`
-        : `<div class="veh-entry-icon">${mv.vehType === 'fuel' ? '⛽' : '🔧'}</div>`;
+        : `<div class="veh-entry-icon">${vehIcon(mv)}</div>`;
       let sub, metrics = '';
       if(mv.vehType === 'fuel'){
         const u = mv.unit || 'L';
@@ -1610,11 +1958,11 @@
       });
       vehEntriesEl.appendChild(row);
     });
-    if(all.length > vehListLimit){
+    if(all.length > 5){
       const b = document.createElement('button');
       b.className = 'veh-type-btn'; b.style.width = '100%'; b.style.marginTop = '8px';
-      b.textContent = `Mostrar más (${all.length - vehListLimit} restantes)`;
-      b.addEventListener('click', () => { vehListLimit += 30; renderVehEntries(); });
+      b.textContent = vehListOpen ? 'Mostrar menos' : `Ver todo el historial (${all.length - 5} más)`;
+      b.addEventListener('click', () => { vehListOpen = !vehListOpen; renderVehEntries(); });
       vehEntriesEl.appendChild(b);
     }
   }
@@ -1654,7 +2002,7 @@
     const dateStr = document.getElementById('vehMaintDate').value || todayKey();
     const maintType = document.getElementById('vehMaintType').value;
     const km = parseFloat(document.getElementById('vehMaintKm').value.replace(/[^\d.]/g,'')) || 0;
-    const cost = parseFloat(document.getElementById('vehMaintCost').value.replace(/[^\d.,]/g,'').replace(',','.'));
+    const cost = parseMoney(document.getElementById('vehMaintCost').value);
     const note = document.getElementById('vehMaintNote').value.trim();
     if(!cost){ alert('Cargá el costo.'); return; }
     const d = new Date(); const [yy,mm,dd] = dateStr.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
@@ -1665,7 +2013,16 @@
     };
     movements.push(entry);
     await saveMovements();
-    applyMaintToReminders(entry);
+    applyEntryToReminders(entry, Array.from(document.querySelectorAll('#vehMaintRemBox input[type=checkbox]:checked')).map(i => Number(i.dataset.rid)));
+    const qk = document.getElementById('vehQuickRemKm'), qm = document.getElementById('vehQuickRemMonths');
+    if(qk){
+      const ek = parseMoney(qk.value), em = parseMoney(qm.value);
+      if(ek || em){
+        vehicleReminders.push({ id: Date.now() + 1, vehicle: currentVehicle, mode: 'repeat', type: entry.maintType, title: entry.maintType,
+          note: '', everyKm: ek, everyMonths: em, startKm: entry.km || currentKm(currentVehicle), startDate: entry.date.slice(0, 10) });
+        saveVehicleState();
+      }
+    }
     if(pendingMaintPhoto){ vehiclePhotos[entry.id] = pendingMaintPhoto; saveVehiclePhotos(); }
     pendingMaintPhoto = null;
     document.getElementById('vehMaintKm').value = '';
@@ -1679,9 +2036,29 @@
     render();
   }
 
+  // Sugerencias del input: en vez del historial de textos ya cargados, muestra las palabras clave
+  // de cada categoría junto con el nombre de la categoría a la que pertenecen (así se aprende qué escribir).
+  // El navegador solo sugiere opciones cuyo VALOR completo empiece con lo ya tipeado, así que
+  // reconstruimos el datalist en cada tecla: "<lo ya escrito hasta el último espacio><palabra clave>"
   function updateRawHistory(){
-    const uniq = [...new Set(movements.map(mv => mv.raw))].slice(-60);
-    rawHistoryEl.innerHTML = uniq.map(r => `<option value="${escapeHtml(r)}">`).join('');
+    const value = input ? input.value : '';
+    const lastSpace = value.lastIndexOf(' ');
+    const prefix = lastSpace >= 0 ? value.slice(0, lastSpace + 1) : '';
+    const token = lastSpace >= 0 ? value.slice(lastSpace + 1) : value;
+    const normToken = normalize(token);
+    const seen = new Set();
+    const opts = [];
+    categories.forEach(cat => {
+      (cat.words || []).forEach(w => {
+        if(token && !normalize(w).startsWith(normToken)) return;
+        const full = prefix + w;
+        const key = full.trim().toLowerCase();
+        if(!key || seen.has(key)) return;
+        seen.add(key);
+        opts.push(`<option value="${escapeHtml(full)}">${escapeHtml(cat.icon + ' ' + cat.label)}</option>`);
+      });
+    });
+    rawHistoryEl.innerHTML = opts.join('');
   }
 
   function renderKwAutocomplete(){
@@ -1886,6 +2263,10 @@
     return suggestions.slice(0,4);
   }
   function renderSuggestions(){
+    // Desactivado: con el historial de vehículo importado, esto sugería viejas cargas de combustible
+    // como si fueran gastos recurrentes. El input ya predice con las palabras clave por categoría.
+    suggestionsWrap.innerHTML = '';
+    return;
     const sugg = computeRecurringSuggestions();
     if(sugg.length === 0 || monthKeyOf(viewDate) !== monthKeyOf(new Date())){ suggestionsWrap.innerHTML = ''; return; }
     const wrap = document.createElement('div');
@@ -2440,20 +2821,27 @@
       }
 
       const d = new Date(mv.date);
-      const dateStr = d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' });
+      const isToday = d.toDateString() === new Date().toDateString();
+      const momento = isToday
+        ? d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+        : d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' });
+      const catObj = categories.find(c => c.key === mv.category);
+      const catIcon = mv.isIncome ? '💰' : (catObj ? catObj.icon : '🏷️');
       const row = document.createElement('div');
       row.className = 'move';
       row.innerHTML = `
         <div class="move-left">
-          <div class="move-cat">${mv.isIncome ? '💰 Ingreso' : `<select class="cat-select" data-id="${mv.id}">${catOptions}</select>`}</div>
-          <div class="move-raw" title="Tocá para editar">${escapeHtml(mv.raw)}</div>
-          <div class="move-note" title="Tocá para editar">${mv.note ? '📝 ' + escapeHtml(mv.note) : '+ agregar nota'}</div>
-          <div class="move-date" title="Tocá para editar">${dateStr}</div>
+          <div class="move-main">
+            <span class="move-cat">${mv.isIncome ? catIcon : `<select class="cat-select" data-id="${mv.id}">${catOptions}</select>`}</span>
+            <span class="move-raw" title="Tocá para editar">${escapeHtml(mv.raw)}</span>
+            ${mv.note ? `<span class="move-note" title="Tocá para editar">${escapeHtml(mv.note)}</span>` : `<span class="move-note" title="Tocá para agregar una nota" style="opacity:0;">+</span>`}
+          </div>
         </div>
-        <div style="display:flex;align-items:center;">
+        <div class="move-right">
           <div class="move-amount ${mv.isIncome ? 'income' : ''}" title="Tocá para editar">${mv.isIncome ? '+' : ''}${fmt(mv.amount)}</div>
-          <button class="move-del" data-id="${mv.id}" title="Borrar">✕</button>
+          <div class="move-date" title="Tocá para editar">${momento}</div>
         </div>
+        <button class="move-del" data-id="${mv.id}" title="Borrar">✕</button>
       `;
       currentDayBody.appendChild(row);
       if(!mv.isIncome){
@@ -2544,7 +2932,9 @@
   }
 
   function exportBackup(){
-    const data = { movements, categories, quickButtons, fixedPayments, exportedAt: new Date().toISOString() };
+    const data = { movements, categories, quickButtons, fixedPayments, deletedIds,
+      vehicles, vehiclePlates, vehicleReminders, vehTemplates, currentVehicle,
+      exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `moneda-backup-${todayKey()}.json`; a.click();
@@ -2560,11 +2950,18 @@
       if(!Array.isArray(data.movements) || !Array.isArray(data.categories)) throw new Error('formato inválido');
       if(!confirm('Esto reemplaza todos tus datos actuales por los del backup. ¿Continuar?')) return;
       movements = data.movements;
+      const restored = new Set(data.movements.map(m => m.id));
+      deletedIds = Array.isArray(data.deletedIds) ? data.deletedIds : deletedIds.filter(id => !restored.has(id));
       categories = data.categories;
       quickButtons = Array.isArray(data.quickButtons) ? data.quickButtons : [];
       fixedPayments = Array.isArray(data.fixedPayments) ? data.fixedPayments : [];
-      await saveMovements(); await saveCategories(); await saveQuickButtons(); await saveFixedPayments();
-      populateFilterOptions(); renderBanners(); render(); renderQuickButtons(); updateRawHistory();
+      if(Array.isArray(data.vehicles) && data.vehicles.length) vehicles = data.vehicles;
+      if(data.vehiclePlates) vehiclePlates = data.vehiclePlates;
+      if(Array.isArray(data.vehicleReminders)) vehicleReminders = data.vehicleReminders;
+      if(Array.isArray(data.vehTemplates)) vehTemplates = data.vehTemplates;
+      if(data.currentVehicle) currentVehicle = data.currentVehicle;
+      await saveMovements(); await saveCategories(); await saveQuickButtons(); await saveFixedPayments(); saveVehicleState();
+      populateFilterOptions(); renderBanners(); render(); renderQuickButtons(); renderVehEntries(); updateRawHistory();
       alert('Backup restaurado con éxito.');
     }catch(e){
       alert('No se pudo leer el archivo. Asegurate de que sea un backup exportado desde moneda.');
@@ -2574,6 +2971,7 @@
   sendBtn.addEventListener('click', handleSend);
   input.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleSend(); });
   input.addEventListener('input', renderKwAutocomplete);
+  input.addEventListener('input', updateRawHistory);
   composerNote.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleSend(); });
   composerDate.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleSend(); });
   searchInput.addEventListener('input', renderMovements);
@@ -2695,17 +3093,47 @@
   vehSectionToggle.querySelector('span:first-child').addEventListener('click', () => {
     setVehSectionOpen(vehSectionBody.style.display === 'none');
   });
-  document.getElementById('vehShowFuelBtn').addEventListener('click', () => {
-    document.getElementById('vehShowFuelBtn').classList.add('active');
-    document.getElementById('vehShowMaintBtn').classList.remove('active');
-    document.getElementById('vehFuelForm').style.display = 'block';
-    document.getElementById('vehMaintForm').style.display = 'none';
+  document.getElementById('vehShowFuelBtn').addEventListener('click', () => showVehForm('fuel'));
+  document.getElementById('vehShowTollBtn').addEventListener('click', () => showVehForm('toll'));
+  document.getElementById('vehShowMaintBtn').addEventListener('click', () => showVehForm('maint'));
+  document.getElementById('vehMaintType').addEventListener('change', renderMaintRemBox);
+  document.getElementById('vehTollDate').value = todayKey();
+  document.getElementById('vehTollName').addEventListener('input', (e) => {
+    const match = vehTemplates.find(t => t.kind === 'toll' && t.name.toLowerCase() === e.target.value.trim().toLowerCase());
+    if(match) document.getElementById('vehTollAmount').value = match.amount;
   });
-  document.getElementById('vehShowMaintBtn').addEventListener('click', () => {
-    document.getElementById('vehShowMaintBtn').classList.add('active');
-    document.getElementById('vehShowFuelBtn').classList.remove('active');
-    document.getElementById('vehMaintForm').style.display = 'block';
-    document.getElementById('vehFuelForm').style.display = 'none';
+  document.getElementById('addTollBtn').addEventListener('click', async () => {
+    const amount = parseMoney(document.getElementById('vehTollAmount').value);
+    if(!amount){ alert('Cargá el monto del peaje.'); return; }
+    const name = document.getElementById('vehTollName').value.trim();
+    await saveToll(name, amount, document.getElementById('vehTollDate').value);
+    document.getElementById('vehTollAmount').value = ''; document.getElementById('vehTollName').value = '';
+    document.getElementById('vehTollDate').value = todayKey();
+    flashTollMsg('✓ Peaje guardado');
+  });
+  document.getElementById('saveTollTplBtn').addEventListener('click', () => {
+    const amount = parseMoney(document.getElementById('vehTollAmount').value);
+    const name = document.getElementById('vehTollName').value.trim();
+    if(!amount || !name){ alert('Para guardar una plantilla completá el nombre y el monto.'); return; }
+    vehTemplates.push({ id: Date.now(), kind: 'toll', name, amount });
+    saveVehicleState(); renderVehTemplates(); flashTollMsg('★ Plantilla guardada: ' + name);
+  });
+  document.getElementById('saveMaintTplBtn').addEventListener('click', () => {
+    const cost = parseMoney(document.getElementById('vehMaintCost').value);
+    const maintType = document.getElementById('vehMaintType').value;
+    const note = document.getElementById('vehMaintNote').value.trim();
+    if(!cost){ alert('Para guardar una plantilla cargá al menos el costo.'); return; }
+    vehTemplates.push({ id: Date.now(), kind: 'maint', name: maintType + (note ? ' — ' + note : ''), maintType, note, amount: cost });
+    saveVehicleState(); renderVehTemplates();
+  });
+  document.getElementById('vehPlateBtn').addEventListener('click', () => {
+    openFormModal('Patente de ' + currentVehicle, [
+      { id:'p', label:'Patente (vacío = borrarla)', value:vehiclePlates[currentVehicle] || '' }
+    ], (v) => {
+      const val = v.p.toUpperCase();
+      if(val) vehiclePlates[currentVehicle] = val; else delete vehiclePlates[currentVehicle];
+      saveVehicleState(); populateVehSelect();
+    }, 'Guardar');
   });
   function recalcFuelTotal(){
     const liters = parseFloat(document.getElementById('vehFuelLiters').value.replace(/[^\d.,]/g,'').replace(',','.'));
@@ -2737,10 +3165,15 @@
     currentVehicle = e.target.value; saveVehicleState(); renderVehEntries();
   });
   document.getElementById('vehAddVehicleBtn').addEventListener('click', () => {
-    const n = (prompt('Nombre del vehículo (ej: Partner L2)') || '').trim();
-    if(!n) return;
-    if(!allVehicles().includes(n)) vehicles.push(n);
-    currentVehicle = n; saveVehicleState(); renderVehEntries();
+    openFormModal('Nuevo vehículo', [
+      { id:'n', label:'Nombre (ej: Partner L2)' },
+      { id:'p', label:'Patente (opcional)' }
+    ], (v) => {
+      if(!v.n){ alert('Poné un nombre.'); return false; }
+      if(!allVehicles().includes(v.n)) vehicles.push(v.n);
+      if(v.p) vehiclePlates[v.n] = v.p.toUpperCase();
+      currentVehicle = v.n; saveVehicleState(); renderVehEntries();
+    }, 'Crear');
   });
   document.getElementById('vehToggleRemFormBtn').addEventListener('click', () => {
     const f = document.getElementById('vehRemForm');
@@ -2766,6 +3199,7 @@
   document.getElementById('vehImportFile').addEventListener('change', async (e) => {
     const f = e.target.files[0]; if(f) await importFuelio(f); e.target.value = '';
   });
+  document.getElementById('vehEntriesToggle').addEventListener('click', () => setVehEntriesOpen(!vehEntriesOpen));
   document.getElementById('addFuelBtn').addEventListener('click', addFuelEntry);
   document.getElementById('addMaintBtn').addEventListener('click', addMaintEntry);
 
