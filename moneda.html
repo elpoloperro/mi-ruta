@@ -530,6 +530,17 @@
   .veh-tpl-act{ color:var(--ink-soft); padding:0 3px; font-size:12px; }
   .veh-tpl-act:hover{ color:var(--ink); }
   .veh-remcheck{ display:flex; gap:8px; align-items:center; font-size:12px; padding:4px 0; }
+  .pm-chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 14px; }
+  .pm-chip{ border:1px solid var(--paper-line); border-radius:999px; padding:6px 6px 6px 12px; font-size:12px; background:var(--paper); display:inline-flex; gap:8px; align-items:center; }
+  .pm-chip-act{ color:var(--ink-soft); padding:0 2px; font-size:12px; cursor:pointer; }
+  .pm-chip-act:hover{ color:var(--ink); }
+  .composer-row2 select#composerMethod{
+    flex:1; min-width:0; font-family:'JetBrains Mono', monospace; font-size:12px;
+    border:none; border-bottom:1px solid var(--paper-line); border-radius:0; padding:5px 0;
+    background:transparent; color:var(--ink-soft);
+  }
+  .composer-row2 select#composerMethod:focus{ outline:none; border-bottom-color:var(--coin); color:var(--ink); }
+  .move-method{ font-size:10px; color:var(--ink-soft); opacity:.75; }
   .veh-remcheck-row{ display:flex; align-items:center; gap:6px; }
   .veh-remcheck-row label{ display:flex; gap:8px; align-items:center; flex:1; min-width:0; }
   .veh-remcheck-act{ color:var(--ink-soft); font-size:12px; padding:2px 3px; cursor:pointer; flex-shrink:0; }
@@ -590,6 +601,7 @@
     <div class="composer-row2">
       <input type="text" id="composerNote" class="composer-note-inline" placeholder="Detalle opcional (ej: regalo a Walter)">
       <input type="date" id="composerDate">
+      <select id="composerMethod"><option value="">Método</option></select>
     </div>
     <div class="parse-preview" id="preview"></div>
     <div class="hint">Probá: "1200 nafta" · "cobré 200k de sueldo" · "3k5 super" · tocá el micrófono para dictar</div>
@@ -659,6 +671,14 @@
       <button id="cancelFpEditBtn" class="edit-cancel">Cancelar</button>
     </div>
     <div id="fixedPayments"></div>
+  </div>
+
+  <div class="section-title fp-section-toggle" id="pmSectionToggle">
+    <span>Métodos de pago <span id="pmSectionCaret">▸</span></span>
+  </div>
+  <div id="pmSectionBody" style="display:none;">
+    <div id="pmChips" class="pm-chip-row"></div>
+    <button type="button" class="veh-type-btn" id="pmAddBtn">+ nuevo método</button>
   </div>
 
   <div class="section-title veh-section-toggle" id="vehSectionToggle">
@@ -846,6 +866,7 @@
   </div>
   <div id="filterTotal" class="filter-total" style="display:none;"></div>
   <div class="backup-row">
+    <button id="exportAllBtn">📊 Exportar todo (CSV)</button>
     <button id="backupBtn">💾 Exportar backup</button>
     <label for="restoreFile">📥 Restaurar backup</label>
     <input type="file" id="restoreFile" accept="application/json">
@@ -943,6 +964,7 @@
   let vehicleReminders = [];
   let remMode = 'once';
   let deletedIds = [];
+  let paymentMethods = [];
   let prevIds = new Set();
   let statTab = 'cargas';
   let chartTab = 'consumo';
@@ -1026,12 +1048,18 @@
     return re.test(normText);
   }
   function detectCategory(text){
+    // Palabra/frase completa (no una dentro de otra, ej: "gas" no debe matchear "gasto"),
+    // y si hay más de una coincidencia, gana la más específica (la más larga).
     const norm = normalize(text);
+    let best = null, bestLen = 0;
     for(const cat of categories){
       if(cat.key === 'otros') continue;
-      for(const w of (cat.words||[])){ if(norm.includes(normalize(w))) return cat.key; }
+      for(const w of (cat.words||[])){
+        const nw = normalize(w);
+        if(nw && containsWholeWord(norm, nw) && nw.length > bestLen){ best = cat.key; bestLen = nw.length; }
+      }
     }
-    return 'otros';
+    return best || 'otros';
   }
   function detectIsIncome(text){
     const norm = normalize(text);
@@ -1090,6 +1118,8 @@
     catch(e){ quickButtons = []; }
     try{ const f = localStorage.getItem('moneda_fixedpayments'); fixedPayments = f ? JSON.parse(f) : []; }
     catch(e){ fixedPayments = []; }
+    try{ const pm = localStorage.getItem('moneda_payment_methods'); paymentMethods = pm ? JSON.parse(pm) : ['Efectivo','Débito','Crédito','Transferencia']; }
+    catch(e){ paymentMethods = ['Efectivo','Débito','Crédito','Transferencia']; }
     try{ const vp = localStorage.getItem('moneda_vehicle_photos'); vehiclePhotos = vp ? JSON.parse(vp) : {}; }
     catch(e){ vehiclePhotos = {}; }
     try{ vehicles = JSON.parse(localStorage.getItem('moneda_vehicles') || '[]'); }catch(e){ vehicles = []; }
@@ -1114,6 +1144,8 @@
     setCatSectionOpen(false);
     setFpSectionOpen(false);
     setVehSectionOpen(false);
+    setPmSectionOpen(false);
+    renderPaymentMethods();
   }
 
   // ---- Sincronización con Google Sheets ----
@@ -1279,6 +1311,39 @@
   async function saveCategories(){ try{ localStorage.setItem('moneda_categories', JSON.stringify(categories)); markLocalChange(); updateRawHistory(); } catch(e){ console.error(e); } }
   async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); markLocalChange(); } catch(e){ console.error(e); } }
   async function saveFixedPayments(){ try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); markLocalChange(); } catch(e){ console.error(e); } }
+  async function savePaymentMethods(){ try{ localStorage.setItem('moneda_payment_methods', JSON.stringify(paymentMethods)); markLocalChange(); } catch(e){ console.error(e); } }
+  function setPmSectionOpen(open){
+    document.getElementById('pmSectionBody').style.display = open ? 'block' : 'none';
+    document.getElementById('pmSectionCaret').classList.toggle('open', open);
+  }
+  function populateComposerMethods(){
+    const sel = document.getElementById('composerMethod');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Método</option>' + paymentMethods.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+    if(paymentMethods.includes(prev)) sel.value = prev;
+  }
+  function renderPaymentMethods(){
+    populateComposerMethods();
+    const el = document.getElementById('pmChips');
+    el.innerHTML = paymentMethods.map((m, i) => `
+      <span class="pm-chip">${escapeHtml(m)}
+        <span class="pm-chip-act" data-act="edit" data-i="${i}" title="Editar">✎</span>
+        <span class="pm-chip-act" data-act="del" data-i="${i}" title="Quitar">✕</span>
+      </span>`).join('') || '<div class="veh-local-note">Todavía no tenés métodos de pago cargados.</div>';
+    el.querySelectorAll('.pm-chip-act[data-act=edit]').forEach(b => b.addEventListener('click', () => {
+      const i = Number(b.dataset.i);
+      openFormModal('Editar método de pago', [{ id:'n', label:'Nombre', value: paymentMethods[i] }], (v) => {
+        if(!v.n){ alert('Poné un nombre.'); return false; }
+        paymentMethods[i] = v.n; savePaymentMethods(); renderPaymentMethods();
+      });
+    }));
+    el.querySelectorAll('.pm-chip-act[data-act=del]').forEach(b => b.addEventListener('click', () => {
+      const i = Number(b.dataset.i);
+      openConfirmModal('Quitar método de pago', `¿Quitar "${escapeHtml(paymentMethods[i])}"?`, () => {
+        paymentMethods.splice(i, 1); savePaymentMethods(); renderPaymentMethods();
+      });
+    }));
+  }
   // Las fotos de vehículo quedan solo en este dispositivo: no forman parte del payload de sync (evita mandar
   // imágenes pesadas al backend de Google Sheets), a diferencia de todo lo demás que sí se sincroniza.
   function saveVehiclePhotos(){ try{ localStorage.setItem('moneda_vehicle_photos', JSON.stringify(vehiclePhotos)); } catch(e){ console.error(e); alert('No se pudo guardar la foto (puede que no haya espacio libre en el dispositivo).'); } }
@@ -2840,6 +2905,7 @@
         <div class="move-right">
           <div class="move-amount ${mv.isIncome ? 'income' : ''}" title="Tocá para editar">${mv.isIncome ? '+' : ''}${fmt(mv.amount)}</div>
           <div class="move-date" title="Tocá para editar">${momento}</div>
+          ${mv.method ? `<div class="move-method">${escapeHtml(mv.method)}</div>` : ''}
         </div>
         <button class="move-del" data-id="${mv.id}" title="Borrar">✕</button>
       `;
@@ -2888,10 +2954,12 @@
     const chosenCat = parsed.category;
     const dateStr = composerDate.value || todayKey();
     const note = composerNote.value.trim();
+    const method = document.getElementById('composerMethod').value;
     const d = new Date();
     const [yy,mm,dd] = dateStr.split('-').map(Number);
     d.setFullYear(yy, mm-1, dd);
     const entry = { id: Date.now(), amount:parsed.amount, category: parsed.isIncome ? parsed.category : chosenCat, raw:parsed.raw, note, isIncome:parsed.isIncome, date:d.toISOString() };
+    if(method) entry.method = method;
     movements.push(entry);
     if(expandedDays) expandedDays.add(entry.date.slice(0,10));
     await saveMovements();
@@ -2931,9 +2999,31 @@
     URL.revokeObjectURL(url);
   }
 
+  // Todo el historial en una sola planilla (a diferencia del CSV de arriba, que es solo del mes que estás mirando).
+  // Pensado para abrir en Google Sheets/Excel y filtrar, ordenar o buscar un gasto puntual.
+  function exportAllCSV(){
+    const list = movements.slice().sort((a,b) => a.date.localeCompare(b.date));
+    if(list.length === 0){ alert('Todavía no hay movimientos para exportar.'); return; }
+    let csv = 'Fecha,Hora,Tipo,Categoria,Monto,Metodo de pago,Vehiculo,Detalle,Nota\n';
+    list.forEach(mv => {
+      const cat = findCategory(mv.category);
+      const dt = new Date(mv.date);
+      const fecha = dt.toLocaleDateString('es-AR');
+      const hora = dt.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+      const tipo = mv.isIncome ? 'Ingreso' : 'Gasto';
+      const catLabel = mv.isIncome ? '' : cat.label;
+      const q = v => `"${String(v || '').replace(/"/g,'""')}"`;
+      csv += [fecha, hora, tipo, catLabel, mv.amount, mv.method || '', mv.vehicle || '', q(mv.raw), q(mv.note)].join(',') + '\n';
+    });
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `moneda-historial-completo.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function exportBackup(){
     const data = { movements, categories, quickButtons, fixedPayments, deletedIds,
-      vehicles, vehiclePlates, vehicleReminders, vehTemplates, currentVehicle,
+      vehicles, vehiclePlates, vehicleReminders, vehTemplates, currentVehicle, paymentMethods,
       exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const url = URL.createObjectURL(blob);
@@ -2960,8 +3050,9 @@
       if(Array.isArray(data.vehicleReminders)) vehicleReminders = data.vehicleReminders;
       if(Array.isArray(data.vehTemplates)) vehTemplates = data.vehTemplates;
       if(data.currentVehicle) currentVehicle = data.currentVehicle;
-      await saveMovements(); await saveCategories(); await saveQuickButtons(); await saveFixedPayments(); saveVehicleState();
-      populateFilterOptions(); renderBanners(); render(); renderQuickButtons(); renderVehEntries(); updateRawHistory();
+      if(Array.isArray(data.paymentMethods) && data.paymentMethods.length) paymentMethods = data.paymentMethods;
+      await saveMovements(); await saveCategories(); await saveQuickButtons(); await saveFixedPayments(); await savePaymentMethods(); saveVehicleState();
+      populateFilterOptions(); renderBanners(); render(); renderQuickButtons(); renderVehEntries(); renderPaymentMethods(); updateRawHistory();
       alert('Backup restaurado con éxito.');
     }catch(e){
       alert('No se pudo leer el archivo. Asegurate de que sea un backup exportado desde moneda.');
@@ -2978,6 +3069,7 @@
   filterCat.addEventListener('change', renderMovements);
   filterType.addEventListener('change', renderMovements);
   exportBtn.addEventListener('click', exportCSV);
+  document.getElementById('exportAllBtn').addEventListener('click', exportAllCSV);
   backupBtn.addEventListener('click', exportBackup);
   restoreFile.addEventListener('change', (e) => { if(e.target.files[0]) importBackup(e.target.files[0]); e.target.value=''; });
 
@@ -3092,6 +3184,16 @@
 
   vehSectionToggle.querySelector('span:first-child').addEventListener('click', () => {
     setVehSectionOpen(vehSectionBody.style.display === 'none');
+  });
+  document.getElementById('pmSectionToggle').querySelector('span:first-child').addEventListener('click', () => {
+    setPmSectionOpen(document.getElementById('pmSectionBody').style.display === 'none');
+  });
+  document.getElementById('pmAddBtn').addEventListener('click', () => {
+    openFormModal('Nuevo método de pago', [{ id:'n', label:'Nombre (ej: Mercado Pago)' }], (v) => {
+      if(!v.n){ alert('Poné un nombre.'); return false; }
+      if(paymentMethods.includes(v.n)){ alert('Ese método ya existe.'); return false; }
+      paymentMethods.push(v.n); savePaymentMethods(); renderPaymentMethods();
+    }, 'Crear');
   });
   document.getElementById('vehShowFuelBtn').addEventListener('click', () => showVehForm('fuel'));
   document.getElementById('vehShowTollBtn').addEventListener('click', () => showVehForm('toll'));
