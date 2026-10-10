@@ -72,6 +72,7 @@
 
     .btn { padding: 10px 16px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn-green { background: var(--accent-green); color: #fff; }
+    .btn-red { background: var(--accent-red); color: #fff; }
     .btn-flat { background: rgba(255,255,255,0.06); color: var(--text-main); border: 1px solid var(--card-border); }
     .btn-flat:hover { background: rgba(255,255,255,0.12); }
 
@@ -83,15 +84,12 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Lists & Telemetry Items */
+    /* Lists & Items */
     .history-item { padding: 12px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
     .badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
     .badge-paid { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
     .badge-pending { background: rgba(249, 115, 22, 0.15); color: var(--accent-orange); }
     .badge-late { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
-
-    .progress-bar-container { background: rgba(255,255,255,0.05); border-radius: 8px; height: 10px; width: 100%; overflow: hidden; margin: 8px 0; }
-    .progress-bar-fill { background: var(--accent-green); height: 100%; transition: width 0.3s; }
   </style>
 </head>
 <body>
@@ -149,20 +147,17 @@
           </div>
           <div class="grid-2" style="margin-top:10px;">
             <input type="date" id="magicDate" style="margin:0;">
-            <select id="magicPaymentMethod" style="margin:0;">
-              <!-- Dynamic Methods -->
-            </select>
+            <select id="magicPaymentMethod" style="margin:0;"></select>
           </div>
-          <span style="font-size:11px; color:var(--text-secondary); margin-top:6px; display:block;">Compara con el diccionario de palabras clave y auto-clasifica en la caja correspondiente.</span>
+          <span style="font-size:11px; color:var(--text-secondary); margin-top:6px; display:block;">Reconoce palabras clave y envía el gasto a la caja correspondiente.</span>
         </div>
 
-        <!-- Botones Rápidos 1-Tap -->
+        <!-- Categorías Rápidas (1-Tap) -->
         <div class="card">
           <div class="card-title">
-            <span>⚡ Botones Rápidos (1-Tap)</span>
-            <button class="btn btn-flat" style="padding:2px 8px; font-size:11px;" onclick="showAddQuickBtnModal()">+ Nuevo</button>
+            <span>🏷️ Categorías Precargadas (1-Tap)</span>
           </div>
-          <div id="quickButtonsContainer" class="chip-group"></div>
+          <div id="categoryChipsContainer" class="chip-group"></div>
         </div>
 
         <!-- Pagos Recurrentes / Vencimientos -->
@@ -187,7 +182,6 @@
           <div class="card-title">
             <span>Flota Activa</span>
             <div>
-              <button class="btn btn-flat" style="padding:4px 8px; font-size:12px;" onclick="editPlate()">✏️ Patente</button>
               <button class="btn btn-flat" style="padding:4px 8px; font-size:12px;" onclick="addVehicle()">+ Vehículo</button>
             </div>
           </div>
@@ -250,19 +244,6 @@
           </div>
           <div class="card-title" style="font-size:13px; margin-top:8px;">Checklist / Chips Tildables</div>
           <div id="mantChecklist" class="chip-group"></div>
-          
-          <div style="margin-top:10px;">
-            <label style="font-size:12px; color:var(--text-secondary);">Adjuntar Foto de Repuesto / Factura:</label>
-            <input type="file" id="mantPhoto" accept="image/*" onchange="handlePhotoUpload(event)">
-            <div id="photoPreviewContainer" style="display:none; margin-top:6px;">
-              <img id="photoPreview" style="max-width:100%; height:120px; border-radius:8px; object-fit:cover;">
-            </div>
-          </div>
-
-          <div class="grid-2" style="margin-top:10px;">
-            <input type="number" id="mantIntervalKm" placeholder="Aviso cada X km (ej: 10000)">
-            <input type="number" id="mantIntervalMonths" placeholder="o cada X meses">
-          </div>
           <button class="btn btn-green" style="width:100%; margin-top:8px;" onclick="saveMaintenance()">Guardar Service y Resetear Baseline</button>
         </div>
 
@@ -271,34 +252,36 @@
           <div class="card-title">⛽ Últimas Cargas & Telemetría</div>
           <div id="fuelHistoryTelemetry"></div>
         </div>
-
-        <!-- Comparativas y Rendimiento -->
-        <div class="card">
-          <div class="card-title">📊 Rendimiento Comparativo</div>
-          <div class="grid-2">
-            <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
-              <small style="color:var(--text-secondary)">GNC Promedio</small><br>
-              <strong id="gncAvg">12.88 km/m³</strong>
-            </div>
-            <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
-              <small style="color:var(--text-secondary)">Costo por KM</small><br>
-              <strong id="gncCostKm" class="val-green">$69 / km</strong>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- TAB AJUSTES -->
       <section id="tab-ajustes" class="tab-content">
+        <!-- Tema Visual -->
         <div class="card">
           <div class="card-title">🎨 Tema de Color</div>
           <div class="chip-group">
-            <div class="chip" onclick="setTheme('auto')">🤖 Automático</div>
+            <div class="chip" id="theme-auto" onclick="setTheme('auto')">🤖 Automático</div>
             <div class="chip active" id="theme-dark" onclick="setTheme('dark')">🌙 Nocturno</div>
             <div class="chip" id="theme-light" onclick="setTheme('light')">☀️ Día</div>
           </div>
         </div>
 
+        <!-- Gestión de Categorías y Diccionario -->
+        <div class="card">
+          <div class="card-title">🏷️ Categorías Precargadas & Diccionario</div>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Agregá las categorías que usás frecuentemente para asignarlas rápido.</p>
+          <div id="categoriesListChips" class="chip-group"></div>
+          <div class="grid-2" style="margin-top:8px;">
+            <input type="text" id="newCatName" placeholder="Nombre (ej: Gomería)" style="margin:0;">
+            <select id="newCatGroup" style="margin:0;">
+              <option value="hogar">🏠 Hogar</option>
+              <option value="vehiculo">🚗 Vehículo</option>
+            </select>
+          </div>
+          <button class="btn btn-flat" style="width:100%; margin-top:8px;" onclick="addCategory()">+ Agregar Categoría</button>
+        </div>
+
+        <!-- Métodos de Pago -->
         <div class="card">
           <div class="card-title">💳 Métodos de Pago Editables</div>
           <div id="paymentMethodsChips" class="chip-group"></div>
@@ -311,20 +294,15 @@
         <!-- Copia de Seguridad & Datos CSV / JSON -->
         <div class="card">
           <div class="card-title">💾 Copia de Seguridad y Datos</div>
-          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Exportá tus registros a Excel en formato CSV o guardá una copia de seguridad en JSON.</p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Exportá tus registros a Excel en CSV, o hace un respaldo en JSON.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
             <button class="btn btn-flat" onclick="exportToCSV()">📊 Exportar todo (CSV)</button>
             <button class="btn btn-flat" onclick="exportData()">💾 Exportar backup (JSON)</button>
             <button class="btn btn-flat" onclick="document.getElementById('importFile').click()">📥 Restaurar backup</button>
             <input type="file" id="importFile" style="display:none" onchange="importData(event)" accept=".json">
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">☁️ Sincronización Nube (Cloudinary)</div>
-          <input type="text" id="cloudName" placeholder="Cloud Name (ej: mi-cuenta)">
-          <input type="text" id="uploadPreset" placeholder="Upload Preset Unsigned">
-          <button class="btn btn-flat" onclick="saveCloudSettings()">Guardar Credenciales</button>
+          <hr style="border-color:var(--card-border); margin:12px 0;">
+          <button class="btn btn-red" style="width:100%;" onclick="clearAllData()">🗑️ Borrar todos los datos (Empezar de cero)</button>
         </div>
       </section>
 
@@ -349,24 +327,20 @@
   </nav>
 
   <script>
-    // State App completo
+    // App State
     let appData = {
-      movimientos: [
-        { id: 1, fecha: '2026-10-08', tipo: 'gasto', categoria: 'Combustible', monto: 14562, grupo: 'vehiculo', detalle: 'GNC 15.2 m³', km: 456972, kmParcial: 173, rend: 11.38, costKm: 84 },
-        { id: 2, fecha: '2026-10-09', tipo: 'gasto', categoria: 'Peaje', monto: 1835, grupo: 'vehiculo', detalle: 'Peaje Ruta 8' },
-        { id: 3, fecha: '2026-10-05', tipo: 'gasto', categoria: 'Servicios', monto: 41028, grupo: 'hogar', detalle: 'Luz' }
-      ],
-      recurrentes: [
-        { id: 101, titulo: 'Alquiler', monto: 664450, venceDia: 10, estado: 'pendiente', grupo: 'hogar' },
-        { id: 102, titulo: 'Seguro Kangoo', monto: 94685, venceDia: 8, estado: 'pagado', grupo: 'vehiculo' }
+      movimientos: [],
+      recurrentes: [],
+      categorias: [
+        { name: 'Combustible', group: 'vehiculo', icon: '⛽' },
+        { name: 'Peaje', group: 'vehiculo', icon: '🛣️' },
+        { name: 'Mantenimiento', group: 'vehiculo', icon: '🔧' },
+        { name: 'Supermercado', group: 'hogar', icon: '🛒' },
+        { name: 'Alquiler', group: 'hogar', icon: '🏠' },
+        { name: 'Luz / Servicios', group: 'hogar', icon: '💡' }
       ],
       metodosPago: ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Fiwind', 'Mercado Pago', 'Naranja X', 'Personal Pay', 'Arq'],
-      quickButtons: [
-        { id: 1, name: 'Nafta 5k', amount: 5000, category: 'Combustible', group: 'vehiculo' },
-        { id: 2, name: 'Peaje 2k', amount: 2000, category: 'Peaje', group: 'vehiculo' }
-      ],
-      cloudConfig: { cloudName: '', uploadPreset: '' },
-      currentPhotoUrl: ''
+      themeMode: 'dark'
     };
 
     function init() {
@@ -374,23 +348,32 @@
       if (saved) {
         try { appData = JSON.parse(saved); } catch(e){}
       }
-      // Populate dates
       document.getElementById('magicDate').value = new Date().toISOString().slice(0, 10);
       renderDashboard();
       renderRecurrents();
+      renderCategories();
       renderPaymentMethods();
-      renderQuickButtons();
       renderTelemetryHistory();
       applyMantPreset();
+      applyThemeSetting();
     }
 
     function saveState() {
       localStorage.setItem('moneda_data', JSON.stringify(appData));
       renderDashboard();
       renderRecurrents();
+      renderCategories();
       renderPaymentMethods();
-      renderQuickButtons();
       renderTelemetryHistory();
+    }
+
+    function clearAllData() {
+      if (confirm('¿Estás seguro de que querés borrar todos los datos de ejemplo y movimientos para empezar de cero?')) {
+        appData.movimientos = [];
+        appData.recurrentes = [];
+        saveState();
+        alert('Datos eliminados con éxito. La app está limpia.');
+      }
     }
 
     function switchTab(tabId) {
@@ -428,7 +411,7 @@
 
     function renderDashboard() {
       const filterBox = document.getElementById('boxSelector').value;
-      let movs = appData.movimientos;
+      let movs = appData.movimientos || [];
       if (filterBox !== 'todos') {
         movs = movs.filter(m => m.grupo === filterBox);
       }
@@ -447,26 +430,33 @@
       document.getElementById('totalIngresos').innerText = '$' + ing.toLocaleString('es-AR');
       document.getElementById('totalGastos').innerText = '$' + gast.toLocaleString('es-AR');
 
-      // Full History
       const histEl = document.getElementById('fullHistoryList');
       if (histEl) {
-        histEl.innerHTML = movs.map(m => `
-          <div class="history-item">
-            <div>
-              <strong>${m.detalle || m.categoria}</strong><br>
-              <small style="color:var(--text-secondary);">${m.fecha} · ${m.grupo.toUpperCase()}</small>
+        if (movs.length === 0) {
+          histEl.innerHTML = '<p style="font-size:12px; color:var(--text-secondary); text-align:center; padding:16px;">No hay movimientos cargados todavía.</p>';
+        } else {
+          histEl.innerHTML = movs.map(m => `
+            <div class="history-item">
+              <div>
+                <strong>${m.detalle || m.categoria}</strong><br>
+                <small style="color:var(--text-secondary);">${m.fecha} · ${(m.grupo||'').toUpperCase()}</small>
+              </div>
+              <strong class="${m.tipo === 'ingreso' ? 'val-green' : 'val-red'}">
+                ${m.tipo === 'ingreso' ? '+' : '-'}$${Number(m.monto).toLocaleString('es-AR')}
+              </strong>
             </div>
-            <strong class="${m.tipo === 'ingreso' ? 'val-green' : 'val-red'}">
-              ${m.tipo === 'ingreso' ? '+' : '-'}$${Number(m.monto).toLocaleString('es-AR')}
-            </strong>
-          </div>
-        `).join('');
+          `).join('');
+        }
       }
     }
 
     function renderRecurrents() {
       const list = document.getElementById('recurrentList');
       if(!list) return;
+      if (!appData.recurrentes || appData.recurrentes.length === 0) {
+        list.innerHTML = '<p style="font-size:12px; color:var(--text-secondary);">No hay pagos fijos programados.</p>';
+        return;
+      }
       list.innerHTML = appData.recurrentes.map(r => `
         <div class="history-item">
           <div>
@@ -478,6 +468,48 @@
           </span>
         </div>
       `).join('');
+    }
+
+    function renderCategories() {
+      const homeChips = document.getElementById('categoryChipsContainer');
+      const settingsChips = document.getElementById('categoriesListChips');
+
+      if (homeChips) {
+        homeChips.innerHTML = appData.categorias.map(c => `
+          <div class="chip" onclick="quickSelectCategory('${c.name}', '${c.group}')">
+            ${c.icon || '🏷️'} ${c.name}
+          </div>
+        `).join('');
+      }
+
+      if (settingsChips) {
+        settingsChips.innerHTML = appData.categorias.map((c, idx) => `
+          <div class="chip">
+            <span>${c.icon || '🏷️'} ${c.name} (${c.group})</span>
+            <span style="color:var(--accent-red); margin-left:4px;" onclick="removeCategory(${idx})">✕</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function quickSelectCategory(catName, group) {
+      document.getElementById('magicInput').value = catName + ' ';
+      document.getElementById('magicInput').focus();
+    }
+
+    function addCategory() {
+      const name = document.getElementById('newCatName').value.trim();
+      const group = document.getElementById('newCatGroup').value;
+      if (name) {
+        appData.categorias.push({ name, group, icon: group === 'vehiculo' ? '🚗' : '🏠' });
+        document.getElementById('newCatName').value = '';
+        saveState();
+      }
+    }
+
+    function removeCategory(idx) {
+      appData.categorias.splice(idx, 1);
+      saveState();
     }
 
     function renderPaymentMethods() {
@@ -511,30 +543,6 @@
       saveState();
     }
 
-    function renderQuickButtons() {
-      const container = document.getElementById('quickButtonsContainer');
-      if (!container) return;
-      container.innerHTML = appData.quickButtons.map(qb => `
-        <div class="chip" onclick="triggerQuickButton(${qb.amount}, '${qb.name}', '${qb.category}', '${qb.group}')">
-          ⚡ ${qb.name} ($${qb.amount})
-        </div>
-      `).join('');
-    }
-
-    function triggerQuickButton(amount, name, category, group) {
-      appData.movimientos.unshift({
-        id: Date.now(),
-        fecha: new Date().toISOString().slice(0, 10),
-        tipo: 'gasto',
-        categoria: category,
-        monto: amount,
-        grupo: group,
-        detalle: name
-      });
-      saveState();
-      alert(`Registrado: ${name} por $${amount}`);
-    }
-
     function processMagicInput() {
       const val = document.getElementById('magicInput').value.trim();
       if (!val) return;
@@ -545,10 +553,11 @@
 
       let grupo = 'hogar';
       let cat = 'General';
-      if (lower.includes('nafta') || lower.includes('gnc') || lower.includes('kangoo') || lower.includes('partner') || lower.includes('peaje')) {
+
+      if (lower.includes('nafta') || lower.includes('gnc') || lower.includes('kangoo') || lower.includes('partner') || lower.includes('peaje') || lower.includes('combustible')) {
         grupo = 'vehiculo';
         cat = 'Combustible/Transporte';
-      } else if (lower.includes('alquiler') || lower.includes('luz') || lower.includes('comida')) {
+      } else if (lower.includes('alquiler') || lower.includes('luz') || lower.includes('comida') || lower.includes('super')) {
         grupo = 'hogar';
         cat = 'Servicios/Hogar';
       }
@@ -565,13 +574,12 @@
 
       document.getElementById('magicInput').value = '';
       saveState();
-      alert('Gasto registrado en la caja: ' + grupo.toUpperCase());
+      alert('Gasto anotado en la caja: ' + grupo.toUpperCase());
     }
 
-    // Voice Dictation SpeechRecognition
     function startSpeechRecognition() {
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        alert('El dictado por voz no está soportado en este navegador.');
+        alert('El dictado por voz no está disponible en este navegador.');
         return;
       }
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -585,7 +593,6 @@
       recognition.start();
     }
 
-    // Fuel Calculator Trinomial
     function calcFuelTrinomial(changed) {
       const tot = parseFloat(document.getElementById('combTotal').value) || 0;
       const vol = parseFloat(document.getElementById('combVol').value) || 0;
@@ -603,7 +610,6 @@
     function saveFuelEntry() {
       const tot = parseFloat(document.getElementById('combTotal').value) || 0;
       const vol = parseFloat(document.getElementById('combVol').value) || 0;
-      const km = parseFloat(document.getElementById('combKm').value) || 0;
       const type = document.getElementById('combType').value;
 
       if (!tot) { alert('Ingresá el monto total.'); return; }
@@ -615,18 +621,14 @@
         categoria: 'Combustible',
         monto: tot,
         grupo: 'vehiculo',
-        detalle: `${type} ${vol} ${type.includes('GNC')?'m³':'L'}`,
-        km: km,
-        kmParcial: 173,
-        rend: 11.38,
-        costKm: 84
+        detalle: `${type} ${vol} ${type.includes('GNC')?'m³':'L'}`
       });
 
       document.getElementById('combTotal').value = '';
       document.getElementById('combVol').value = '';
       document.getElementById('combUnitPrice').value = '';
       saveState();
-      alert('Carga guardada con telemetría.');
+      alert('Carga guardada.');
     }
 
     function saveTollEntry() {
@@ -677,47 +679,34 @@
         categoria: 'Mantenimiento',
         monto: cost,
         grupo: 'vehiculo',
-        detalle: detail,
-        photoUrl: appData.currentPhotoUrl
+        detalle: detail
       });
 
       document.getElementById('mantCost').value = '';
       document.getElementById('mantDetail').value = '';
-      appData.currentPhotoUrl = '';
-      document.getElementById('photoPreviewContainer').style.display = 'none';
-
       saveState();
-      alert('Service guardado e intervalo reiniciado al 0%.');
+      alert('Service registrado.');
     }
 
     function renderTelemetryHistory() {
       const container = document.getElementById('fuelHistoryTelemetry');
       if (!container) return;
-      const vehMovs = appData.movimientos.filter(m => m.grupo === 'vehiculo');
+      const vehMovs = (appData.movimientos || []).filter(m => m.grupo === 'vehiculo');
+      if (vehMovs.length === 0) {
+        container.innerHTML = '<p style="font-size:12px; color:var(--text-secondary);">No hay consumos de vehículos registrados.</p>';
+        return;
+      }
       container.innerHTML = vehMovs.slice(0, 5).map(m => `
         <div class="history-item">
           <div>
             <strong>${m.detalle || m.categoria}</strong><br>
-            <small style="color:var(--text-secondary);">${m.fecha} ${m.km ? '· ' + m.km + ' km' : ''}</small>
+            <small style="color:var(--text-secondary);">${m.fecha}</small>
           </div>
           <strong class="val-red">-$${Number(m.monto).toLocaleString('es-AR')}</strong>
         </div>
       `).join('');
     }
 
-    function handlePhotoUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        appData.currentPhotoUrl = e.target.result;
-        document.getElementById('photoPreview').src = e.target.result;
-        document.getElementById('photoPreviewContainer').style.display = 'block';
-      };
-      reader.readAsDataURL(file);
-    }
-
-    // EXPORT TO CSV (EXCEL)
     function exportToCSV() {
       if (!appData.movimientos || appData.movimientos.length === 0) {
         alert("No hay movimientos registrados para exportar.");
@@ -739,7 +728,6 @@
       document.body.removeChild(link);
     }
 
-    // EXPORT JSON BACKUP
     function exportData() {
       const jsonStr = JSON.stringify(appData, null, 2);
       const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -752,7 +740,6 @@
       document.body.removeChild(link);
     }
 
-    // IMPORT JSON BACKUP
     function importData(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -766,7 +753,7 @@
             saveState();
             alert('¡Copia de seguridad restaurada con éxito!');
           } else {
-            alert('El archivo no parece un backup válido de moneda.');
+            alert('El archivo no parece un backup válido.');
           }
         } catch(err) {
           alert('Error al leer el archivo JSON.');
@@ -776,20 +763,29 @@
     }
 
     function setTheme(mode) {
+      appData.themeMode = mode;
+      applyThemeSetting();
+      saveState();
+    }
+
+    function applyThemeSetting() {
+      const mode = appData.themeMode || 'dark';
+      document.getElementById('theme-auto').classList.remove('active');
       document.getElementById('theme-dark').classList.remove('active');
       document.getElementById('theme-light').classList.remove('active');
 
-      if (mode === 'light') {
-        document.body.setAttribute('data-theme', 'light');
+      if (mode === 'auto') {
+        document.getElementById('theme-auto').classList.add('active');
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (isDark) document.body.removeAttribute('data-theme');
+        else document.body.setAttribute('data-theme', 'light');
+      } else if (mode === 'light') {
         document.getElementById('theme-light').classList.add('active');
+        document.body.setAttribute('data-theme', 'light');
       } else {
-        document.body.removeAttribute('data-theme');
         document.getElementById('theme-dark').classList.add('active');
+        document.body.removeAttribute('data-theme');
       }
-    }
-
-    function saveCloudSettings() {
-      alert('Credenciales guardadas correctamente.');
     }
 
     window.onload = init;
