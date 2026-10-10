@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moneda App - Control Financiero</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full flex flex-col font-sans bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500 selection:text-white">
 
-    <!-- Header / Navegación Principal -->
+    <!-- Navegación Superior -->
     <header class="bg-slate-900/90 border-b border-slate-800/80 sticky top-0 z-40 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -20,33 +19,23 @@
                     <div>
                         <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
                             Moneda App 
-                            <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">v2.0</span>
+                            <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">v2.1</span>
                         </h1>
                         <p class="text-xs text-slate-400">Control Financiero & Gestión de Gastos</p>
                     </div>
                 </div>
 
                 <nav class="hidden md:flex space-x-1" id="nav-tabs">
-                    <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="nav-tab text-emerald-400 bg-slate-800/90 font-medium px-3.5 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
-                        <span>Dashboard</span>
-                    </button>
-                    <button onclick="switchTab('movements')" id="tab-btn-movements" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3.5 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
-                        <span>Movimientos</span>
-                    </button>
-                    <button onclick="switchTab('fixed')" id="tab-btn-fixed" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3.5 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
-                        <span>Pagos Fijos</span>
-                    </button>
-                    <button onclick="switchTab('categories')" id="tab-btn-categories" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3.5 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
-                        <span>Categorías</span>
-                    </button>
-                    <button onclick="switchTab('backup')" id="tab-btn-backup" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3.5 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
-                        <span>Respaldo JSON</span>
-                    </button>
+                    <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="nav-tab text-emerald-400 bg-slate-800/90 font-medium px-3.5 py-2 rounded-lg text-sm transition">Dashboard</button>
+                    <button onclick="switchTab('movements')" id="tab-btn-movements" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3.5 py-2 rounded-lg text-sm transition">Movimientos</button>
+                    <button onclick="switchTab('fixed')" id="tab-btn-fixed" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3.5 py-2 rounded-lg text-sm transition">Pagos Fijos</button>
+                    <button onclick="switchTab('categories')" id="tab-btn-categories" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3.5 py-2 rounded-lg text-sm transition">Categorías</button>
+                    <button onclick="switchTab('backup')" id="tab-btn-backup" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3.5 py-2 rounded-lg text-sm transition">Respaldo JSON</button>
                 </nav>
 
                 <div class="flex items-center space-x-2">
-                    <button onclick="openMovementModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3.5 py-2 rounded-xl text-sm flex items-center space-x-1.5 shadow-lg shadow-emerald-600/20 transition active:scale-95">
-                        <span>+ Nuevo Gasto</span>
+                    <button onclick="openMovementModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3.5 py-2 rounded-xl text-sm shadow-lg shadow-emerald-600/20 transition active:scale-95">
+                        + Nuevo Gasto
                     </button>
                 </div>
             </div>
@@ -61,7 +50,7 @@
             <div class="flex items-center gap-2 text-xs font-bold uppercase text-slate-400 whitespace-nowrap">
                 <span class="text-emerald-400 text-lg">⚡</span> Carga Rápida:
             </div>
-            <input type="text" id="quick-input" onkeypress="handleQuickKeyPress(event)" placeholder="Ej: 25950 repuestos kangoo  o  6000 nafta shell" class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-full font-mono">
+            <input type="text" id="quick-input" onkeypress="handleQuickKeyPress(event)" placeholder="Ej: 25950 repuestos  o  6000 nafta shell" class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-full font-mono">
             <button onclick="processQuickInput()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium px-4 py-2.5 rounded-xl text-sm whitespace-nowrap transition active:scale-95">
                 Registrar
             </button>
@@ -70,15 +59,15 @@
         <!-- DASHBOARD TAB -->
         <section id="view-dashboard" class="tab-view space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Gastos Del Mes</span>
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-lg">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Gastos Registrados</span>
                     <div class="mt-3">
                         <h2 id="dash-total-expenses" class="text-2xl font-bold text-rose-400 font-mono">$0</h2>
-                        <p class="text-xs text-slate-400 mt-1" id="dash-movements-count">0 movimientos acumulados</p>
+                        <p class="text-xs text-slate-400 mt-1" id="dash-movements-count">0 registros</p>
                     </div>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-lg">
                     <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Pagos Fijos Pendientes</span>
                     <div class="mt-3">
                         <h2 id="dash-fixed-pending" class="text-2xl font-bold text-amber-400 font-mono">$0</h2>
@@ -86,27 +75,27 @@
                     </div>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Presupuesto Asignado</span>
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-lg">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Presupuesto Límite</span>
                     <div class="mt-3">
                         <h2 id="dash-total-budget" class="text-2xl font-bold text-sky-400 font-mono">$0</h2>
-                        <p class="text-xs text-slate-400 mt-1">Límite configurado global</p>
+                        <p class="text-xs text-slate-400 mt-1">Configuración mensual</p>
                     </div>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Balance Registrado</span>
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-lg">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Balance Neto</span>
                     <div class="mt-3">
                         <h2 id="dash-net-balance" class="text-2xl font-bold text-emerald-400 font-mono">$0</h2>
-                        <p class="text-xs text-slate-400 mt-1" id="dash-income-info">Ingresos registrados: $0</p>
+                        <p class="text-xs text-slate-400 mt-1" id="dash-income-info">Ingresos: $0</p>
                     </div>
                 </div>
             </div>
 
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
                 <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h3 class="text-base font-bold text-white">Consumo por Categoría vs Presupuesto</h3>
-                    <span class="text-xs text-slate-400">Actualización en tiempo real</span>
+                    <h3 class="text-base font-bold text-white">Consumo por Categoría</h3>
+                    <button onclick="switchTab('categories')" class="text-xs text-emerald-400 hover:underline">⚙️ Ajustar Presupuestos</button>
                 </div>
                 <div id="dash-category-progress" class="space-y-4 pt-1"></div>
             </div>
@@ -116,12 +105,10 @@
         <section id="view-movements" class="tab-view space-y-4 hidden">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-xl font-bold text-white">Registro Completo de Movimientos</h2>
-                    <p class="text-xs text-slate-400">Podés buscar, editar o borrar cualquier ingreso o gasto</p>
+                    <h2 class="text-xl font-bold text-white">Registro de Movimientos</h2>
+                    <p class="text-xs text-slate-400">Hacé clic en Editar para cambiar cualquier dato o en Borrar para eliminarlo</p>
                 </div>
-                <div class="flex items-center gap-2 w-full sm:w-auto">
-                    <input type="text" id="mov-search" onkeyup="filterMovements()" placeholder="Buscar por nota, monto o categoría..." class="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-full sm:w-72 font-mono">
-                </div>
+                <input type="text" id="mov-search" onkeyup="filterMovements()" placeholder="Buscar movimiento..." class="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-full sm:w-64 font-mono">
             </div>
 
             <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
@@ -131,7 +118,7 @@
                             <tr class="bg-slate-800/70 border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase tracking-wider">
                                 <th class="p-4">Fecha</th>
                                 <th class="p-4">Categoría</th>
-                                <th class="p-4">Detalle / Nota</th>
+                                <th class="p-4">Nota / Detalle</th>
                                 <th class="p-4">Medio de Pago</th>
                                 <th class="p-4 text-right">Monto</th>
                                 <th class="p-4 text-center">Acciones</th>
@@ -147,28 +134,23 @@
         <section id="view-fixed" class="tab-view space-y-4 hidden">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-xl font-bold text-white">Control de Pagos Fijos y Vencimientos</h2>
-                    <p class="text-xs text-slate-400">Hacé clic en el estado para cambiar entre Pendiente y Pagado</p>
+                    <h2 class="text-xl font-bold text-white">Control de Pagos Fijos</h2>
+                    <p class="text-xs text-slate-400">Hacé clic sobre el estado (Pendiente/Pagado) para cambiarlo</p>
                 </div>
+                <button onclick="openAddFixedModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition">
+                    + Nuevo Pago Fijo
+                </button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="fixed-payments-grid"></div>
         </section>
 
         <!-- CATEGORÍAS TAB -->
         <section id="view-categories" class="tab-view space-y-6 hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                        <h3 class="text-lg font-bold text-white">Presupuestos por Categoría</h3>
-                    </div>
-                    <div id="categories-list" class="space-y-3 divide-y divide-slate-800/80"></div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="text-lg font-bold text-white">Configuración de Presupuestos</h3>
                 </div>
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                        <h3 class="text-lg font-bold text-white">Medios de Pago Habilitados</h3>
-                    </div>
-                    <div id="payment-methods-list" class="space-y-3 divide-y divide-slate-800/80"></div>
-                </div>
+                <div id="categories-list" class="space-y-3 divide-y divide-slate-800/80"></div>
             </div>
         </section>
 
@@ -176,30 +158,26 @@
         <section id="view-backup" class="tab-view space-y-4 hidden">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                    <h2 class="text-xl font-bold text-white">Administración de Datos en JSON</h2>
-                    <p class="text-xs text-slate-400">Podés exportar tu copia de seguridad, cargar un archivo o editar el código plano</p>
+                    <h2 class="text-xl font-bold text-white">Respaldo de Datos (JSON)</h2>
+                    <p class="text-xs text-slate-400">Descargá tu copia o restaurá desde un archivo previamente guardado</p>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <button onclick="exportData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-700 transition">
-                        📥 Descargar JSON
-                    </button>
+                    <button onclick="exportData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-700 transition">📥 Descargar JSON</button>
                     <label class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl cursor-pointer border border-slate-700 transition">
-                        📤 Cargar Archivo
-                        <input type="file" id="json-file-input" accept=".json" class="hidden" onchange="importJSONFile(event)">
+                        📤 Cargar JSON
+                        <input type="file" accept=".json" class="hidden" onchange="importJSONFile(event)">
                     </label>
-                    <button onclick="applyJSONEditor()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow transition">
-                        💾 Guardar JSON
-                    </button>
+                    <button onclick="applyJSONEditor()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition">💾 Aplicar JSON</button>
                 </div>
             </div>
-            <textarea id="json-editor" class="w-full h-96 bg-slate-950 text-emerald-400 font-mono text-xs p-4 rounded-2xl border border-slate-800 focus:outline-none focus:border-emerald-500 shadow-inner" spellcheck="false"></textarea>
+            <textarea id="json-editor" class="w-full h-96 bg-slate-950 text-emerald-400 font-mono text-xs p-4 rounded-2xl border border-slate-800 focus:outline-none focus:border-emerald-500" spellcheck="false"></textarea>
         </section>
 
     </main>
 
-    <!-- MODAL EDITAR / AGREGAR MOVIMIENTO -->
+    <!-- MODAL MOVIMIENTO (NUEVO / EDITAR) -->
     <div id="movement-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <h3 id="modal-title" class="text-lg font-bold text-white">Nuevo Movimiento</h3>
                 <button onclick="closeMovementModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
@@ -209,22 +187,20 @@
                 <input type="hidden" id="form-mov-id" value="">
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Tipo de Operación</label>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Tipo</label>
                     <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-800 bg-slate-950 cursor-pointer text-xs font-medium text-slate-300">
-                            <input type="radio" name="form-is-income" value="false" id="type-expense" checked class="text-emerald-500 focus:ring-0">
-                            <span>💸 Gasto (Egreso)</span>
+                        <label class="flex items-center justify-center gap-2 p-2 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium cursor-pointer">
+                            <input type="radio" name="form-is-income" value="false" id="type-expense" checked> 💸 Gasto
                         </label>
-                        <label class="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-slate-800 bg-slate-950 cursor-pointer text-xs font-medium text-slate-300">
-                            <input type="radio" name="form-is-income" value="true" id="type-income" class="text-emerald-500 focus:ring-0">
-                            <span>💰 Ingreso</span>
+                        <label class="flex items-center justify-center gap-2 p-2 rounded-xl border border-slate-800 bg-slate-950 text-xs font-medium cursor-pointer">
+                            <input type="radio" name="form-is-income" value="true" id="type-income"> 💰 Ingreso
                         </label>
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Monto ($ ARS)</label>
-                    <input type="number" step="any" id="form-amount" required placeholder="Ej: 25950" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 font-mono text-base focus:outline-none focus:border-emerald-500">
+                    <input type="number" step="any" id="form-amount" required placeholder="Ej: 25950" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 font-mono focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <div>
@@ -233,14 +209,21 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Detalle / Nota</label>
-                    <input type="text" id="form-note" placeholder="Ej: Repuestos limpia parabrisas Kangoo" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 text-sm focus:outline-none focus:border-emerald-500">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Nota / Detalle</label>
+                    <input type="text" id="form-note" placeholder="Ej: Escobillas Kangoo / Repuestos" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 text-sm focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Medio de Pago</label>
-                        <select id="form-payment-method" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"></select>
+                        <select id="form-payment-method" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 text-sm focus:outline-none focus:border-emerald-500">
+                            <option value="Mercado Pago">Mercado Pago</option>
+                            <option value="Personal Pay">Personal Pay</option>
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Naranja X">Naranja X</option>
+                            <option value="BBVA">BBVA</option>
+                        </select>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Fecha</label>
@@ -249,50 +232,39 @@
                 </div>
 
                 <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
-                    <button type="button" onclick="closeMovementModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-4 py-2.5 rounded-xl transition">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow transition">
-                        Guardar Registro
-                    </button>
+                    <button type="button" onclick="closeMovementModal()" class="bg-slate-800 text-slate-300 text-xs font-semibold px-4 py-2.5 rounded-xl">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow">Guardar Registro</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Script Lógico de la Aplicación -->
+    <!-- Script Lógico Completo -->
     <script>
-        var STORAGE_KEY = 'moneda_app_data_v2';
+        var STORAGE_KEY = 'moneda_app_v2_1';
 
         var defaultData = {
-          "version": "2.0",
+          "version": "2.1",
           "movements": [
-            { "id": 1788278760163, "amount": 350000, "category": "vehiculo", "note": "Prueba hidráulica (GNC) Kangoo", "isIncome": false, "date": "2026-09-01", "paymentMethod": "Efectivo" },
+            { "id": 1788278760163, "amount": 350000, "category": "vehiculo", "note": "Prueba hidráulica GNC Kangoo", "isIncome": false, "date": "2026-09-01", "paymentMethod": "Efectivo" },
             { "id": 1788030266028, "amount": 615000, "category": "vivienda", "note": "Alquiler mensual", "isIncome": false, "date": "2026-08-02", "paymentMethod": "Transferencia" },
-            { "id": 1788026626315, "amount": 6000, "category": "transporte", "note": "Nafta Shell Moto", "isIncome": false, "date": "2026-08-28", "paymentMethod": "Personal Pay" },
-            { "id": 1788026739030, "amount": 30000, "category": "impuestos_contador", "note": "Honorarios Contador", "isIncome": false, "date": "2026-08-28", "paymentMethod": "Transferencia" },
-            { "id": 1788026565914, "amount": 19800, "category": "supermercado_comida", "note": "Pollería", "isIncome": false, "date": "2026-08-28", "paymentMethod": "Mercado Pago" }
+            { "id": 1788026626315, "amount": 6000, "category": "transporte", "note": "Nafta Shell Moto", "isIncome": false, "date": "2026-08-28", "paymentMethod": "Personal Pay" }
           ],
           "categories": [
             { "id": "vehiculo", "name": "Vehículo & Logística", "budget": 450000 },
             { "id": "vivienda", "name": "Vivienda & Alquiler", "budget": 650000 },
             { "id": "servicios", "name": "Servicios (Luz, Gas, Agua)", "budget": 150000 },
-            { "id": "transporte", "name": "Transporte & Uber", "budget": 100000 },
+            { "id": "transporte", "name": "Transporte & Combustible", "budget": 100000 },
             { "id": "impuestos_contador", "name": "Impuestos, ARCA & Contador", "budget": 180000 },
             { "id": "supermercado_comida", "name": "Supermercado & Alimentación", "budget": 250000 },
-            { "id": "salud", "name": "Salud & Psicología", "budget": 100000 },
-            { "id": "suscripciones", "name": "Suscripciones (Claude, Meta)", "budget": 50000 },
-            { "id": "deudas", "name": "Deudas & Tarjetas Naranja X", "budget": 200000 },
-            { "id": "otros", "name": "Otros Gastos Varios", "budget": 100000 }
+            { "id": "otros", "name": "Otros Gastos", "budget": 100000 }
           ],
           "fixedPayments": [
             { "id": "fp_1", "name": "Alquiler Dpto", "amount": 615000, "dueDate": "10", "category": "vivienda", "status": "paid" },
             { "id": "fp_2", "name": "Litoral Gas / Obras Sanitarias", "amount": 54682, "dueDate": "15", "category": "servicios", "status": "pending" },
             { "id": "fp_3", "name": "Luz CEVT", "amount": 40417, "dueDate": "18", "category": "servicios", "status": "pending" },
-            { "id": "fp_4", "name": "Plan Peugeot Partner", "amount": 510470, "dueDate": "22", "category": "vehiculo", "status": "pending" },
-            { "id": "fp_5", "name": "Honorarios Contador / ARCA", "amount": 66020, "dueDate": "25", "category": "impuestos_contador", "status": "pending" }
-          ],
-          "paymentMethods": ["Mercado Pago", "Personal Pay", "Transferencia", "Efectivo", "Naranja X", "BBVA", "Banco Nación"]
+            { "id": "fp_4", "name": "Plan Peugeot Partner", "amount": 510470, "dueDate": "22", "category": "vehiculo", "status": "pending" }
+          ]
         };
 
         var appData = defaultData;
@@ -307,7 +279,6 @@
                     saveData();
                 }
             } catch(e) {
-                console.warn("Error cargando localStorage:", e);
                 appData = defaultData;
             }
         }
@@ -315,18 +286,12 @@
         function saveData() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-            } catch(e) {
-                console.error("Error al guardar en localStorage:", e);
-            }
+            } catch(e) {}
             renderAllViews();
         }
 
         function formatARS(val) {
-            try {
-                return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(val || 0);
-            } catch(e) {
-                return '$' + Number(val || 0).toLocaleString('es-AR');
-            }
+            return '$' + Number(val || 0).toLocaleString('es-AR');
         }
 
         function getCategoryName(catId) {
@@ -339,9 +304,7 @@
 
         function switchTab(tabId) {
             var tabs = document.querySelectorAll('.tab-view');
-            for (var i = 0; i < tabs.length; i++) {
-                tabs[i].classList.add('hidden');
-            }
+            for (var i = 0; i < tabs.length; i++) tabs[i].classList.add('hidden');
             var target = document.getElementById('view-' + tabId);
             if (target) target.classList.remove('hidden');
 
@@ -362,68 +325,45 @@
             var fixed = appData.fixedPayments || [];
             var categories = appData.categories || [];
 
-            var totalExpenses = 0;
-            var totalIncomes = 0;
-            var expCount = 0;
-
+            var totalExpenses = 0, totalIncomes = 0, countExp = 0;
             for (var i = 0; i < movements.length; i++) {
                 var amt = Number(movements[i].amount || 0);
-                if (movements[i].isIncome) {
-                    totalIncomes += amt;
-                } else {
-                    totalExpenses += amt;
-                    expCount++;
-                }
+                if (movements[i].isIncome) totalIncomes += amt;
+                else { totalExpenses += amt; countExp++; }
             }
 
-            var pendingFixed = 0;
-            var pendingCount = 0;
+            var pendingFixed = 0, countFixed = 0;
             for (var j = 0; j < fixed.length; j++) {
                 if (fixed[j].status === 'pending') {
                     pendingFixed += Number(fixed[j].amount || 0);
-                    pendingCount++;
+                    countFixed++;
                 }
             }
 
             var totalBudget = 0;
-            for (var k = 0; k < categories.length; k++) {
-                totalBudget += Number(categories[k].budget || 0);
-            }
+            for (var k = 0; k < categories.length; k++) totalBudget += Number(categories[k].budget || 0);
 
             document.getElementById('dash-total-expenses').innerText = formatARS(totalExpenses);
-            document.getElementById('dash-movements-count').innerText = expCount + ' egresos acumulados';
-
+            document.getElementById('dash-movements-count').innerText = countExp + ' egresos guardados';
             document.getElementById('dash-fixed-pending').innerText = formatARS(pendingFixed);
-            document.getElementById('dash-fixed-pending-count').innerText = pendingCount + ' facturas pendientes de pago';
-
+            document.getElementById('dash-fixed-pending-count').innerText = countFixed + ' facturas pendientes';
             document.getElementById('dash-total-budget').innerText = formatARS(totalBudget);
 
-            var netBalance = totalIncomes - totalExpenses;
-            var elNet = document.getElementById('dash-net-balance');
-            elNet.innerText = formatARS(netBalance);
-            if (netBalance >= 0) {
-                elNet.className = "text-2xl font-bold text-emerald-400 font-mono";
-            } else {
-                elNet.className = "text-2xl font-bold text-rose-400 font-mono";
-            }
-            document.getElementById('dash-income-info').innerText = 'Ingresos registrados: ' + formatARS(totalIncomes);
+            var net = totalIncomes - totalExpenses;
+            document.getElementById('dash-net-balance').innerText = formatARS(net);
+            document.getElementById('dash-income-info').innerText = 'Ingresos: ' + formatARS(totalIncomes);
 
-            // Progress por categoría
             var progressBox = document.getElementById('dash-category-progress');
             var html = '';
             for (var c = 0; c < categories.length; c++) {
                 var cat = categories[c];
                 var spent = 0;
                 for (var m = 0; m < movements.length; m++) {
-                    if (!movements[m].isIncome && movements[m].category === cat.id) {
-                        spent += Number(movements[m].amount || 0);
-                    }
+                    if (!movements[m].isIncome && movements[m].category === cat.id) spent += Number(movements[m].amount || 0);
                 }
                 var budget = Number(cat.budget || 0);
                 var pct = budget > 0 ? Math.min(Math.round((spent / budget) * 100), 100) : 0;
-                var colorClass = 'bg-emerald-500';
-                if (pct > 90) colorClass = 'bg-rose-500';
-                else if (pct > 70) colorClass = 'bg-amber-500';
+                var colorClass = pct > 90 ? 'bg-rose-500' : (pct > 70 ? 'bg-amber-500' : 'bg-emerald-500');
 
                 html += '<div class="space-y-1">' +
                     '<div class="flex justify-between text-xs font-medium">' +
@@ -444,7 +384,7 @@
             if (!tbody) return;
 
             if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-xs">No hay movimientos registrados.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500 text-xs">No hay movimientos guardados.</td></tr>';
                 return;
             }
 
@@ -454,17 +394,16 @@
                 var catName = getCategoryName(mov.category);
                 var isInc = mov.isIncome;
                 var amountFormatted = (isInc ? '+ ' : '- ') + formatARS(mov.amount);
-                var amountClass = isInc ? 'text-emerald-400 font-bold' : 'text-slate-200 font-bold';
 
-                html += '<tr class="hover:bg-slate-800/40 transition group">' +
+                html += '<tr class="hover:bg-slate-800/40 transition">' +
                     '<td class="p-4 whitespace-nowrap font-mono text-xs text-slate-400">' + (mov.date || '-') + '</td>' +
-                    '<td class="p-4 font-medium text-slate-200 text-xs"><span class="bg-slate-800 border border-slate-700/80 px-2.5 py-1 rounded-lg text-slate-300">' + catName + '</span></td>' +
-                    '<td class="p-4 text-slate-300 text-sm font-medium">' + (mov.note || 'Sin nota') + '</td>' +
-                    '<td class="p-4 whitespace-nowrap text-xs text-slate-400">' + (mov.paymentMethod || 'Efectivo') + '</td>' +
-                    '<td class="p-4 text-right font-mono text-sm ' + amountClass + '">' + amountFormatted + '</td>' +
+                    '<td class="p-4 text-xs font-medium"><span class="bg-slate-800 border border-slate-700/80 px-2.5 py-1 rounded-lg text-slate-300">' + catName + '</span></td>' +
+                    '<td class="p-4 text-slate-300 font-medium">' + (mov.note || 'Sin nota') + '</td>' +
+                    '<td class="p-4 text-xs text-slate-400">' + (mov.paymentMethod || 'Efectivo') + '</td>' +
+                    '<td class="p-4 text-right font-mono text-sm font-bold ' + (isInc ? 'text-emerald-400' : 'text-slate-200') + '">' + amountFormatted + '</td>' +
                     '<td class="p-4 text-center whitespace-nowrap space-x-1">' +
-                        '<button onclick="openMovementModal(' + mov.id + ')" class="bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700 transition">Editar</button>' +
-                        '<button onclick="deleteMovement(' + mov.id + ')" class="bg-slate-800 hover:bg-rose-950/80 hover:text-rose-400 text-slate-400 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700 transition">Borrar</button>' +
+                        '<button onclick="openMovementModal(' + mov.id + ')" class="bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Editar</button>' +
+                        '<button onclick="deleteMovement(' + mov.id + ')" class="bg-slate-800 hover:bg-rose-950/80 text-rose-400 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Borrar</button>' +
                     '</td>' +
                 '</tr>';
             }
@@ -472,19 +411,15 @@
         }
 
         function filterMovements() {
-            var query = (document.getElementById('mov-search').value || '').toLowerCase();
-            var movements = appData.movements || [];
-            var filtered = [];
-            for (var i = 0; i < movements.length; i++) {
-                var m = movements[i];
-                var note = (m.note || '').toLowerCase();
-                var cat = getCategoryName(m.category).toLowerCase();
-                var amt = (m.amount || '').toString();
-                if (note.indexOf(query) !== -1 || cat.indexOf(query) !== -1 || amt.indexOf(query) !== -1) {
-                    filtered.push(m);
-                }
+            var q = (document.getElementById('mov-search').value || '').toLowerCase();
+            var list = appData.movements || [];
+            var res = [];
+            for (var i = 0; i < list.length; i++) {
+                var note = (list[i].note || '').toLowerCase();
+                var cat = getCategoryName(list[i].category).toLowerCase();
+                if (note.indexOf(q) !== -1 || cat.indexOf(q) !== -1) res.push(list[i]);
             }
-            renderMovements(filtered);
+            renderMovements(res);
         }
 
         function renderFixedPayments() {
@@ -495,7 +430,6 @@
             var html = '';
             for (var i = 0; i < list.length; i++) {
                 var fp = list[i];
-                var catName = getCategoryName(fp.category);
                 var isPaid = fp.status === 'paid';
 
                 html += '<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg flex flex-col justify-between">' +
@@ -503,15 +437,14 @@
                         '<div>' +
                             '<span class="text-xs text-slate-400 font-mono">Vence día ' + (fp.dueDate || '-') + '</span>' +
                             '<h4 class="text-base font-bold text-white mt-0.5">' + fp.name + '</h4>' +
-                            '<p class="text-xs text-slate-400 mt-0.5">' + catName + '</p>' +
                         '</div>' +
-                        '<button onclick="toggleFixedPaymentStatus(\'' + fp.id + '\')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ' + 
-                            (isPaid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20') + '">' +
+                        '<button onclick="toggleFixedStatus(\'' + fp.id + '\')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition ' + 
+                            (isPaid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30') + '">' +
                             (isPaid ? '✓ Pagado' : '⏳ Pendiente') +
                         '</button>' +
                     '</div>' +
                     '<div class="pt-3 border-t border-slate-800 flex justify-between items-baseline">' +
-                        '<span class="text-xs text-slate-500">Monto estimado</span>' +
+                        '<button onclick="deleteFixedPayment(\'' + fp.id + '\')" class="text-xs text-rose-400 hover:underline">Borrar</button>' +
                         '<span class="text-lg font-bold text-white font-mono">' + formatARS(fp.amount) + '</span>' +
                     '</div>' +
                 '</div>';
@@ -519,7 +452,7 @@
             container.innerHTML = html;
         }
 
-        function toggleFixedPaymentStatus(fpId) {
+        function toggleFixedStatus(fpId) {
             var list = appData.fixedPayments || [];
             for (var i = 0; i < list.length; i++) {
                 if (list[i].id === fpId) {
@@ -530,77 +463,91 @@
             saveData();
         }
 
-        function renderCategoriesAndMethods() {
-            var categories = appData.categories || [];
-            var catList = document.getElementById('categories-list');
-            if (catList) {
-                var html = '';
-                for (var i = 0; i < categories.length; i++) {
-                    var c = categories[i];
-                    html += '<div class="flex items-center justify-between pt-2.5">' +
-                        '<p class="text-sm font-medium text-white">' + c.name + '</p>' +
-                        '<span class="font-mono text-sm font-semibold text-emerald-400 bg-slate-950 px-3 py-1 rounded-lg border border-slate-800">' + formatARS(c.budget) + '</span>' +
-                    '</div>';
-                }
-                catList.innerHTML = html;
+        function deleteFixedPayment(fpId) {
+            if (!confirm('¿Eliminar este pago fijo?')) return;
+            var list = appData.fixedPayments || [];
+            var newList = [];
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].id !== fpId) newList.push(list[i]);
             }
-
-            var paymentMethods = appData.paymentMethods || [];
-            var pmList = document.getElementById('payment-methods-list');
-            if (pmList) {
-                var pmHtml = '';
-                for (var j = 0; j < paymentMethods.length; j++) {
-                    var p = paymentMethods[j];
-                    pmHtml += '<div class="flex items-center justify-between pt-2.5">' +
-                        '<p class="text-sm font-medium text-white">' + p + '</p>' +
-                        '<span class="text-xs text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">Activo</span>' +
-                    '</div>';
-                }
-                pmList.innerHTML = pmHtml;
-            }
+            appData.fixedPayments = newList;
+            saveData();
         }
 
-        function populateFormDropdowns() {
-            var catSelect = document.getElementById('form-category');
-            if (catSelect) {
-                var categories = appData.categories || [];
-                var html = '';
-                for (var i = 0; i < categories.length; i++) {
-                    html += '<option value="' + categories[i].id + '">' + categories[i].name + '</option>';
-                }
-                catSelect.innerHTML = html;
-            }
+        function openAddFixedModal() {
+            var name = prompt("Nombre del pago fijo (ej: Luz, Alquiler):");
+            if (!name) return;
+            var amount = parseFloat(prompt("Monto estimado ($):", "50000")) || 0;
+            var dueDate = prompt("Día de vencimiento (1 a 31):", "15") || "10";
 
-            var pmSelect = document.getElementById('form-payment-method');
-            if (pmSelect) {
-                var methods = appData.paymentMethods || [];
-                var pmHtml = '';
-                for (var j = 0; j < methods.length; j++) {
-                    pmHtml += '<option value="' + methods[j] + '">' + methods[j] + '</option>';
-                }
-                pmSelect.innerHTML = pmHtml;
+            var newFp = {
+                id: "fp_" + Date.now(),
+                name: name,
+                amount: amount,
+                dueDate: dueDate,
+                category: "servicios",
+                status: "pending"
+            };
+            appData.fixedPayments.push(newFp);
+            saveData();
+        }
+
+        function renderCategoriesList() {
+            var list = appData.categories || [];
+            var container = document.getElementById('categories-list');
+            if (!container) return;
+
+            var html = '';
+            for (var i = 0; i < list.length; i++) {
+                var c = list[i];
+                html += '<div class="flex items-center justify-between pt-3">' +
+                    '<div>' +
+                        '<p class="text-sm font-medium text-white">' + c.name + '</p>' +
+                    '</div>' +
+                    '<div class="flex items-center space-x-2">' +
+                        '<span class="font-mono text-sm font-semibold text-emerald-400 bg-slate-950 px-3 py-1 rounded-lg border border-slate-800">' + formatARS(c.budget) + '</span>' +
+                        '<button onclick="editCategoryBudget(\'' + c.id + '\')" class="text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 px-2.5 py-1 rounded-lg border border-slate-700">Cambiar</button>' +
+                    '</div>' +
+                '</div>';
             }
+            container.innerHTML = html;
+        }
+
+        function editCategoryBudget(catId) {
+            var list = appData.categories || [];
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].id === catId) {
+                    var newBudget = parseFloat(prompt("Nuevo presupuesto para " + list[i].name + ":", list[i].budget)) || 0;
+                    list[i].budget = newBudget;
+                    break;
+                }
+            }
+            saveData();
         }
 
         function openMovementModal(movId) {
-            populateFormDropdowns();
+            var catSelect = document.getElementById('form-category');
+            var categories = appData.categories || [];
+            var html = '';
+            for (var i = 0; i < categories.length; i++) {
+                html += '<option value="' + categories[i].id + '">' + categories[i].name + '</option>';
+            }
+            catSelect.innerHTML = html;
+
             var modal = document.getElementById('movement-modal');
             var title = document.getElementById('modal-title');
             var formMovId = document.getElementById('form-mov-id');
             var formAmount = document.getElementById('form-amount');
             var formNote = document.getElementById('form-note');
-            var formCategory = document.getElementById('form-category');
-            var formPayment = document.getElementById('form-payment-method');
             var formDate = document.getElementById('form-date');
             var typeExpense = document.getElementById('type-expense');
             var typeIncome = document.getElementById('type-income');
 
             if (movId) {
-                // Modo Edición
                 var mov = null;
                 var list = appData.movements || [];
-                for (var i = 0; i < list.length; i++) {
-                    if (list[i].id === movId) { mov = list[i]; break; }
+                for (var j = 0; j < list.length; j++) {
+                    if (list[j].id === movId) { mov = list[j]; break; }
                 }
                 if (!mov) return;
 
@@ -608,12 +555,10 @@
                 formMovId.value = mov.id;
                 formAmount.value = mov.amount;
                 formNote.value = mov.note || '';
-                if (formCategory) formCategory.value = mov.category || 'otros';
-                if (formPayment) formPayment.value = mov.paymentMethod || 'Efectivo';
+                catSelect.value = mov.category || 'otros';
                 formDate.value = mov.date || new Date().toISOString().substring(0, 10);
-                if (mov.isIncome) { typeIncome.checked = true; } else { typeExpense.checked = true; }
+                if (mov.isIncome) typeIncome.checked = true; else typeExpense.checked = true;
             } else {
-                // Modo Nuevo
                 title.innerText = 'Nuevo Movimiento';
                 formMovId.value = '';
                 formAmount.value = '';
@@ -639,13 +584,9 @@
             var dateVal = document.getElementById('form-date').value;
             var isIncomeVal = document.getElementById('type-income').checked;
 
-            if (amountVal <= 0) {
-                alert('Ingresá un monto válido.');
-                return;
-            }
+            if (amountVal <= 0) { alert('Ingresá un monto válido.'); return; }
 
             if (idVal) {
-                // Actualizar existente
                 var list = appData.movements || [];
                 for (var i = 0; i < list.length; i++) {
                     if (list[i].id == idVal) {
@@ -659,7 +600,6 @@
                     }
                 }
             } else {
-                // Crear nuevo
                 var newMov = {
                     id: Date.now(),
                     amount: amountVal,
@@ -677,7 +617,7 @@
         }
 
         function deleteMovement(movId) {
-            if (!confirm('¿Seguro que querés eliminar este registro?')) return;
+            if (!confirm('¿Eliminar este registro?')) return;
             var list = appData.movements || [];
             var newList = [];
             for (var i = 0; i < list.length; i++) {
@@ -688,9 +628,7 @@
         }
 
         function handleQuickKeyPress(e) {
-            if (e.key === 'Enter') {
-                processQuickInput();
-            }
+            if (e.key === 'Enter') processQuickInput();
         }
 
         function processQuickInput() {
@@ -698,31 +636,18 @@
             var raw = (input.value || '').trim();
             if (!raw) return;
 
-            // Extraer primer número
             var match = raw.match(/\d+/);
-            if (!match) {
-                alert('Escribí un valor numérico. Ej: 25950 repuestos kangoo');
-                return;
-            }
+            if (!match) { alert('Escribí un monto. Ej: 25950 repuestos'); return; }
 
             var amount = parseFloat(match[0]);
-            var note = raw.replace(match[0], '').replace('$', '').trim();
-            if (!note) note = "Gasto rápido";
+            var note = raw.replace(match[0], '').replace('$', '').trim() || "Gasto rápido";
 
-            // Inferir categoría
             var category = 'otros';
-            var lowerNote = note.toLowerCase();
-            if (lowerNote.indexOf('repuesto') !== -1 || lowerNote.indexOf('kangoo') !== -1 || lowerNote.indexOf('gnc') !== -1 || lowerNote.indexOf('seguro') !== -1 || lowerNote.indexOf('auto') !== -1) {
-                category = 'vehiculo';
-            } else if (lowerNote.indexOf('nafta') !== -1 || lowerNote.indexOf('uber') !== -1 || lowerNote.indexOf('combustible') !== -1) {
-                category = 'transporte';
-            } else if (lowerNote.indexOf('alquiler') !== -1) {
-                category = 'vivienda';
-            } else if (lowerNote.indexOf('contador') !== -1 || lowerNote.indexOf('arca') !== -1 || lowerNote.indexOf('api') !== -1) {
-                category = 'impuestos_contador';
-            } else if (lowerNote.indexOf('super') !== -1 || lowerNote.indexOf('polleria') !== -1 || lowerNote.indexOf('empanada') !== -1 || lowerNote.indexOf('verdulería') !== -1) {
-                category = 'supermercado_comida';
-            }
+            var lower = note.toLowerCase();
+            if (lower.indexOf('repuesto') !== -1 || lower.indexOf('kangoo') !== -1 || lower.indexOf('gnc') !== -1) category = 'vehiculo';
+            else if (lower.indexOf('nafta') !== -1 || lower.indexOf('uber') !== -1) category = 'transporte';
+            else if (lower.indexOf('alquiler') !== -1) category = 'vivienda';
+            else if (lower.indexOf('contador') !== -1 || lower.indexOf('arca') !== -1) category = 'impuestos_contador';
 
             var newMov = {
                 id: Date.now(),
@@ -749,9 +674,9 @@
                 var editor = document.getElementById('json-editor');
                 appData = JSON.parse(editor.value);
                 saveData();
-                alert('¡Datos del JSON aplicados y guardados con éxito!');
+                alert('¡Datos aplicados con éxito!');
             } catch(e) {
-                alert('Error al leer el código JSON: ' + e.message);
+                alert('JSON inválido: ' + e.message);
             }
         }
 
@@ -763,9 +688,9 @@
                 try {
                     appData = JSON.parse(evt.target.result);
                     saveData();
-                    alert('¡Respaldo importado correctamente!');
+                    alert('¡Respaldo importado!');
                 } catch(err) {
-                    alert('El archivo cargado no es un JSON válido.');
+                    alert('Archivo inválido.');
                 }
             };
             reader.readAsText(file);
@@ -783,7 +708,7 @@
             renderDashboard();
             renderMovements();
             renderFixedPayments();
-            renderCategoriesAndMethods();
+            renderCategoriesList();
             renderBackupEditor();
         }
 
@@ -792,7 +717,7 @@
             renderAllViews();
         }
 
-        // Funciones globales
+        // Exportación global
         window.switchTab = switchTab;
         window.filterMovements = filterMovements;
         window.openMovementModal = openMovementModal;
@@ -801,14 +726,19 @@
         window.deleteMovement = deleteMovement;
         window.processQuickInput = processQuickInput;
         window.handleQuickKeyPress = handleQuickKeyPress;
-        window.toggleFixedPaymentStatus = toggleFixedPaymentStatus;
+        window.toggleFixedStatus = toggleFixedStatus;
+        window.deleteFixedPayment = deleteFixedPayment;
+        window.openAddFixedModal = openAddFixedModal;
+        window.editCategoryBudget = editCategoryBudget;
         window.applyJSONEditor = applyJSONEditor;
         window.importJSONFile = importJSONFile;
         window.exportData = exportData;
 
-        // Auto-inicialización
-        if (document.readyState === 'interactive' || document.readyState === 'complete') {
-            initApp();
-        } else {
+        if (document.readyState === 'interactive' || document.readyState === 'complete') initApp();
+        else {
             document.addEventListener('DOMContentLoaded', initApp);
-            window.addEventListener('load',
+            window.addEventListener('load', initApp);
+        }
+    </script>
+</body>
+</html>
