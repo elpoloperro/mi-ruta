@@ -1,110 +1,407 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full bg-slate-900 text-slate-100">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>moneda - Gestión Financiera & Transporte</title>
-  <link rel="manifest" href="manifest.json">
-  <style>
-    :root {
-      --bg-color: #0f1012;
-      --card-bg: #1e1e1e;
-      --card-border: #2a2a2a;
-      --text-main: #f0f0f0;
-      --text-secondary: #a0a0a0;
-      --accent-green: #22c55e;
-      --accent-red: #ef4444;
-      --accent-blue: #3b82f6;
-      --accent-orange: #f97316;
-      --sidebar-width: 240px;
-    }
-
-    [data-theme="light"] {
-      --bg-color: #f4f5f7;
-      --card-bg: #ffffff;
-      --card-border: #e2e8f0;
-      --text-main: #0f172a;
-      --text-secondary: #64748b;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
-
-    /* App Header */
-    .app-header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background-color: var(--card-bg); border-bottom: 1px solid var(--card-border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; }
-    .header-title { font-size: 18px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
-    .sync-badge { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: rgba(34, 197, 94, 0.15); color: var(--accent-green); display: flex; align-items: center; gap: 6px; font-weight: 600; }
-
-    /* Layout Responsive */
-    .app-container { display: flex; width: 100%; margin-top: 56px; margin-bottom: 60px; }
-    .sidebar { width: var(--sidebar-width); background: var(--card-bg); border-right: 1px solid var(--card-border); display: none; flex-direction: column; padding: 16px 0; position: fixed; top: 56px; bottom: 0; left: 0; z-index: 90; }
-    .main-content { flex: 1; padding: 16px; max-width: 900px; margin: 0 auto; width: 100%; }
-
-    /* Nav Items */
-    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
-    .nav-item.active { color: var(--accent-green); background: rgba(34, 197, 94, 0.08); border-left-color: var(--accent-green); }
-
-    /* Bottom Navigation Mobile */
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: var(--card-bg); border-top: 1px solid var(--card-border); display: flex; justify-around: space-around; align-items: center; z-index: 100; }
-    .bottom-nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-secondary); text-decoration: none; font-size: 10px; font-weight: 500; cursor: pointer; }
-    .bottom-nav-item.active { color: var(--accent-green); }
-    .fab-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-green); color: #fff; border: none; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); margin-top: -18px; }
-
-    @media (min-width: 768px) {
-      .sidebar { display: flex; }
-      .main-content { margin-left: var(--sidebar-width); }
-      .bottom-nav { display: none; }
-      .app-container { margin-bottom: 0; }
-    }
-
-    /* Cards & Components */
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
-    .card-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .balance-val { font-size: 32px; font-weight: 800; margin: 8px 0; }
-    .val-green { color: var(--accent-green); }
-    .val-red { color: var(--accent-red); }
-
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-
-    input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--card-border); background: rgba(0,0,0,0.2); color: var(--text-main); font-size: 14px; margin-bottom: 10px; }
-    [data-theme="light"] input, [data-theme="light"] select { background: #f8fafc; }
-
-    .btn { padding: 10px 16px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-    .btn-green { background: var(--accent-green); color: #fff; }
-    .btn-red { background: var(--accent-red); color: #fff; }
-    .btn-flat { background: rgba(255,255,255,0.06); color: var(--text-main); border: 1px solid var(--card-border); }
-    .btn-flat:hover { background: rgba(255,255,255,0.12); }
-
-    .chip-group { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-    .chip { padding: 6px 12px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .chip.active { background: var(--accent-green); color: #fff; border-color: var(--accent-green); }
-
-    /* Tabs Visibility */
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    /* Lists & Items */
-    .history-item { padding: 12px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
-    .badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-    .badge-paid { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
-    .badge-pending { background: rgba(249, 115, 22, 0.15); color: var(--accent-orange); }
-    .badge-late { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moneda App - Control Financiero</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
+<body class="h-full flex flex-col font-sans bg-slate-950 text-slate-100 antialiased">
 
-  <!-- App Header -->
-  <header class="app-header">
-    <div class="header-title">
-      <span>🪙 moneda</span>
-    </div>
-    <div class="sync-badge" id="syncIndicator">
-      <span id="syncIcon">☁️</span> <span id="syncText">Sincronizado</span>
-    </div>
-  </header>
+    <!-- Navigation Header -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-emerald-500/20">
+                        $
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight text-white">Moneda App</h1>
+                        <p class="text-xs text-slate-400">Control Financiero & Logística</p>
+                    </div>
+                </div>
 
-  <div class="app-container">
-    <!-- Sidebar Desktop -->
-    <nav class="sidebar">
-      <div class="nav-item active" id="snav
+                <nav class="hidden md:flex space-x-1" id="nav-tabs">
+                    <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="nav-tab text-emerald-400 bg-slate-800 font-medium px-3 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('movements')" id="tab-btn-movements" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
+                        <i data-lucide="receipt" class="w-4 h-4"></i>
+                        <span>Movimientos</span>
+                    </button>
+                    <button onclick="switchTab('fixed')" id="tab-btn-fixed" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        <span>Pagos Fijos</span>
+                    </button>
+                    <button onclick="switchTab('vehicles')" id="tab-btn-vehicles" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
+                        <i data-lucide="truck" class="w-4 h-4"></i>
+                        <span>Vehículos</span>
+                    </button>
+                    <button onclick="switchTab('categories')" id="tab-btn-categories" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
+                        <i data-lucide="tags" class="w-4 h-4"></i>
+                        <span>Categorías</span>
+                    </button>
+                    <button onclick="switchTab('backup')" id="tab-btn-backup" class="nav-tab text-slate-300 hover:text-white hover:bg-slate-800/60 font-medium px-3 py-2 rounded-lg text-sm flex items-center space-x-2 transition">
+                        <i data-lucide="database" class="w-4 h-4"></i>
+                        <span>JSON Backup</span>
+                    </button>
+                </nav>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="exportData()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-3 py-2 rounded-lg text-sm flex items-center space-x-1.5 shadow-sm transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Exportar JSON</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main View -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        <!-- DASHBOARD TAB -->
+        <section id="view-dashboard" class="tab-view space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase text-slate-400">Total Gastos Registrados</span>
+                        <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl"><i data-lucide="trending-down" class="w-5 h-5"></i></div>
+                    </div>
+                    <div class="mt-3">
+                        <h2 id="dash-total-expenses" class="text-2xl font-bold text-white">$0.00</h2>
+                        <p class="text-xs text-slate-400 mt-1" id="dash-movements-count">0 movimientos acumulados</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase text-slate-400">Pagos Fijos Pendientes</span>
+                        <div class="p-2 bg-amber-500/10 text-amber-400 rounded-xl"><i data-lucide="clock" class="w-5 h-5"></i></div>
+                    </div>
+                    <div class="mt-3">
+                        <h2 id="dash-fixed-pending" class="text-2xl font-bold text-amber-400">$0.00</h2>
+                        <p class="text-xs text-slate-400 mt-1" id="dash-fixed-pending-count">0 vencimientos próximos</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase text-slate-400">Presupuesto Mensual</span>
+                        <div class="p-2 bg-sky-500/10 text-sky-400 rounded-xl"><i data-lucide="pie-chart" class="w-5 h-5"></i></div>
+                    </div>
+                    <div class="mt-3">
+                        <h2 id="dash-total-budget" class="text-2xl font-bold text-sky-400">$0.00</h2>
+                        <p class="text-xs text-slate-400 mt-1">Límite total por categorías</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase text-slate-400">Vehículos Registrados</span>
+                        <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl"><i data-lucide="car" class="w-5 h-5"></i></div>
+                    </div>
+                    <div class="mt-3">
+                        <h2 id="dash-vehicles-count" class="text-2xl font-bold text-indigo-300">0 Unidades</h2>
+                        <p class="text-xs text-slate-400 mt-1">Kangoo & Moto activas</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 class="text-base font-semibold text-white">Presupuestos por Categoría</h3>
+                <div id="dash-category-progress" class="space-y-4 pt-2"></div>
+            </div>
+        </section>
+
+        <!-- MOVIMIENTOS TAB -->
+        <section id="view-movements" class="tab-view space-y-4 hidden">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Registro de Movimientos</h2>
+                    <p class="text-xs text-slate-400">Historial completo de egresos y cargas de combustible</p>
+                </div>
+                <input type="text" id="mov-search" onkeyup="filterMovements()" placeholder="Buscar notas, estaciones, id..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-full sm:w-64">
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-800/70 border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase">
+                                <th class="p-4">Fecha</th>
+                                <th class="p-4">Categoría</th>
+                                <th class="p-4">Notas / Detalle</th>
+                                <th class="p-4">Medio de Pago</th>
+                                <th class="p-4">Datos Vehículo</th>
+                                <th class="p-4 text-right">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="movements-table-body" class="divide-y divide-slate-800/60 text-slate-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGOS FIJOS TAB -->
+        <section id="view-fixed" class="tab-view space-y-4 hidden">
+            <h2 class="text-xl font-bold text-white">Control de Pagos Fijos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="fixed-payments-grid"></div>
+        </section>
+
+        <!-- VEHÍCULOS TAB -->
+        <section id="view-vehicles" class="tab-view space-y-6 hidden">
+            <h2 class="text-xl font-bold text-white">Módulo de Vehículos & Logística</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="vehicles-container"></div>
+        </section>
+
+        <!-- CATEGORÍAS TAB -->
+        <section id="view-categories" class="tab-view space-y-6 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <h3 class="text-lg font-bold text-white">Categorías</h3>
+                    <div id="categories-list" class="space-y-3 divide-y divide-slate-800/80"></div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <h3 class="text-lg font-bold text-white">Métodos de Pago</h3>
+                    <div id="payment-methods-list" class="space-y-3 divide-y divide-slate-800/80"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BACKUP JSON TAB -->
+        <section id="view-backup" class="tab-view space-y-4 hidden">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-white">Gestión de Respaldo JSON</h2>
+                <div class="flex items-center space-x-2">
+                    <label class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg cursor-pointer flex items-center space-x-1.5 border border-slate-700">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <span>Cargar JSON</span>
+                        <input type="file" id="json-file-input" accept=".json" class="hidden" onchange="importJSONFile(event)">
+                    </label>
+                    <button onclick="applyJSONEditor()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center space-x-1.5">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Aplicar Cambios</span>
+                    </button>
+                </div>
+            </div>
+            <textarea id="json-editor" class="w-full h-96 bg-slate-950 text-emerald-400 font-mono text-xs p-4 rounded-xl border border-slate-800 focus:outline-none focus:border-emerald-500" spellcheck="false"></textarea>
+        </section>
+
+    </main>
+
+    <script>
+        let appData = {
+          "version": "1.0",
+          "exportedAt": "2026-10-10T12:00:00Z",
+          "movements": [
+            {
+              "id": "mov_001",
+              "date": "2026-10-08",
+              "amount": 18500.0,
+              "categoryId": "vehiculo_combustible",
+              "paymentMethodId": "mercado_pago",
+              "notes": "Carga GNC en YPF",
+              "vehicleData": {
+                "vehicleId": "kangoo_21",
+                "odometer": 145200,
+                "quantity": 15.4,
+                "unitPrice": 1201.3,
+                "fuelType": "GNC",
+                "station": "YPF Venado Tuerto"
+              }
+            },
+            {
+              "id": "mov_002",
+              "date": "2026-10-05",
+              "amount": 180000.0,
+              "categoryId": "vivienda_alquiler",
+              "paymentMethodId": "transferencia",
+              "notes": "Pago alquiler mensual",
+              "vehicleData": null
+            },
+            {
+              "id": "mov_003",
+              "date": "2026-10-02",
+              "amount": 42000.0,
+              "categoryId": "vehiculo_mantenimiento",
+              "paymentMethodId": "efectivo",
+              "notes": "Cambio de aceite y filtros",
+              "vehicleData": {
+                "vehicleId": "kangoo_21",
+                "odometer": 145000,
+                "quantity": null,
+                "unitPrice": null,
+                "fuelType": null,
+                "station": null
+              }
+            },
+            {
+              "id": "mov_004",
+              "date": "2026-09-28",
+              "amount": 12000.0,
+              "categoryId": "vehiculo_combustible",
+              "paymentMethodId": "personal_pay",
+              "notes": "Carga Nafta Súper Moto",
+              "vehicleData": {
+                "vehicleId": "moto_01",
+                "odometer": 18500,
+                "quantity": 10.2,
+                "unitPrice": 1176.4,
+                "fuelType": "Nafta Super",
+                "station": "Shell"
+              }
+            }
+          ],
+          "categories": [
+            { "id": "vehiculo_combustible", "name": "Vehículo - Combustible", "budget": 250000.0, "icon": "gas-station", "isCustom": true },
+            { "id": "vehiculo_mantenimiento", "name": "Vehículo - Mantenimiento", "budget": 120000.0, "icon": "wrench", "isCustom": true },
+            { "id": "vivienda_alquiler", "name": "Vivienda - Alquiler", "budget": 180000.0, "icon": "home", "isCustom": false },
+            { "id": "vivienda_servicios", "name": "Vivienda - Servicios", "budget": 85000.0, "icon": "lightning-bolt", "isCustom": false },
+            { "id": "impuestos_contador", "name": "Impuestos y Contador", "budget": 95000.0, "icon": "file-text", "isCustom": true },
+            { "id": "salud_psicologia", "name": "Salud y Psicología", "budget": 60000.0, "icon": "heart", "isCustom": true }
+          ],
+          "fixedPayments": [
+            { "id": "fp_001", "name": "Alquiler Dpto", "amount": 180000.0, "dueDate": "10", "categoryId": "vivienda_alquiler", "status": "paid" },
+            { "id": "fp_002", "name": "Litoral Gas", "amount": 12500.0, "dueDate": "15", "categoryId": "vivienda_servicios", "status": "pending" },
+            { "id": "fp_003", "name": "Luz CEVT", "amount": 34000.0, "dueDate": "18", "categoryId": "vivienda_servicios", "status": "pending" },
+            { "id": "fp_004", "name": "Plan Peugeot", "amount": 115000.0, "dueDate": "22", "categoryId": "vehiculo_mantenimiento", "status": "pending" },
+            { "id": "fp_005", "name": "Honorarios Contador / ARCA", "amount": 45000.0, "dueDate": "25", "categoryId": "impuestos_contador", "status": "pending" }
+          ],
+          "paymentMethods": [
+            { "id": "mercado_pago", "name": "Mercado Pago", "type": "digital_wallet" },
+            { "id": "personal_pay", "name": "Personal Pay", "type": "digital_wallet" },
+            { "id": "transferencia", "name": "Transferencia Bancaria", "type": "bank_account" },
+            { "id": "efectivo", "name": "Efectivo", "type": "cash" },
+            { "id": "naranja_x", "name": "Naranja X", "type": "credit_card" }
+          ],
+          "vehicles": [
+            { "id": "kangoo_21", "name": "Renault Kangoo", "model": "2021" },
+            { "id": "moto_01", "name": "Moto", "model": "2022" }
+          ]
+        };
+
+        function formatARS(val) {
+            return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(val || 0);
+        }
+        function getCategory(id) { return appData.categories.find(c => c.id === id) || { name: id, budget: 0 }; }
+        function getPaymentMethod(id) { return appData.paymentMethods.find(p => p.id === id) || { name: id }; }
+        function getVehicle(id) { return appData.vehicles.find(v => v.id === id) || { name: id, model: '' }; }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('text-emerald-400', 'bg-slate-800'));
+            document.getElementById('tab-btn-' + tabId)?.classList.add('text-emerald-400', 'bg-slate-800');
+        }
+
+        function renderDashboard() {
+            const total = appData.movements.reduce((sum, m) => sum + (m.amount || 0), 0);
+            document.getElementById('dash-total-expenses').innerText = formatARS(total);
+            document.getElementById('dash-movements-count').innerText = `${appData.movements.length} movimientos`;
+
+            const pending = appData.fixedPayments.filter(f => f.status === 'pending');
+            document.getElementById('dash-fixed-pending').innerText = formatARS(pending.reduce((s, f) => s + f.amount, 0));
+            document.getElementById('dash-fixed-pending-count').innerText = `${pending.length} facturas por pagar`;
+
+            document.getElementById('dash-total-budget').innerText = formatARS(appData.categories.reduce((s, c) => s + c.budget, 0));
+            document.getElementById('dash-vehicles-count').innerText = `${appData.vehicles.length} Unidades`;
+
+            const progress = document.getElementById('dash-category-progress');
+            progress.innerHTML = '';
+            appData.categories.forEach(cat => {
+                const spent = appData.movements.filter(m => m.categoryId === cat.id).reduce((s, m) => s + m.amount, 0);
+                const pct = cat.budget ? Math.min(Math.round((spent / cat.budget) * 100), 100) : 0;
+                progress.innerHTML += `
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-200">${cat.name}</span>
+                            <span class="text-slate-400">${formatARS(spent)} / ${formatARS(cat.budget)} (${pct}%)</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="bg-emerald-500 h-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function renderMovements(items = appData.movements) {
+            const tbody = document.getElementById('movements-table-body');
+            tbody.innerHTML = items.map(mov => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-4 font-mono text-xs text-slate-400">${mov.date}</td>
+                    <td class="p-4 font-medium">${getCategory(mov.categoryId).name}</td>
+                    <td class="p-4">${mov.notes || '-'}</td>
+                    <td class="p-4 text-xs">${getPaymentMethod(mov.paymentMethodId).name}</td>
+                    <td class="p-4 text-xs">${mov.vehicleData ? getVehicle(mov.vehicleData.vehicleId).name : '-'}</td>
+                    <td class="p-4 text-right font-bold text-emerald-400 font-mono">${formatARS(mov.amount)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function filterMovements() {
+            const q = document.getElementById('mov-search').value.toLowerCase();
+            renderMovements(appData.movements.filter(m => (m.notes || '').toLowerCase().includes(q)));
+        }
+
+        function renderFixedPayments() {
+            document.getElementById('fixed-payments-grid').innerHTML = appData.fixedPayments.map(fp => `
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <div class="flex justify-between">
+                        <div><span class="text-xs text-slate-400">Vence día ${fp.dueDate}</span><h4 class="font-bold">${fp.name}</h4></div>
+                        <span class="px-2 py-0.5 rounded text-xs ${fp.status === 'paid' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">${fp.status}</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-slate-800">
+                        <span class="text-xs text-slate-400">${getCategory(fp.categoryId).name}</span>
+                        <span class="font-bold text-white font-mono">${formatARS(fp.amount)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderVehicles() {
+            document.getElementById('vehicles-container').innerHTML = appData.vehicles.map(v => `
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <h3 class="text-lg font-bold text-white">${v.name} (${v.model})</h3>
+                    <p class="text-xs text-slate-400">Registros asociados en el sistema.</p>
+                </div>
+            `).join('');
+        }
+
+        function renderCategoriesAndMethods() {
+            document.getElementById('categories-list').innerHTML = appData.categories.map(c => `
+                <div class="flex justify-between pt-2"><p class="text-sm text-white">${c.name}</p><span class="font-mono text-sm">${formatARS(c.budget)}</span></div>
+            `).join('');
+            document.getElementById('payment-methods-list').innerHTML = appData.paymentMethods.map(p => `
+                <div class="flex justify-between pt-2"><p class="text-sm text-white">${p.name}</p><span class="text-xs text-slate-400">${p.type}</span></div>
+            `).join('');
+        }
+
+        function renderBackupEditor() { document.getElementById('json-editor').value = JSON.stringify(appData, null, 2); }
+        function applyJSONEditor() { try { appData = JSON.parse(document.getElementById('json-editor').value); initApp(); } catch(e) { alert(e.message); } }
+        function exportData() {
+            const dataStr = "
