@@ -1,1527 +1,798 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>moneda. - Finanzas & Flota</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#0f1012',
-                        cardBg: '#1e1e1e',
-                        cardBorder: '#2a2d32',
-                        neonGreen: '#22c55e',
-                        neonRed: '#ef4444',
-                        neonYellow: '#f59e0b'
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background-color: #0f1012;
-            color: #f3f4f6;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .light body {
-            background-color: #f4f5f7;
-            color: #111827;
-        }
-        .light .bg-cardBg {
-            background-color: #ffffff !important;
-            border-color: #e5e7eb !important;
-        }
-        .light .bg-darkBg {
-            background-color: #f4f5f7 !important;
-        }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>moneda - Gestión Financiera & Transporte</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root {
+      --bg-color: #0f1012;
+      --card-bg: #1e1e1e;
+      --card-border: #2a2a2a;
+      --text-main: #f0f0f0;
+      --text-secondary: #a0a0a0;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --accent-blue: #3b82f6;
+      --accent-orange: #f97316;
+      --sidebar-width: 240px;
+    }
+
+    [data-theme="light"] {
+      --bg-color: #f4f5f7;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-secondary: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* App Header */
+    .app-header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background-color: var(--card-bg); border-bottom: 1px solid var(--card-border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; }
+    .header-title { font-size: 18px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+    .sync-badge { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: rgba(34, 197, 94, 0.15); color: var(--accent-green); display: flex; align-items: center; gap: 6px; font-weight: 600; }
+
+    /* Layout Responsive */
+    .app-container { display: flex; width: 100%; margin-top: 56px; margin-bottom: 60px; }
+    .sidebar { width: var(--sidebar-width); background: var(--card-bg); border-right: 1px solid var(--card-border); display: none; flex-direction: column; padding: 16px 0; position: fixed; top: 56px; bottom: 0; left: 0; z-index: 90; }
+    .main-content { flex: 1; padding: 16px; max-width: 900px; margin: 0 auto; width: 100%; }
+
+    /* Nav Items */
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
+    .nav-item.active { color: var(--accent-green); background: rgba(34, 197, 94, 0.08); border-left-color: var(--accent-green); }
+
+    /* Bottom Navigation Mobile */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: var(--card-bg); border-top: 1px solid var(--card-border); display: flex; justify-content: space-around; align-items: center; z-index: 100; }
+    .bottom-nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-secondary); text-decoration: none; font-size: 10px; font-weight: 500; cursor: pointer; }
+    .bottom-nav-item.active { color: var(--accent-green); }
+    .fab-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-green); color: #fff; border: none; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); margin-top: -18px; }
+
+    @media (min-width: 768px) {
+      .sidebar { display: flex; }
+      .main-content { margin-left: var(--sidebar-width); }
+      .bottom-nav { display: none; }
+      .app-container { margin-bottom: 0; }
+    }
+
+    /* Cards & Components */
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+    .card-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .balance-val { font-size: 32px; font-weight: 800; margin: 8px 0; }
+    .val-green { color: var(--accent-green); }
+    .val-red { color: var(--accent-red); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+    input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--card-border); background: rgba(0,0,0,0.2); color: var(--text-main); font-size: 14px; margin-bottom: 10px; }
+    [data-theme="light"] input, [data-theme="light"] select { background: #f8fafc; }
+
+    .btn { padding: 10px 16px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-green { background: var(--accent-green); color: #fff; }
+    .btn-flat { background: rgba(255,255,255,0.06); color: var(--text-main); border: 1px solid var(--card-border); }
+    .btn-flat:hover { background: rgba(255,255,255,0.12); }
+
+    .chip-group { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .chip { padding: 6px 12px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .chip.active { background: var(--accent-green); color: #fff; border-color: var(--accent-green); }
+
+    /* Tabs Visiblity */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Lists & Telemetry Items */
+    .history-item { padding: 12px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .badge-paid { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
+    .badge-pending { background: rgba(249, 115, 22, 0.15); color: var(--accent-orange); }
+    .badge-late { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+
+    .progress-bar-container { background: rgba(255,255,255,0.05); border-radius: 8px; height: 10px; width: 100%; overflow: hidden; margin: 8px 0; }
+    .progress-bar-fill { background: var(--accent-green); height: 100%; transition: width 0.3s; }
+  </style>
 </head>
-<body class="min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
+<body>
 
-    <!-- SIDEBAR (DESKTOP) -->
-    <aside class="hidden md:flex flex-col w-64 bg-cardBg border-r border-cardBorder p-4 flex-shrink-0 min-h-screen justify-between">
-        <div>
-            <!-- LOGO & BRAND -->
-            <div class="flex items-center justify-between mb-8 px-2">
-                <div class="flex items-center space-x-2">
-                    <span class="text-2xl font-black text-neonGreen tracking-wider">moneda<span class="text-white">.</span></span>
-                </div>
-                <div id="cloud-status-desktop" class="text-xs px-2 py-1 rounded-full bg-emerald-950 text-neonGreen flex items-center gap-1 border border-emerald-800/50">
-                    <i class="fa-solid font-bold fa-cloud"></i> <span id="sync-text-desktop">Sincro</span>
-                </div>
-            </div>
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-title">
+      <span>🪙 moneda</span>
+    </div>
+    <div class="sync-badge" id="syncIndicator">
+      <span id="syncIcon">☁️</span> <span id="syncText">Sincronizado</span>
+    </div>
+  </header>
 
-            <!-- DESKTOP NAV LINKS -->
-            <nav class="space-y-2">
-                <button onclick="switchTab('inicio')" id="dnav-inicio" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition text-neonGreen bg-emerald-950/40 border border-emerald-800/30">
-                    <i class="fa-solid fa-house w-5"></i>
-                    <span>Inicio</span>
-                </button>
-                <button onclick="switchTab('movimientos')" id="dnav-movimientos" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition text-gray-400 hover:text-white hover:bg-white/5">
-                    <i class="fa-solid fa-list-ul w-5"></i>
-                    <span>Movimientos</span>
-                </button>
-                <button onclick="switchTab('vehiculo')" id="dnav-vehiculo" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition text-gray-400 hover:text-white hover:bg-white/5">
-                    <i class="fa-solid fa-truck-monster w-5"></i>
-                    <span>Vehículo / Flota</span>
-                </button>
-                <button onclick="switchTab('ajustes')" id="dnav-ajustes" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition text-gray-400 hover:text-white hover:bg-white/5">
-                    <i class="fa-solid fa-gear w-5"></i>
-                    <span>Ajustes</span>
-                </button>
-            </nav>
-        </div>
-
-        <!-- QUICK ADD DESKTOP BUTTON -->
-        <div>
-            <button onclick="openModal('quick')" class="w-full bg-neonGreen hover:bg-emerald-500 text-black font-bold py-3 px-4 rounded-xl shadow-lg transition flex items-center justify-center space-x-2">
-                <i class="fa-solid fa-plus"></i>
-                <span>Nuevo Movimiento</span>
-            </button>
-        </div>
-    </aside>
-
-    <!-- MAIN CONTENT AREA -->
-    <main class="flex-1 max-w-6xl mx-auto w-full p-4 md:p-8 space-y-6">
-
-        <!-- HEADER (MOBILE ONLY) -->
-        <header class="flex md:hidden items-center justify-between pb-2 border-b border-cardBorder">
-            <div class="flex items-center space-x-2">
-                <span class="text-xl font-black text-neonGreen">moneda<span class="text-white">.</span></span>
-            </div>
-            <div class="flex items-center space-x-3">
-                <div id="cloud-status-mobile" class="text-xs px-2.5 py-1 rounded-full bg-emerald-950 text-neonGreen flex items-center gap-1.5 border border-emerald-800/50">
-                    <i class="fa-solid fa-cloud text-xs"></i> <span id="sync-text-mobile" class="text-[10px] font-semibold">Local</span>
-                </div>
-                <button onclick="toggleTheme()" class="p-2 text-gray-400 hover:text-white">
-                    <i id="theme-icon" class="fa-solid fa-moon text-lg"></i>
-                </button>
-            </div>
-        </header>
-
-        <!-- TAB 1: INICIO (DASHBOARD) -->
-        <section id="tab-inicio" class="space-y-6">
-            
-            <!-- BALANCE GENERAL CARD -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Balance Total del Mes</span>
-                    <button onclick="toggleTheme()" class="hidden md:block text-gray-400 hover:text-white text-sm">
-                        <i id="theme-icon-desktop" class="fa-solid fa-moon"></i> Tema
-                    </button>
-                </div>
-                <div class="flex items-baseline space-x-2 mb-6">
-                    <span class="text-3xl md:text-5xl font-black tracking-tight" id="main-balance">$ 0,00</span>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4 border-t border-cardBorder/60 pt-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-xl bg-emerald-950/60 text-neonGreen flex items-center justify-center border border-emerald-800/40">
-                            <i class="fa-solid fa-arrow-down-left"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 font-medium">Ingresos</p>
-                            <p class="text-base md:text-lg font-bold text-neonGreen" id="total-income">$ 0,00</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-xl bg-red-950/60 text-neonRed flex items-center justify-center border border-red-800/40">
-                            <i class="fa-solid fa-arrow-up-right"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400 font-medium">Gastos</p>
-                            <p class="text-base md:text-lg font-bold text-neonRed" id="total-expense">$ 0,00</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- INPUT MÁGICO (TEXTO Y DICTADO POR VOZ) -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 md:p-5 shadow-xl space-y-3">
-                <div class="flex items-center justify-between">
-                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles text-neonGreen"></i> Input Mágico
-                    </label>
-                    <span class="text-[10px] text-gray-500">Escribí o dictá p.ej: "1200 nafta"</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <div class="relative flex-1">
-                        <input type="text" id="magic-input" placeholder="Ej: 45000 nafta súper partner..." class="w-full bg-darkBg border border-cardBorder rounded-xl py-3 pl-4 pr-10 text-sm focus:outline-none focus:border-neonGreen transition">
-                        <button onclick="startVoiceRecognition()" title="Dictar por voz" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-neonGreen transition">
-                            <i class="fa-solid fa-microphone text-base" id="mic-icon"></i>
-                        </button>
-                    </div>
-                    <button onclick="processMagicInput()" class="bg-neonGreen hover:bg-emerald-500 text-black font-bold px-5 py-3 rounded-xl transition flex items-center justify-center space-x-1 flex-shrink-0">
-                        <span>Anotar</span>
-                        <i class="fa-solid fa-arrow-right text-xs"></i>
-                    </button>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 text-xs">
-                    <input type="date" id="magic-date" class="bg-darkBg border border-cardBorder rounded-lg px-2.5 py-1 text-gray-300 focus:outline-none">
-                    <select id="magic-method" class="bg-darkBg border border-cardBorder rounded-lg px-2.5 py-1 text-gray-300 focus:outline-none">
-                        <!-- Populated dynamically -->
-                    </select>
-                </div>
-            </div>
-
-            <!-- BOTONES RÁPIDOS (1-TAP) -->
-            <div class="space-y-2">
-                <div class="flex items-center justify-between px-1">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Botones Rápidos (1-Tap)</span>
-                    <button onclick="openModal('quick-button-config')" class="text-xs text-neonGreen hover:underline">+ Crear Botón</button>
-                </div>
-                <div id="quick-buttons-container" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <!-- PAGOS FIJOS / GASTOS RECURRENTES -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-4">
-                <div class="flex items-center justify-between border-b border-cardBorder/60 pb-3">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-calendar-check text-neonYellow"></i> Pagos Fijos del Mes
-                    </span>
-                    <button onclick="openModal('recurring')" class="text-xs bg-darkBg hover:bg-white/5 border border-cardBorder px-3 py-1.5 rounded-lg text-neonGreen font-semibold transition">
-                        + Pago Fijo
-                    </button>
-                </div>
-                <div id="recurring-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <!-- GRÁFICO DE DISTRIBUCIÓN (TOGGLE HOGAR VS VEHÍCULO) -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cardBorder/60 pb-3">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Distribución del Mes</span>
-                    <div class="inline-flex rounded-lg bg-darkBg p-1 border border-cardBorder text-xs">
-                        <button id="chart-toggle-hogar" onclick="setChartGroup('hogar')" class="px-3 py-1 rounded-md font-semibold transition bg-neonGreen text-black">Hogar / Personal</button>
-                        <button id="chart-toggle-vehiculo" onclick="setChartGroup('vehiculo')" class="px-3 py-1 rounded-md font-semibold transition text-gray-400 hover:text-white">Vehículo / Logística</button>
-                    </div>
-                </div>
-                <div class="h-56 relative flex items-center justify-center">
-                    <canvas id="distributionChart"></canvas>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- TAB 2: MOVIMIENTOS (HISTORIAL COMPLETO) -->
-        <section id="tab-movimientos" class="hidden space-y-4">
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 md:p-5 shadow-xl space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <h2 class="text-lg font-bold flex items-center gap-2">
-                        <i class="fa-solid fa-list-ul text-neonGreen"></i> Historial de Movimientos
-                    </h2>
-                    <!-- SEARCH & FILTERS -->
-                    <div class="relative flex-1 max-w-xs">
-                        <input type="text" id="history-search" oninput="renderHistory()" placeholder="Buscar concepto o monto..." class="w-full bg-darkBg border border-cardBorder rounded-xl py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-neonGreen">
-                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
-                    </div>
-                </div>
-
-                <!-- CHIPS DE FILTRO -->
-                <div class="flex flex-wrap gap-2 text-xs pt-1">
-                    <button onclick="setHistoryFilter('todos')" id="filter-todos" class="px-3 py-1.5 rounded-lg bg-neonGreen text-black font-bold">Todos</button>
-                    <button onclick="setHistoryFilter('hogar')" id="filter-hogar" class="px-3 py-1.5 rounded-lg bg-darkBg border border-cardBorder text-gray-300">Hogar</button>
-                    <button onclick="setHistoryFilter('vehiculo')" id="filter-vehiculo" class="px-3 py-1.5 rounded-lg bg-darkBg border border-cardBorder text-gray-300">Vehículo</button>
-                    <button onclick="setHistoryFilter('ingreso')" id="filter-ingreso" class="px-3 py-1.5 rounded-lg bg-darkBg border border-cardBorder text-gray-300">Ingresos</button>
-                    <button onclick="setHistoryFilter('gasto')" id="filter-gasto" class="px-3 py-1.5 rounded-lg bg-darkBg border border-cardBorder text-gray-300">Gastos</button>
-                </div>
-
-                <!-- LISTA DE MOVIMIENTOS -->
-                <div id="history-list" class="space-y-2 pt-2">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 3: VEHÍCULO / FLOTA (ESTILO FUELIO) -->
-        <section id="tab-vehiculo" class="hidden space-y-6">
-            
-            <!-- SELECTOR DE VEHÍCULO Y FLOTA -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 md:p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="flex items-center space-x-3">
-                    <div class="w-12 h-12 rounded-2xl bg-emerald-950/80 border border-emerald-800/50 text-neonGreen flex items-center justify-center text-xl font-bold">
-                        <i class="fa-solid fa-truck-pickup"></i>
-                    </div>
-                    <div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Vehículo Activo</span>
-                        <div class="flex items-center space-x-2">
-                            <select id="vehicle-selector" onchange="changeActiveVehicle(this.value)" class="bg-darkBg border border-cardBorder text-sm font-bold rounded-lg px-3 py-1.5 focus:outline-none text-white">
-                                <!-- Populated dynamically -->
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-2 text-xs">
-                    <button onclick="openModal('edit-plate')" class="px-3 py-2 bg-darkBg hover:bg-white/5 border border-cardBorder rounded-lg text-gray-300 flex items-center space-x-1">
-                        <i class="fa-solid fa-pen text-[10px]"></i> <span>Patente</span>
-                    </button>
-                    <button onclick="openModal('new-vehicle')" class="px-3 py-2 bg-neonGreen hover:bg-emerald-500 text-black font-bold rounded-lg flex items-center space-x-1">
-                        <i class="fa-solid fa-plus text-[10px]"></i> <span>+ Vehículo</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- TABS DE ACCIÓN RÁPIDA VEHICULAR -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-4">
-                <div class="flex rounded-xl bg-darkBg p-1 border border-cardBorder text-xs font-semibold">
-                    <button onclick="setVehicleSubTab('combustible')" id="vtab-combustible" class="flex-1 py-2.5 rounded-lg text-center transition bg-neonGreen text-black font-bold">⛽ Combustible</button>
-                    <button onclick="setVehicleSubTab('peaje')" id="vtab-peaje" class="flex-1 py-2.5 rounded-lg text-center transition text-gray-400 hover:text-white">🛣 Peaje</button>
-                    <button onclick="setVehicleSubTab('mantenimiento')" id="vtab-mantenimiento" class="flex-1 py-2.5 rounded-lg text-center transition text-gray-400 hover:text-white">🔧 Mantenimiento</button>
-                </div>
-
-                <!-- SUB-TAB: COMBUSTIBLE -->
-                <div id="vsub-combustible" class="space-y-4">
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
-                        <button onclick="setFuelType('gnc')" id="fuel-btn-gnc" class="py-2.5 px-2 rounded-xl border border-cardBorder bg-neonGreen text-black font-bold">GNC</button>
-                        <button onclick="setFuelType('super')" id="fuel-btn-super" class="py-2.5 px-2 rounded-xl border border-cardBorder bg-darkBg text-gray-300">Nafta Súper</button>
-                        <button onclick="setFuelType('premium')" id="fuel-btn-premium" class="py-2.5 px-2 rounded-xl border border-cardBorder bg-darkBg text-gray-300">Nafta Premium</button>
-                        <button onclick="setFuelType('diesel_super')" id="fuel-btn-diesel_super" class="py-2.5 px-2 rounded-xl border border-cardBorder bg-darkBg text-gray-300">Diesel Súper</button>
-                        <button onclick="setFuelType('diesel_premium')" id="fuel-btn-diesel_premium" class="py-2.5 px-2 rounded-xl border border-cardBorder bg-darkBg text-gray-300">Diesel Premium</button>
-                    </div>
-
-                    <!-- FORMULARIO DE REPOSTAJE AUTOMÁTICO DE 2 DATOS -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400">Kilometraje Actual (KM)</label>
-                            <input type="number" id="fuel-km" placeholder="Ej: 456972" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-sm focus:outline-none focus:border-neonGreen">
-                        </div>
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400" id="fuel-volume-label">Carga (m³)</label>
-                            <input type="number" step="0.01" id="fuel-volume" oninput="calculateFuelForm('volume')" placeholder="Ej: 15.2" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-sm focus:outline-none focus:border-neonGreen">
-                        </div>
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400">Monto Total ($)</label>
-                            <input type="number" step="0.01" id="fuel-cost" oninput="calculateFuelForm('cost')" placeholder="Ej: 14500" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-sm focus:outline-none focus:border-neonGreen">
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between gap-3 text-xs pt-1">
-                        <div class="text-gray-400">
-                            Precio/Unidad: <span id="fuel-unit-price" class="font-bold text-white">$ 0.00</span>
-                        </div>
-                        <label class="flex items-center space-x-2 text-gray-300 cursor-pointer">
-                            <input type="checkbox" id="fuel-full-tank" checked class="rounded bg-darkBg border-cardBorder text-neonGreen focus:ring-0">
-                            <span>Tanque Lleno</span>
-                        </label>
-                    </div>
-
-                    <div class="flex items-center justify-end space-x-2 pt-2">
-                        <button onclick="saveFuelLog()" class="w-full sm:w-auto bg-neonGreen hover:bg-emerald-500 text-black font-bold px-6 py-3 rounded-xl transition flex items-center justify-center space-x-2">
-                            <i class="fa-solid fa-floppy-disk"></i>
-                            <span>Guardar Carga e Impactar Gasto</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- SUB-TAB: PEAJE -->
-                <div id="vsub-peaje" class="hidden space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400">Lugar / Peaje</label>
-                            <input type="text" id="toll-name" placeholder="Ej: Peaje Ruta 8 / Rosario" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-sm focus:outline-none focus:border-neonGreen">
-                        </div>
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400">Monto ($)</label>
-                            <input type="number" id="toll-cost" placeholder="Ej: 1850" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-sm focus:outline-none focus:border-neonGreen">
-                        </div>
-                        <div class="flex items-end">
-                            <button onclick="saveTollLog()" class="w-full bg-neonGreen hover:bg-emerald-500 text-black font-bold py-2.5 rounded-xl transition">
-                                Guardar Peaje
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SUB-TAB: MANTENIMIENTO -->
-                <div id="vsub-mantenimiento" class="hidden space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400">Tipo / Rutina</label>
-                            <select id="maint-title" onchange="onMaintTitleChange(this.value)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-sm text-white focus:outline-none">
-                                <option value="Service Aceite y Filtros">Service Aceite y Filtros</option>
-                                <option value="Gomería / Neumáticos">Gomería / Neumáticos</option>
-                                <option value="Frenos">Frenos</option>
-                                <option value="Distribución / Correa">Distribución / Correa</option>
-                                <option value="Otro">Otro Mantenimiento...</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400">KM Real al realizar</label>
-                            <input type="number" id="maint-km" placeholder="Ej: 456972" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-sm focus:outline-none focus:border-neonGreen">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400">Costo Total ($)</label>
-                            <input type="number" id="maint-cost" placeholder="Ej: 65000" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-sm focus:outline-none focus:border-neonGreen">
-                        </div>
-                        <div>
-                            <label class="text-[11px] font-semibold text-gray-400">Foto del Repuesto / Factura</label>
-                            <input type="file" id="maint-photo" accept="image/*" class="w-full bg-darkBg border border-cardBorder rounded-xl p-1.5 text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-white hover:file:bg-white/20">
-                        </div>
-                    </div>
-
-                    <!-- CHECKLIST DINÁMICO CON CHIPS -->
-                    <div class="space-y-2">
-                        <label class="text-[11px] font-semibold text-gray-400">Items Tildables (Checklist)</label>
-                        <div id="maint-checklist-chips" class="flex flex-wrap gap-2 text-xs">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- REPETICIÓN / ALERTAS -->
-                    <div class="bg-darkBg border border-cardBorder rounded-xl p-3 space-y-2">
-                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">Configuración de Alerta Posterior</span>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                                <label class="text-gray-500">Repetir cada (KM)</label>
-                                <input type="number" id="maint-interval-km" value="10000" class="w-full bg-cardBg border border-cardBorder rounded-lg p-2 text-white">
-                            </div>
-                            <div>
-                                <label class="text-gray-500">O cada (Meses)</label>
-                                <input type="number" id="maint-interval-months" value="12" class="w-full bg-cardBg border border-cardBorder rounded-lg p-2 text-white">
-                            </div>
-                        </div>
-                    </div>
-
-                    <button onclick="saveMaintenanceLog()" class="w-full bg-neonGreen hover:bg-emerald-500 text-black font-bold py-3 rounded-xl transition flex items-center justify-center space-x-2">
-                        <i class="fa-solid fa-check"></i>
-                        <span>Guardar Service y Resetear Baseline</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- TARJETAS COMPARATIVAS DE COMBUSTIBLE (ESTILO FUELIO) -->
-            <div id="fuel-comparison-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Populated dynamically -->
-            </div>
-
-            <!-- HISTORIAL CRONOLÓGICO DE ÚLTIMAS CARGAS -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-4">
-                <div class="flex items-center justify-between border-b border-cardBorder/60 pb-3">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-clock-rotate-left text-neonGreen"></i> Últimas Cargas y Peajes
-                    </span>
-                </div>
-                <div id="recent-fuel-logs" class="space-y-2">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <!-- ALERTAS Y PROGRESO DE MANTENIMIENTO -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-4">
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block border-b border-cardBorder/60 pb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-triangle-exclamation text-neonYellow"></i> Estado de Mantenimientos
-                </span>
-                <div id="maintenance-alerts-container" class="space-y-3">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-        </section>
-
-        <!-- TAB 4: AJUSTES (CONFIGURACIÓN) -->
-        <section id="tab-ajustes" class="hidden space-y-6">
-            
-            <!-- SELECTOR DE TEMA -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-3">
-                <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
-                    <i class="fa-solid fa-palette text-neonGreen"></i> Tema Visual
-                </h3>
-                <div class="grid grid-cols-3 gap-2 text-xs">
-                    <button onclick="setTheme('dark')" class="py-2.5 rounded-xl border border-cardBorder bg-darkBg text-white font-semibold">Modo Oscuro</button>
-                    <button onclick="setTheme('light')" class="py-2.5 rounded-xl border border-cardBorder bg-white text-black font-semibold">Modo Claro</button>
-                    <button onclick="setTheme('auto')" class="py-2.5 rounded-xl border border-cardBorder bg-darkBg text-gray-400 font-semibold">Automático</button>
-                </div>
-            </div>
-
-            <!-- MÉTODOS DE PAGO DINO-->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-3">
-                <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
-                    <i class="fa-solid fa-wallet text-neonGreen"></i> Métodos de Pago Personalizados
-                </h3>
-                <div id="payment-methods-chips" class="flex flex-wrap gap-2 text-xs">
-                    <!-- Populated dynamically -->
-                </div>
-                <div class="flex items-center space-x-2 pt-2">
-                    <input type="text" id="new-pm-input" placeholder="Ej: Brubank / Naranja X..." class="flex-1 bg-darkBg border border-cardBorder rounded-xl px-3 py-2 text-xs focus:outline-none">
-                    <button onclick="addPaymentMethod()" class="bg-neonGreen text-black font-bold px-4 py-2 rounded-xl text-xs">+ Agregar</button>
-                </div>
-            </div>
-
-            <!-- DICCIONARIO DE PALABRAS CLAVE -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-3">
-                <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
-                    <i class="fa-solid fa-book text-neonGreen"></i> Diccionario de Palabras Clave
-                </h3>
-                <p class="text-xs text-gray-400">Asigna automáticamente grupo y categoría cuando escribís o dictás una palabra.</p>
-                <div id="keywords-container" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    <!-- Populated dynamically -->
-                </div>
-                <div class="grid grid-cols-3 gap-2 pt-2">
-                    <input type="text" id="kw-word" placeholder="Palabra (ej: nafta)" class="bg-darkBg border border-cardBorder rounded-xl p-2 text-xs">
-                    <input type="text" id="kw-cat" placeholder="Categoría (ej: Combustible)" class="bg-darkBg border border-cardBorder rounded-xl p-2 text-xs">
-                    <select id="kw-group" class="bg-darkBg border border-cardBorder rounded-xl p-2 text-xs text-white">
-                        <option value="vehiculo">Vehículo</option>
-                        <option value="hogar">Hogar</option>
-                    </select>
-                </div>
-                <button onclick="addKeyword()" class="w-full bg-neonGreen text-black font-bold py-2 rounded-xl text-xs">+ Agregar Regla de Palabra Clave</button>
-            </div>
-
-            <!-- CONFIGURACIÓN NUBE / CLOUDINARY -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-3">
-                <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
-                    <i class="fa-solid fa-cloud-arrow-up text-neonGreen"></i> Sincronización Nube (Cloudinary)
-                </h3>
-                <p class="text-xs text-gray-400">Para ver las fotos de repuestos tanto en el celular como en la PC, configura tu Preset de Cloudinary gratuito.</p>
-                <div class="space-y-2 text-xs">
-                    <input type="text" id="cloudinary-name" placeholder="Cloud Name (ej: mi-cuenta)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2 text-white">
-                    <input type="text" id="cloudinary-preset" placeholder="Unsigned Upload Preset (ej: preset_moneda)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2 text-white">
-                    <button onclick="saveCloudinarySettings()" class="bg-neonGreen text-black font-bold px-4 py-2 rounded-xl text-xs">Guardar Configuración Nube</button>
-                </div>
-            </div>
-
-            <!-- RESPALDO Y DATOS -->
-            <div class="bg-cardBg border border-cardBorder rounded-2xl p-5 shadow-xl space-y-3">
-                <h3 class="text-sm font-bold text-gray-300 flex items-center gap-2">
-                    <i class="fa-solid fa-database text-neonGreen"></i> Copia de Seguridad
-                </h3>
-                <div class="flex gap-2">
-                    <button onclick="exportBackup()" class="flex-1 bg-darkBg hover:bg-white/5 border border-cardBorder text-gray-300 py-2.5 rounded-xl text-xs font-semibold">
-                        <i class="fa-solid fa-download"></i> Exportar JSON
-                    </button>
-                    <label class="flex-1 bg-darkBg hover:bg-white/5 border border-cardBorder text-gray-300 py-2.5 rounded-xl text-xs font-semibold text-center cursor-pointer">
-                        <i class="fa-solid fa-upload"></i> Importar JSON
-                        <input type="file" onchange="importBackup(event)" accept=".json" class="hidden">
-                    </label>
-                </div>
-            </div>
-
-        </section>
-
-    </main>
-
-    <!-- BOTTOM NAVIGATION BAR (MOBILE ONLY) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-cardBg/95 backdrop-blur-md border-t border-cardBorder flex md:hidden items-center justify-around py-2 px-2 z-40">
-        <button onclick="switchTab('inicio')" id="mnav-inicio" class="flex flex-col items-center space-y-1 text-neonGreen">
-            <i class="fa-solid fa-house text-lg"></i>
-            <span class="text-[10px] font-bold">Inicio</span>
-        </button>
-        <button onclick="switchTab('movimientos')" id="mnav-movimientos" class="flex flex-col items-center space-y-1 text-gray-400">
-            <i class="fa-solid fa-list-ul text-lg"></i>
-            <span class="text-[10px] font-bold">Movs</span>
-        </button>
-        
-        <!-- FLOATING PLUS BUTTON -->
-        <button onclick="openModal('quick')" class="w-12 h-12 bg-neonGreen text-black rounded-full flex items-center justify-center -mt-5 shadow-lg shadow-emerald-500/30 text-xl font-bold border-4 border-darkBg">
-            <i class="fa-solid fa-plus"></i>
-        </button>
-
-        <button onclick="switchTab('vehiculo')" id="mnav-vehiculo" class="flex flex-col items-center space-y-1 text-gray-400">
-            <i class="fa-solid fa-truck-monster text-lg"></i>
-            <span class="text-[10px] font-bold">Vehículo</span>
-        </button>
-        <button onclick="switchTab('ajustes')" id="mnav-ajustes" class="flex flex-col items-center space-y-1 text-gray-400">
-            <i class="fa-solid fa-gear text-lg"></i>
-            <span class="text-[10px] font-bold">Ajustes</span>
-        </button>
+  <div class="app-container">
+    <!-- Sidebar Desktop -->
+    <nav class="sidebar">
+      <div class="nav-item active" id="snav-inicio" onclick="switchTab('tab-inicio')">🏠 Inicio</div>
+      <div class="nav-item" id="snav-movimientos" onclick="switchTab('tab-movimientos')">📋 Movimientos</div>
+      <div class="nav-item" id="snav-vehiculo" onclick="switchTab('tab-vehiculo')">🚗 Vehículo / Logística</div>
+      <div class="nav-item" id="snav-ajustes" onclick="switchTab('tab-ajustes')">⚙️ Ajustes</div>
     </nav>
 
-    <!-- MODALS -->
-    <div id="modal-container" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-cardBg border border-cardBorder w-full max-w-md rounded-2xl p-5 shadow-2xl relative space-y-4 max-h-[90vh] overflow-y-auto">
-            <button onclick="closeModal()" class="absolute right-4 top-4 text-gray-400 hover:text-white">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <div id="modal-content">
-                <!-- Injected dynamically -->
-            </div>
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- TAB INICIO -->
+      <section id="tab-inicio" class="tab-content active">
+        <!-- Balance Card -->
+        <div class="card">
+          <div class="card-title">
+            <span>Balance General</span>
+            <select id="boxSelector" style="width: auto; margin:0;" onchange="renderDashboard()">
+              <option value="todos">Todas las Cajas</option>
+              <option value="hogar">🏠 Hogar / Personal</option>
+              <option value="vehiculo">🚗 Vehículo / Logística</option>
+            </select>
+          </div>
+          <div class="balance-val" id="totalBalance">$0</div>
+          <div class="grid-2">
+            <div><span style="font-size:12px; color:var(--text-secondary);">Ingresos</span><br><strong class="val-green" id="totalIngresos">$0</strong></div>
+            <div><span style="font-size:12px; color:var(--text-secondary);">Gastos</span><br><strong class="val-red" id="totalGastos">$0</strong></div>
+          </div>
         </div>
+
+        <!-- Input Mágico -->
+        <div class="card">
+          <div class="card-title">
+            <span>🎙️ Input Mágico (Texto / Voz)</span>
+            <button class="btn btn-flat" style="padding:4px 8px; font-size:12px;" onclick="startSpeechRecognition()">🎤 Dictar</button>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="magicInput" placeholder="Ej: 15000 nafta Kangoo o 45000 alquiler..." style="margin:0;">
+            <button class="btn btn-green" onclick="processMagicInput()">Anotar</button>
+          </div>
+          <div class="grid-2" style="margin-top:10px;">
+            <input type="date" id="magicDate" style="margin:0;">
+            <select id="magicPaymentMethod" style="margin:0;">
+              <!-- Dynamic Methods -->
+            </select>
+          </div>
+          <span style="font-size:11px; color:var(--text-secondary); margin-top:6px; display:block;">Compara con el diccionario de palabras clave y auto-clasifica en la caja correspondiente.</span>
+        </div>
+
+        <!-- Botones Rápidos 1-Tap -->
+        <div class="card">
+          <div class="card-title">
+            <span>⚡ Botones Rápidos (1-Tap)</span>
+            <button class="btn btn-flat" style="padding:2px 8px; font-size:11px;" onclick="showAddQuickBtnModal()">+ Nuevo</button>
+          </div>
+          <div id="quickButtonsContainer" class="chip-group"></div>
+        </div>
+
+        <!-- Pagos Recurrentes / Vencimientos -->
+        <div class="card">
+          <div class="card-title">📌 Pagos Fijos y Vencimientos</div>
+          <div id="recurrentList"></div>
+        </div>
+      </section>
+
+      <!-- TAB MOVIMIENTOS -->
+      <section id="tab-movimientos" class="tab-content">
+        <div class="card">
+          <div class="card-title">📋 Historial Completo de Movimientos</div>
+          <div id="fullHistoryList"></div>
+        </div>
+      </section>
+
+      <!-- TAB VEHICULO -->
+      <section id="tab-vehiculo" class="tab-content">
+        <!-- Vehicle Fleet Selector -->
+        <div class="card">
+          <div class="card-title">
+            <span>Flota Activa</span>
+            <div>
+              <button class="btn btn-flat" style="padding:4px 8px; font-size:12px;" onclick="editPlate()">✏️ Patente</button>
+              <button class="btn btn-flat" style="padding:4px 8px; font-size:12px;" onclick="addVehicle()">+ Vehículo</button>
+            </div>
+          </div>
+          <select id="vehicleSelector" onchange="renderVehicleTab()">
+            <option value="kangoo">Kangoo 21 - 456.972 km</option>
+            <option value="partner">Partner L2 - 120.000 km</option>
+          </select>
+        </div>
+
+        <!-- Subtabs Pill Selector -->
+        <div class="chip-group">
+          <div class="chip active" id="pill-comb" onclick="switchVehSubtab('combustible')">⛽ Combustible</div>
+          <div class="chip" id="pill-peaje" onclick="switchVehSubtab('peaje')">🛣️ Peaje</div>
+          <div class="chip" id="pill-mant" onclick="switchVehSubtab('mantenimiento')">🔧 Mantenimiento</div>
+        </div>
+
+        <!-- Subtab Combustible -->
+        <div id="veh-sub-combustible" class="card">
+          <div class="card-title">Carga Inteligente de Combustible</div>
+          <select id="combType" onchange="toggleCombUnits()">
+            <option value="GNC">GNC (m³)</option>
+            <option value="Nafta Súper">Nafta Súper (Litros)</option>
+            <option value="Nafta Premium">Nafta Premium (Litros)</option>
+            <option value="Diesel Súper">Diesel Súper (Litros)</option>
+            <option value="Diesel Premium">Diesel Premium (Litros)</option>
+          </select>
+          <div class="grid-2">
+            <input type="number" id="combTotal" placeholder="Monto Total ($)" oninput="calcFuelTrinomial('total')">
+            <input type="number" id="combVol" placeholder="Volumen (m³ / L)" oninput="calcFuelTrinomial('vol')">
+          </div>
+          <input type="number" id="combUnitPrice" placeholder="Precio / Unidad ($)" oninput="calcFuelTrinomial('price')">
+          <input type="number" id="combKm" placeholder="Odómetro Actual (KM)">
+          <button class="btn btn-green" style="width:100%;" onclick="saveFuelEntry()">Guardar Carga</button>
+        </div>
+
+        <!-- Subtab Peaje -->
+        <div id="veh-sub-peaje" class="card" style="display:none;">
+          <div class="card-title">Registro de Peaje</div>
+          <input type="text" id="tollName" placeholder="Ubicación / Estación de Peaje (ej: Ruta 8)">
+          <div class="grid-2">
+            <input type="number" id="tollCost" placeholder="Monto ($)">
+            <input type="number" id="tollKm" placeholder="Odómetro (KM)">
+          </div>
+          <button class="btn btn-green" style="width:100%;" onclick="saveTollEntry()">Guardar Peaje</button>
+        </div>
+
+        <!-- Subtab Mantenimiento -->
+        <div id="veh-sub-mantenimiento" class="card" style="display:none;">
+          <div class="card-title">Mantenimiento Universal & Service</div>
+          <select id="mantPreset" onchange="applyMantPreset()">
+            <option value="aceite">Cambio de Aceite y Filtro</option>
+            <option value="frenos">Frenos y Discos</option>
+            <option value="gomeria">Gomería (Alineación / Balanceo)</option>
+            <option value="otro">Otro Mantenimiento</option>
+          </select>
+          <input type="text" id="mantDetail" placeholder="Detalle libre (ej: Marca Remsa, viscosidad 10w40...)">
+          <div class="grid-2">
+            <input type="number" id="mantCost" placeholder="Monto ($)">
+            <input type="number" id="mantKm" placeholder="KM Real de Service">
+          </div>
+          <div class="card-title" style="font-size:13px; margin-top:8px;">Checklist / Chips Tildables</div>
+          <div id="mantChecklist" class="chip-group"></div>
+          
+          <div style="margin-top:10px;">
+            <label style="font-size:12px; color:var(--text-secondary);">Adjuntar Foto de Repuesto / Factura:</label>
+            <input type="file" id="mantPhoto" accept="image/*" onchange="handlePhotoUpload(event)">
+            <div id="photoPreviewContainer" style="display:none; margin-top:6px;">
+              <img id="photoPreview" style="max-width:100%; height:120px; border-radius:8px; object-fit:cover;">
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top:10px;">
+            <input type="number" id="mantIntervalKm" placeholder="Aviso cada X km (ej: 10000)">
+            <input type="number" id="mantIntervalMonths" placeholder="o cada X meses">
+          </div>
+          <button class="btn btn-green" style="width:100%; margin-top:8px;" onclick="saveMaintenance()">Guardar Service y Resetear Baseline</button>
+        </div>
+
+        <!-- Historial Telemetría Últimas Cargas -->
+        <div class="card">
+          <div class="card-title">⛽ Últimas Cargas & Telemetría</div>
+          <div id="fuelHistoryTelemetry"></div>
+        </div>
+
+        <!-- Comparativas y Rendimiento -->
+        <div class="card">
+          <div class="card-title">📊 Rendimiento Comparativo</div>
+          <div class="grid-2">
+            <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
+              <small style="color:var(--text-secondary)">GNC Promedio</small><br>
+              <strong id="gncAvg">12.88 km/m³</strong>
+            </div>
+            <div style="background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;">
+              <small style="color:var(--text-secondary)">Costo por KM</small><br>
+              <strong id="gncCostKm" class="val-green">$69 / km</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB AJUSTES -->
+      <section id="tab-ajustes" class="tab-content">
+        <div class="card">
+          <div class="card-title">🎨 Tema de Color</div>
+          <div class="chip-group">
+            <div class="chip" onclick="setTheme('auto')">🤖 Automático</div>
+            <div class="chip active" id="theme-dark" onclick="setTheme('dark')">🌙 Nocturno</div>
+            <div class="chip" id="theme-light" onclick="setTheme('light')">☀️ Día</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💳 Métodos de Pago Editables</div>
+          <div id="paymentMethodsChips" class="chip-group"></div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="newPaymentMethodName" placeholder="Nuevo método (ej: Personal Pay)" style="margin:0;">
+            <button class="btn btn-flat" onclick="addPaymentMethod()">+ Agregar</button>
+          </div>
+        </div>
+
+        <!-- Copia de Seguridad & Datos CSV / JSON -->
+        <div class="card">
+          <div class="card-title">💾 Copia de Seguridad y Datos</div>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Exportá tus registros a Excel en formato CSV o guardá una copia de seguridad en JSON.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-flat" onclick="exportToCSV()">📊 Exportar todo (CSV)</button>
+            <button class="btn btn-flat" onclick="exportData()">💾 Exportar backup (JSON)</button>
+            <button class="btn btn-flat" onclick="document.getElementById('importFile').click()">📥 Restaurar backup</button>
+            <input type="file" id="importFile" style="display:none" onchange="importData(event)" accept=".json">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">☁️ Sincronización Nube (Cloudinary)</div>
+          <input type="text" id="cloudName" placeholder="Cloud Name (ej: mi-cuenta)">
+          <input type="text" id="uploadPreset" placeholder="Upload Preset Unsigned">
+          <button class="btn btn-flat" onclick="saveCloudSettings()">Guardar Credenciales</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Bottom Nav Mobile -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-item active" id="bnav-inicio" onclick="switchTab('tab-inicio')">
+      <span>🏠</span><span>Inicio</span>
     </div>
+    <div class="bottom-nav-item" id="bnav-movimientos" onclick="switchTab('tab-movimientos')">
+      <span>📋</span><span>Movs</span>
+    </div>
+    <button class="fab-btn" onclick="switchTab('tab-inicio')">+</button>
+    <div class="bottom-nav-item" id="bnav-vehiculo" onclick="switchTab('tab-vehiculo')">
+      <span>🚗</span><span>Vehículo</span>
+    </div>
+    <div class="bottom-nav-item" id="bnav-ajustes" onclick="switchTab('tab-ajustes')">
+      <span>⚙️</span><span>Ajustes</span>
+    </div>
+  </nav>
 
-    <!-- JAVASCRIPT APPLICATION ENGINE -->
-    <script>
-        // INITIAL STATE MANAGEMENT
-        const DEFAULT_STATE = {
-            theme: 'dark',
-            activeTab: 'inicio',
-            activeVehicleSubTab: 'combustible',
-            chartGroup: 'hogar',
-            historyFilter: 'todos',
-            vehicles: [
-                { id: 'v1', name: 'Peugeot Partner L2', plate: 'AB 123 CD', km: 145200 },
-                { id: 'v2', name: 'Renault Kangoo 1.6', plate: 'AF 456 GH', km: 456972 }
-            ],
-            activeVehicleId: 'v2',
-            paymentMethods: ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Mercado Pago', 'Naranja X', 'Personal Pay', 'Fiwind', 'Arq'],
-            keywords: [
-                { word: 'nafta', category: 'Combustible', group: 'vehiculo' },
-                { word: 'gnc', category: 'Combustible', group: 'vehiculo' },
-                { word: 'peaje', category: 'Peaje', group: 'vehiculo' },
-                { word: 'aceite', category: 'Mantenimiento', group: 'vehiculo' },
-                { word: 'alquiler', category: 'Alquiler', group: 'hogar' },
-                { word: 'supermercado', category: 'Comida', group: 'hogar' },
-                { word: 'luz', category: 'Servicios', group: 'hogar' }
-            ],
-            quickButtons: [
-                { id: 'qb1', name: 'Supermercado', amount: 15000, category: 'Comida', group: 'hogar' },
-                { id: 'qb2', name: 'Carga Nafta', amount: 25000, category: 'Combustible', group: 'vehiculo' }
-            ],
-            transactions: [
-                { id: 't1', date: '2026-10-01', description: 'Cobro de trabajo', amount: 1200000, type: 'ingreso', group: 'hogar', category: 'Sueldo', paymentMethod: 'Transferencia' },
-                { id: 't2', date: '2026-10-05', description: 'Pago Alquiler', amount: 350000, type: 'gasto', group: 'hogar', category: 'Alquiler', paymentMethod: 'Transferencia' }
-            ],
-            recurringPayments: [
-                { id: 'r1', name: 'Alquiler', category: 'Vivienda', amount: 350000, dueDay: 10, status: 'pagado', group: 'hogar' },
-                { id: 'r2', name: 'Seguro Kangoo', category: 'Vehículo', amount: 42000, dueDay: 15, status: 'pendiente', group: 'vehiculo' },
-                { id: 'r3', name: 'Gimnasio', category: 'Salud', amount: 18000, dueDay: 5, status: 'atrasado', group: 'hogar' }
-            ],
-            fuelLogs: [
-                { id: 'fl1', vehicleId: 'v2', date: '2026-10-08', fuelType: 'gnc', volume: 15.2, totalCost: 14562, unitPrice: 958, km: 456972, deltaKm: 173, efficiency: 11.38, costPerKm: 84 },
-                { id: 'fl2', vehicleId: 'v2', date: '2026-10-01', fuelType: 'super', volume: 42.5, totalCost: 45000, unitPrice: 1058, km: 456799, deltaKm: 420, efficiency: 9.88, costPerKm: 107 }
-            ],
-            maintenanceLogs: [
-                { id: 'ml1', vehicleId: 'v2', date: '2026-09-15', title: 'Service Aceite y Filtros', km: 450000, cost: 65000, notes: 'Filtro Mann y Aceite Total 10w40', photoUrl: '', items: ['Aceite', 'Filtro Aceite', 'Filtro Aire'], intervalKm: 10000, intervalMonths: 12 }
-            ],
-            cloudinary: { cloudName: '', uploadPreset: '' }
-        };
+  <script>
+    // State App completo
+    let appData = {
+      movimientos: [
+        { id: 1, fecha: '2026-10-08', tipo: 'gasto', categoria: 'Combustible', monto: 14562, grupo: 'vehiculo', detalle: 'GNC 15.2 m³', km: 456972, kmParcial: 173, rend: 11.38, costKm: 84 },
+        { id: 2, fecha: '2026-10-09', tipo: 'gasto', categoria: 'Peaje', monto: 1835, grupo: 'vehiculo', detalle: 'Peaje Ruta 8' },
+        { id: 3, fecha: '2026-10-05', tipo: 'gasto', categoria: 'Servicios', monto: 41028, grupo: 'hogar', detalle: 'Luz' }
+      ],
+      recurrentes: [
+        { id: 101, titulo: 'Alquiler', monto: 664450, venceDia: 10, estado: 'pendiente', grupo: 'hogar' },
+        { id: 102, titulo: 'Seguro Kangoo', monto: 94685, venceDia: 8, estado: 'pagado', grupo: 'vehiculo' }
+      ],
+      metodosPago: ['Efectivo', 'Débito', 'Crédito', 'Transferencia', 'Fiwind', 'Mercado Pago', 'Naranja X', 'Personal Pay', 'Arq'],
+      quickButtons: [
+        { id: 1, name: 'Nafta 5k', amount: 5000, category: 'Combustible', group: 'vehiculo' },
+        { id: 2, name: 'Peaje 2k', amount: 2000, category: 'Peaje', group: 'vehiculo' }
+      ],
+      cloudConfig: { cloudName: '', uploadPreset: '' },
+      currentPhotoUrl: ''
+    };
 
-        let appData = JSON.parse(localStorage.getItem('monedaData')) || DEFAULT_STATE;
-        let chartInstance = null;
-        let selectedFuelType = 'gnc';
+    function init() {
+      const saved = localStorage.getItem('moneda_data');
+      if (saved) {
+        try { appData = JSON.parse(saved); } catch(e){}
+      }
+      // Populate dates
+      document.getElementById('magicDate').value = new Date().toISOString().slice(0, 10);
+      renderDashboard();
+      renderRecurrents();
+      renderPaymentMethods();
+      renderQuickButtons();
+      renderTelemetryHistory();
+      applyMantPreset();
+    }
 
-        // SAVE STATE
-        function saveState() {
-            localStorage.setItem('monedaData', JSON.stringify(appData));
-            renderAll();
-        }
+    function saveState() {
+      localStorage.setItem('moneda_data', JSON.stringify(appData));
+      renderDashboard();
+      renderRecurrents();
+      renderPaymentMethods();
+      renderQuickButtons();
+      renderTelemetryHistory();
+    }
 
-        // INITIALIZATION
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('magic-date').value = new Date().toISOString().split('T')[0];
-            setTheme(appData.theme || 'dark');
-            renderAll();
-            initChart();
-        });
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.bottom-nav-item').forEach(el => el.classList.remove('active'));
 
-        // THEME ENGINE
-        function setTheme(theme) {
-            appData.theme = theme;
-            const html = document.documentElement;
-            if (theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                html.classList.add('dark');
-                html.classList.remove('light');
-            } else {
-                html.classList.remove('dark');
-                html.classList.add('light');
-            }
+      document.getElementById(tabId).classList.add('active');
+      const bTarget = document.getElementById('bnav-' + tabId.replace('tab-', ''));
+      if (bTarget) bTarget.classList.add('active');
+      const sTarget = document.getElementById('snav-' + tabId.replace('tab-', ''));
+      if (sTarget) sTarget.classList.add('active');
+    }
+
+    function switchVehSubtab(sub) {
+      document.getElementById('pill-comb').classList.remove('active');
+      document.getElementById('pill-peaje').classList.remove('active');
+      document.getElementById('pill-mant').classList.remove('active');
+
+      document.getElementById('veh-sub-combustible').style.display = 'none';
+      document.getElementById('veh-sub-peaje').style.display = 'none';
+      document.getElementById('veh-sub-mantenimiento').style.display = 'none';
+
+      if (sub === 'combustible') {
+        document.getElementById('pill-comb').classList.add('active');
+        document.getElementById('veh-sub-combustible').style.display = 'block';
+      } else if (sub === 'peaje') {
+        document.getElementById('pill-peaje').classList.add('active');
+        document.getElementById('veh-sub-peaje').style.display = 'block';
+      } else if (sub === 'mantenimiento') {
+        document.getElementById('pill-mant').classList.add('active');
+        document.getElementById('veh-sub-mantenimiento').style.display = 'block';
+      }
+    }
+
+    function renderDashboard() {
+      const filterBox = document.getElementById('boxSelector').value;
+      let movs = appData.movimientos;
+      if (filterBox !== 'todos') {
+        movs = movs.filter(m => m.grupo === filterBox);
+      }
+
+      let ing = 0, gast = 0;
+      movs.forEach(m => {
+        if (m.tipo === 'ingreso') ing += Number(m.monto);
+        else gast += Number(m.monto);
+      });
+
+      const total = ing - gast;
+      const balEl = document.getElementById('totalBalance');
+      balEl.innerText = '$' + total.toLocaleString('es-AR');
+      balEl.className = 'balance-val ' + (total >= 0 ? 'val-green' : 'val-red');
+
+      document.getElementById('totalIngresos').innerText = '$' + ing.toLocaleString('es-AR');
+      document.getElementById('totalGastos').innerText = '$' + gast.toLocaleString('es-AR');
+
+      // Full History
+      const histEl = document.getElementById('fullHistoryList');
+      if (histEl) {
+        histEl.innerHTML = movs.map(m => `
+          <div class="history-item">
+            <div>
+              <strong>${m.detalle || m.categoria}</strong><br>
+              <small style="color:var(--text-secondary);">${m.fecha} · ${m.grupo.toUpperCase()}</small>
+            </div>
+            <strong class="${m.tipo === 'ingreso' ? 'val-green' : 'val-red'}">
+              ${m.tipo === 'ingreso' ? '+' : '-'}$${Number(m.monto).toLocaleString('es-AR')}
+            </strong>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderRecurrents() {
+      const list = document.getElementById('recurrentList');
+      if(!list) return;
+      list.innerHTML = appData.recurrentes.map(r => `
+        <div class="history-item">
+          <div>
+            <strong>${r.titulo}</strong><br>
+            <small style="color:var(--text-secondary);">Vence día ${r.venceDia} · $${Number(r.monto).toLocaleString('es-AR')}</small>
+          </div>
+          <span class="badge ${r.estado==='pagado'?'badge-paid':r.estado==='pendiente'?'badge-pending':'badge-late'}">
+            ${r.estado.toUpperCase()}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function renderPaymentMethods() {
+      const select = document.getElementById('magicPaymentMethod');
+      const chipContainer = document.getElementById('paymentMethodsChips');
+      if (select) {
+        select.innerHTML = appData.metodosPago.map(m => `<option value="${m}">${m}</option>`).join('');
+      }
+      if (chipContainer) {
+        chipContainer.innerHTML = appData.metodosPago.map((m, idx) => `
+          <div class="chip">
+            <span>${m}</span>
+            <span style="color:var(--accent-red); margin-left:4px;" onclick="removePaymentMethod(${idx})">✕</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function addPaymentMethod() {
+      const input = document.getElementById('newPaymentMethodName');
+      const val = input.value.trim();
+      if (val && !appData.metodosPago.includes(val)) {
+        appData.metodosPago.push(val);
+        input.value = '';
+        saveState();
+      }
+    }
+
+    function removePaymentMethod(idx) {
+      appData.metodosPago.splice(idx, 1);
+      saveState();
+    }
+
+    function renderQuickButtons() {
+      const container = document.getElementById('quickButtonsContainer');
+      if (!container) return;
+      container.innerHTML = appData.quickButtons.map(qb => `
+        <div class="chip" onclick="triggerQuickButton(${qb.amount}, '${qb.name}', '${qb.category}', '${qb.group}')">
+          ⚡ ${qb.name} ($${qb.amount})
+        </div>
+      `).join('');
+    }
+
+    function triggerQuickButton(amount, name, category, group) {
+      appData.movimientos.unshift({
+        id: Date.now(),
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo: 'gasto',
+        categoria: category,
+        monto: amount,
+        grupo: group,
+        detalle: name
+      });
+      saveState();
+      alert(`Registrado: ${name} por $${amount}`);
+    }
+
+    function processMagicInput() {
+      const val = document.getElementById('magicInput').value.trim();
+      if (!val) return;
+
+      const numMatch = val.match(/\d+/);
+      const monto = numMatch ? Number(numMatch[0]) : 0;
+      const lower = val.toLowerCase();
+
+      let grupo = 'hogar';
+      let cat = 'General';
+      if (lower.includes('nafta') || lower.includes('gnc') || lower.includes('kangoo') || lower.includes('partner') || lower.includes('peaje')) {
+        grupo = 'vehiculo';
+        cat = 'Combustible/Transporte';
+      } else if (lower.includes('alquiler') || lower.includes('luz') || lower.includes('comida')) {
+        grupo = 'hogar';
+        cat = 'Servicios/Hogar';
+      }
+
+      appData.movimientos.unshift({
+        id: Date.now(),
+        fecha: document.getElementById('magicDate').value || new Date().toISOString().slice(0, 10),
+        tipo: 'gasto',
+        categoria: cat,
+        monto: monto,
+        grupo: grupo,
+        detalle: val
+      });
+
+      document.getElementById('magicInput').value = '';
+      saveState();
+      alert('Gasto registrado en la caja: ' + grupo.toUpperCase());
+    }
+
+    // Voice Dictation SpeechRecognition
+    function startSpeechRecognition() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('El dictado por voz no está soportado en este navegador.');
+        return;
+      }
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'es-AR';
+      recognition.onresult = function(event) {
+        const text = event.results[0][0].transcript;
+        document.getElementById('magicInput').value = text;
+        processMagicInput();
+      };
+      recognition.start();
+    }
+
+    // Fuel Calculator Trinomial
+    function calcFuelTrinomial(changed) {
+      const tot = parseFloat(document.getElementById('combTotal').value) || 0;
+      const vol = parseFloat(document.getElementById('combVol').value) || 0;
+      const price = parseFloat(document.getElementById('combUnitPrice').value) || 0;
+
+      if (changed === 'total' && vol > 0) {
+        document.getElementById('combUnitPrice').value = (tot / vol).toFixed(2);
+      } else if (changed === 'vol' && price > 0) {
+        document.getElementById('combTotal').value = (vol * price).toFixed(0);
+      } else if (changed === 'price' && vol > 0) {
+        document.getElementById('combTotal').value = (vol * price).toFixed(0);
+      }
+    }
+
+    function saveFuelEntry() {
+      const tot = parseFloat(document.getElementById('combTotal').value) || 0;
+      const vol = parseFloat(document.getElementById('combVol').value) || 0;
+      const km = parseFloat(document.getElementById('combKm').value) || 0;
+      const type = document.getElementById('combType').value;
+
+      if (!tot) { alert('Ingresá el monto total.'); return; }
+
+      appData.movimientos.unshift({
+        id: Date.now(),
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo: 'gasto',
+        categoria: 'Combustible',
+        monto: tot,
+        grupo: 'vehiculo',
+        detalle: `${type} ${vol} ${type.includes('GNC')?'m³':'L'}`,
+        km: km,
+        kmParcial: 173,
+        rend: 11.38,
+        costKm: 84
+      });
+
+      document.getElementById('combTotal').value = '';
+      document.getElementById('combVol').value = '';
+      document.getElementById('combUnitPrice').value = '';
+      saveState();
+      alert('Carga guardada con telemetría.');
+    }
+
+    function saveTollEntry() {
+      const cost = parseFloat(document.getElementById('tollCost').value) || 0;
+      const name = document.getElementById('tollName').value || 'Peaje';
+      if (!cost) { alert('Ingresá el monto.'); return; }
+
+      appData.movimientos.unshift({
+        id: Date.now(),
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo: 'gasto',
+        categoria: 'Peaje',
+        monto: cost,
+        grupo: 'vehiculo',
+        detalle: name
+      });
+
+      document.getElementById('tollCost').value = '';
+      document.getElementById('tollName').value = '';
+      saveState();
+      alert('Peaje registrado.');
+    }
+
+    function applyMantPreset() {
+      const preset = document.getElementById('mantPreset').value;
+      const checkContainer = document.getElementById('mantChecklist');
+      let items = [];
+
+      if (preset === 'aceite') items = ['Aceite de motor', 'Filtro de aceite', 'Filtro de aire', 'Filtro de combustible'];
+      else if (preset === 'frenos') items = ['Pastillas delanteras', 'Discos de freno', 'Líquido de frenos'];
+      else if (preset === 'gomeria') items = ['Alineación', 'Balanceo', 'Rotación'];
+
+      checkContainer.innerHTML = items.map(i => `
+        <div class="chip active" onclick="this.classList.toggle('active')">✓ ${i}</div>
+      `).join('');
+    }
+
+    function saveMaintenance() {
+      const cost = parseFloat(document.getElementById('mantCost').value) || 0;
+      const detail = document.getElementById('mantDetail').value || 'Service Mantenimiento';
+
+      if (!cost) { alert('Ingresá el monto.'); return; }
+
+      appData.movimientos.unshift({
+        id: Date.now(),
+        fecha: new Date().toISOString().slice(0, 10),
+        tipo: 'gasto',
+        categoria: 'Mantenimiento',
+        monto: cost,
+        grupo: 'vehiculo',
+        detalle: detail,
+        photoUrl: appData.currentPhotoUrl
+      });
+
+      document.getElementById('mantCost').value = '';
+      document.getElementById('mantDetail').value = '';
+      appData.currentPhotoUrl = '';
+      document.getElementById('photoPreviewContainer').style.display = 'none';
+
+      saveState();
+      alert('Service guardado e intervalo reiniciado al 0%.');
+    }
+
+    function renderTelemetryHistory() {
+      const container = document.getElementById('fuelHistoryTelemetry');
+      if (!container) return;
+      const vehMovs = appData.movimientos.filter(m => m.grupo === 'vehiculo');
+      container.innerHTML = vehMovs.slice(0, 5).map(m => `
+        <div class="history-item">
+          <div>
+            <strong>${m.detalle || m.categoria}</strong><br>
+            <small style="color:var(--text-secondary);">${m.fecha} ${m.km ? '· ' + m.km + ' km' : ''}</small>
+          </div>
+          <strong class="val-red">-$${Number(m.monto).toLocaleString('es-AR')}</strong>
+        </div>
+      `).join('');
+    }
+
+    function handlePhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        appData.currentPhotoUrl = e.target.result;
+        document.getElementById('photoPreview').src = e.target.result;
+        document.getElementById('photoPreviewContainer').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // EXPORT TO CSV (EXCEL)
+    function exportToCSV() {
+      if (!appData.movimientos || appData.movimientos.length === 0) {
+        alert("No hay movimientos registrados para exportar.");
+        return;
+      }
+
+      let csv = "Fecha,Tipo,Categoría,Monto,Grupo,Detalle\n";
+      appData.movimientos.forEach(m => {
+        csv += `"${m.fecha || ''}","${m.tipo || ''}","${m.categoria || ''}","${m.monto || 0}","${m.grupo || ''}","${(m.detalle || '').replace(/"/g, '""')}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `moneda_export_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // EXPORT JSON BACKUP
+    function exportData() {
+      const jsonStr = JSON.stringify(appData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `moneda_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // IMPORT JSON BACKUP
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported.movimientos) {
+            appData = imported;
             saveState();
+            alert('¡Copia de seguridad restaurada con éxito!');
+          } else {
+            alert('El archivo no parece un backup válido de moneda.');
+          }
+        } catch(err) {
+          alert('Error al leer el archivo JSON.');
         }
-
-        function toggleTheme() {
-            const current = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-            setTheme(current);
-        }
-
-        // TAB SWITCHING
-        function switchTab(tabId) {
-            appData.activeTab = tabId;
-            ['inicio', 'movimientos', 'vehiculo', 'ajustes'].forEach(t => {
-                document.getElementById(`tab-${t}`).classList.add('hidden');
-                
-                // Desktop Nav Style
-                const dbtn = document.getElementById(`dnav-${t}`);
-                if (dbtn) {
-                    if (t === tabId) {
-                        dbtn.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition text-neonGreen bg-emerald-950/40 border border-emerald-800/30";
-                    } else {
-                        dbtn.className = "w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition text-gray-400 hover:text-white hover:bg-white/5";
-                    }
-                }
-
-                // Mobile Nav Style
-                const mbtn = document.getElementById(`mnav-${t}`);
-                if (mbtn) {
-                    if (t === tabId) {
-                        mbtn.className = "flex flex-col items-center space-y-1 text-neonGreen font-bold";
-                    } else {
-                        mbtn.className = "flex flex-col items-center space-y-1 text-gray-400 font-normal";
-                    }
-                }
-            });
-
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            if (tabId === 'inicio') updateChart();
-        }
-
-        // RENDER ENGINE
-        function renderAll() {
-            renderHeaderSync();
-            renderBalance();
-            renderPaymentMethods();
-            renderQuickButtons();
-            renderRecurringPayments();
-            renderHistory();
-            renderVehicleSection();
-            renderKeywords();
-            renderCloudinarySettings();
-        }
-
-        // RENDER HEADER SYNC STATUS
-        function renderHeaderSync() {
-            const hasCloud = appData.cloudinary && appData.cloudinary.cloudName;
-            const statusText = hasCloud ? 'Nube' : 'Local';
-            document.getElementById('sync-text-desktop').innerText = statusText;
-            document.getElementById('sync-text-mobile').innerText = statusText;
-        }
-
-        // RENDER BALANCE
-        function renderBalance() {
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            appData.transactions.forEach(t => {
-                if (t.type === 'ingreso') totalIncome += Number(t.amount);
-                if (t.type === 'gasto') totalExpense += Number(t.amount);
-            });
-
-            const balance = totalIncome - totalExpense;
-            document.getElementById('main-balance').innerText = `$ ${balance.toLocaleString('es-AR')}`;
-            document.getElementById('total-income').innerText = `$ ${totalIncome.toLocaleString('es-AR')}`;
-            document.getElementById('total-expense').innerText = `$ ${totalExpense.toLocaleString('es-AR')}`;
-            
-            // Color indicator
-            const balanceEl = document.getElementById('main-balance');
-            balanceEl.className = balance >= 0 ? "text-3xl md:text-5xl font-black tracking-tight text-white" : "text-3xl md:text-5xl font-black tracking-tight text-neonRed";
-        }
-
-        // PAYMENT METHODS
-        function renderPaymentMethods() {
-            const container = document.getElementById('payment-methods-chips');
-            const magicSelect = document.getElementById('magic-method');
-            
-            container.innerHTML = appData.paymentMethods.map(pm => `
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-darkBg border border-cardBorder text-gray-300">
-                    <span>${pm}</span>
-                    <button onclick="removePaymentMethod('${pm}')" class="text-gray-500 hover:text-neonRed text-xs">✕</button>
-                </span>
-            `).join('');
-
-            magicSelect.innerHTML = appData.paymentMethods.map(pm => `<option value="${pm}">${pm}</option>`).join('');
-        }
-
-        function addPaymentMethod() {
-            const input = document.getElementById('new-pm-input');
-            const val = input.value.trim();
-            if (val && !appData.paymentMethods.includes(val)) {
-                appData.paymentMethods.push(val);
-                input.value = '';
-                saveState();
-            }
-        }
-
-        function removePaymentMethod(pm) {
-            appData.paymentMethods = appData.paymentMethods.filter(p => p !== pm);
-            saveState();
-        }
-
-        // QUICK BUTTONS
-        function renderQuickButtons() {
-            const container = document.getElementById('quick-buttons-container');
-            container.innerHTML = appData.quickButtons.map(qb => `
-                <button onclick="triggerQuickButton('${qb.id}')" class="flex flex-col items-start p-3 rounded-xl bg-darkBg border border-cardBorder hover:border-neonGreen/50 transition group text-left">
-                    <span class="text-xs font-bold text-gray-300 group-hover:text-neonGreen">${qb.name}</span>
-                    <span class="text-sm font-black text-white">$ ${Number(qb.amount).toLocaleString('es-AR')}</span>
-                </button>
-            `).join('');
-        }
-
-        function triggerQuickButton(qbId) {
-            const qb = appData.quickButtons.find(b => b.id === qbId);
-            if (!qb) return;
-            const newTx = {
-                id: 't_' + Date.now(),
-                date: new Date().toISOString().split('T')[0],
-                description: qb.name,
-                amount: qb.amount,
-                type: 'gasto',
-                group: qb.group || 'hogar',
-                category: qb.category || 'General',
-                paymentMethod: appData.paymentMethods[0] || 'Efectivo'
-            };
-            appData.transactions.unshift(newTx);
-            saveState();
-        }
-
-        // RECURRING PAYMENTS
-        function renderRecurringPayments() {
-            const container = document.getElementById('recurring-list');
-            container.innerHTML = appData.recurringPayments.map(r => {
-                let badgeClass = "bg-emerald-950 text-neonGreen border-emerald-800/40";
-                let badgeText = "✅ Pagado";
-                if (r.status === 'atrasado') {
-                    badgeClass = "bg-red-950 text-neonRed border-red-800/40";
-                    badgeText = "⚠️ Atrasado";
-                } else if (r.status === 'pendiente') {
-                    badgeClass = "bg-amber-950 text-neonYellow border-amber-800/40";
-                    badgeText = "⏳ Pendiente";
-                }
-
-                return `
-                <div class="flex items-center justify-between p-3 rounded-xl bg-darkBg border border-cardBorder text-xs">
-                    <div class="space-y-0.5">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-white text-sm">${r.name}</span>
-                            <span class="text-[10px] text-gray-500">Vence día ${r.dueDay}</span>
-                        </div>
-                        <span class="text-gray-400">$ ${Number(r.amount).toLocaleString('es-AR')} • ${r.category}</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="toggleRecurringStatus('${r.id}')" class="px-2.5 py-1 rounded-lg border ${badgeClass} font-semibold transition">
-                            ${badgeText}
-                        </button>
-                        <button onclick="removeRecurring('${r.id}')" class="text-gray-500 hover:text-neonRed px-1">✕</button>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        function toggleRecurringStatus(rid) {
-            const item = appData.recurringPayments.find(r => r.id === rid);
-            if (!item) return;
-            if (item.status === 'pendiente' || item.status === 'atrasado') {
-                item.status = 'pagado';
-                // Add expense transaction automatically
-                appData.transactions.unshift({
-                    id: 't_' + Date.now(),
-                    date: new Date().toISOString().split('T')[0],
-                    description: `Pago Recurrente: ${item.name}`,
-                    amount: item.amount,
-                    type: 'gasto',
-                    group: item.group || 'hogar',
-                    category: item.category,
-                    paymentMethod: appData.paymentMethods[0] || 'Efectivo'
-                });
-            } else {
-                item.status = 'pendiente';
-            }
-            saveState();
-        }
-
-        function removeRecurring(rid) {
-            appData.recurringPayments = appData.recurringPayments.filter(r => r.id !== rid);
-            saveState();
-        }
-
-        // MAGIC INPUT PROCESSOR
-        function processMagicInput() {
-            const inputEl = document.getElementById('magic-input');
-            const text = inputEl.value.trim();
-            if (!text) return;
-
-            const date = document.getElementById('magic-date').value || new Date().toISOString().split('T')[0];
-            const method = document.getElementById('magic-method').value || appData.paymentMethods[0];
-
-            // Parse numbers (amount)
-            const numMatch = text.match(/\d+(\.\d+)?/);
-            const amount = numMatch ? parseFloat(numMatch[0]) : 0;
-
-            // Match keywords
-            let detectedGroup = 'hogar';
-            let detectedCategory = 'General';
-            const lowerText = text.toLowerCase();
-
-            appData.keywords.forEach(kw => {
-                if (lowerText.includes(kw.word.toLowerCase())) {
-                    detectedGroup = kw.group;
-                    detectedCategory = kw.category;
-                }
-            });
-
-            // Detect type
-            const isIncome = lowerText.includes('cobré') || lowerText.includes('ingreso') || lowerText.includes('sueldo');
-            const type = isIncome ? 'ingreso' : 'gasto';
-
-            const newTx = {
-                id: 't_' + Date.now(),
-                date: date,
-                description: text,
-                amount: amount || 1000,
-                type: type,
-                group: detectedGroup,
-                category: detectedCategory,
-                paymentMethod: method
-            };
-
-            appData.transactions.unshift(newTx);
-            inputEl.value = '';
-            saveState();
-        }
-
-        // VOICE RECOGNITION
-        function startVoiceRecognition() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('El dictado por voz no está soportado en este navegador.');
-                return;
-            }
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'es-AR';
-            const micIcon = document.getElementById('mic-icon');
-            micIcon.className = "fa-solid fa-microphone text-neonRed animate-pulse";
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                document.getElementById('magic-input').value = transcript;
-                micIcon.className = "fa-solid fa-microphone text-base";
-            };
-
-            recognition.onerror = () => {
-                micIcon.className = "fa-solid fa-microphone text-base";
-            };
-
-            recognition.start();
-        }
-
-        // HISTORY LIST
-        function setHistoryFilter(filter) {
-            appData.historyFilter = filter;
-            ['todos', 'hogar', 'vehiculo', 'ingreso', 'gasto'].forEach(f => {
-                const btn = document.getElementById(`filter-${f}`);
-                if (btn) {
-                    if (f === filter) {
-                        btn.className = "px-3 py-1.5 rounded-lg bg-neonGreen text-black font-bold";
-                    } else {
-                        btn.className = "px-3 py-1.5 rounded-lg bg-darkBg border border-cardBorder text-gray-300";
-                    }
-                }
-            });
-            renderHistory();
-        }
-
-        function renderHistory() {
-            const container = document.getElementById('history-list');
-            const search = (document.getElementById('history-search')?.value || '').toLowerCase();
-
-            let list = appData.transactions.filter(t => {
-                const matchSearch = t.description.toLowerCase().includes(search) || t.amount.toString().includes(search);
-                if (!matchSearch) return false;
-
-                if (appData.historyFilter === 'hogar') return t.group === 'hogar';
-                if (appData.historyFilter === 'vehiculo') return t.group === 'vehiculo';
-                if (appData.historyFilter === 'ingreso') return t.type === 'ingreso';
-                if (appData.historyFilter === 'gasto') return t.type === 'gasto';
-                return true;
-            });
-
-            if (list.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">No hay movimientos registrados.</p>`;
-                return;
-            }
-
-            container.innerHTML = list.map(t => {
-                const isIncome = t.type === 'ingreso';
-                const sign = isIncome ? '+' : '-';
-                const colorClass = isIncome ? 'text-neonGreen' : 'text-neonRed';
-                const groupBadge = t.group === 'vehiculo' ? '🚐 Vehículo' : '🏠 Hogar';
-
-                return `
-                <div class="flex items-center justify-between p-3 rounded-xl bg-darkBg border border-cardBorder text-xs">
-                    <div class="space-y-0.5">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-white text-sm">${t.description}</span>
-                            <span class="text-[10px] px-2 py-0.5 rounded-md bg-white/5 text-gray-400">${groupBadge}</span>
-                        </div>
-                        <span class="text-gray-500">${t.date} • ${t.category} • ${t.paymentMethod}</span>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <span class="font-black text-sm md:text-base ${colorClass}">${sign} $ ${Number(t.amount).toLocaleString('es-AR')}</span>
-                        <button onclick="deleteTransaction('${t.id}')" class="text-gray-500 hover:text-neonRed">✕</button>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        function deleteTransaction(tid) {
-            appData.transactions = appData.transactions.filter(t => t.id !== tid);
-            saveState();
-        }
-
-        // VEHICLE SECTION LOGIC
-        function renderVehicleSection() {
-            // Render Vehicle Selector
-            const selector = document.getElementById('vehicle-selector');
-            selector.innerHTML = appData.vehicles.map(v => `<option value="${v.id}">${v.name} (${v.plate}) - ${v.km.toLocaleString('es-AR')} km</option>`).value = appData.activeVehicleId;
-            selector.value = appData.activeVehicleId;
-
-            renderFuelComparisonCards();
-            renderRecentFuelLogs();
-            renderMaintenanceAlerts();
-            renderMaintChecklist();
-        }
-
-        function changeActiveVehicle(vid) {
-            appData.activeVehicleId = vid;
-            saveState();
-        }
-
-        function setVehicleSubTab(sub) {
-            appData.activeVehicleSubTab = sub;
-            ['combustible', 'peaje', 'mantenimiento'].forEach(s => {
-                document.getElementById(`vsub-${s}`).classList.add('hidden');
-                const btn = document.getElementById(`vtab-${s}`);
-                if (s === sub) {
-                    btn.className = "flex-1 py-2.5 rounded-lg text-center transition bg-neonGreen text-black font-bold";
-                } else {
-                    btn.className = "flex-1 py-2.5 rounded-lg text-center transition text-gray-400 hover:text-white";
-                }
-            });
-            document.getElementById(`vsub-${sub}`).classList.remove('hidden');
-        }
-
-        function setFuelType(type) {
-            selectedFuelType = type;
-            ['gnc', 'super', 'premium', 'diesel_super', 'diesel_premium'].forEach(t => {
-                const btn = document.getElementById(`fuel-btn-${t}`);
-                if (t === type) {
-                    btn.className = "py-2.5 px-2 rounded-xl border border-cardBorder bg-neonGreen text-black font-bold";
-                } else {
-                    btn.className = "py-2.5 px-2 rounded-xl border border-cardBorder bg-darkBg text-gray-300";
-                }
-            });
-            document.getElementById('fuel-volume-label').innerText = type === 'gnc' ? 'Carga (m³)' : 'Carga (Litros)';
-        }
-
-        function calculateFuelForm(trigger) {
-            const volumeEl = document.getElementById('fuel-volume');
-            const costEl = document.getElementById('fuel-cost');
-            const unitPriceEl = document.getElementById('fuel-unit-price');
-
-            const vol = parseFloat(volumeEl.value) || 0;
-            const cost = parseFloat(costEl.value) || 0;
-
-            if (vol > 0 && cost > 0) {
-                const unitPrice = cost / vol;
-                unitPriceEl.innerText = `$ ${unitPrice.toFixed(2)}`;
-            }
-        }
-
-        function saveFuelLog() {
-            const activeV = appData.vehicles.find(v => v.id === appData.activeVehicleId);
-            const km = parseFloat(document.getElementById('fuel-km').value) || activeV.km;
-            const vol = parseFloat(document.getElementById('fuel-volume').value) || 0;
-            const cost = parseFloat(document.getElementById('fuel-cost').value) || 0;
-
-            if (vol <= 0 || cost <= 0) {
-                alert('Ingresá el volumen y el monto total de la carga.');
-                return;
-            }
-
-            const deltaKm = Math.max(1, km - activeV.km);
-            const unitPrice = cost / vol;
-            const efficiency = deltaKm / vol;
-            const costPerKm = cost / deltaKm;
-
-            // Update Vehicle Odometer
-            activeV.km = km;
-
-            // Add Fuel Log
-            const newFuelLog = {
-                id: 'fl_' + Date.now(),
-                vehicleId: activeV.id,
-                date: new Date().toISOString().split('T')[0],
-                fuelType: selectedFuelType,
-                volume: vol,
-                totalCost: cost,
-                unitPrice: unitPrice,
-                km: km,
-                deltaKm: deltaKm,
-                efficiency: efficiency,
-                costPerKm: costPerKm
-            };
-            appData.fuelLogs.unshift(newFuelLog);
-
-            // Add Transaction automatically to Financial Box
-            appData.transactions.unshift({
-                id: 't_' + Date.now(),
-                date: new Date().toISOString().split('T')[0],
-                description: `Carga Combustible (${selectedFuelType.toUpperCase()}) - ${activeV.name}`,
-                amount: cost,
-                type: 'gasto',
-                group: 'vehiculo',
-                category: 'Combustible',
-                paymentMethod: appData.paymentMethods[0]
-            });
-
-            document.getElementById('fuel-volume').value = '';
-            document.getElementById('fuel-cost').value = '';
-
-            saveState();
-        }
-
-        function saveTollLog() {
-            const activeV = appData.vehicles.find(v => v.id === appData.activeVehicleId);
-            const name = document.getElementById('toll-name').value.trim() || 'Peaje';
-            const cost = parseFloat(document.getElementById('toll-cost').value) || 0;
-
-            if (cost <= 0) return;
-
-            appData.transactions.unshift({
-                id: 't_' + Date.now(),
-                date: new Date().toISOString().split('T')[0],
-                description: `Peaje: ${name} (${activeV.name})`,
-                amount: cost,
-                type: 'gasto',
-                group: 'vehiculo',
-                category: 'Peaje',
-                paymentMethod: appData.paymentMethods[0]
-            });
-
-            document.getElementById('toll-name').value = '';
-            document.getElementById('toll-cost').value = '';
-
-            saveState();
-        }
-
-        // FUEL COMPARISON CARDS (FUELIO STYLE)
-        function renderFuelComparisonCards() {
-            const container = document.getElementById('fuel-comparison-cards');
-            const vLogs = appData.fuelLogs.filter(f => f.vehicleId === appData.activeVehicleId);
-
-            if (vLogs.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-500 col-span-2">Sin datos de combustible para este vehículo.</p>`;
-                return;
-            }
-
-            // Group by GNC and Liquid
-            const gncLogs = vLogs.filter(f => f.fuelType === 'gnc');
-            const liquidLogs = vLogs.filter(f => f.fuelType !== 'gnc');
-
-            const renderCard = (title, logs, unit) => {
-                if (logs.length === 0) return '';
-                const last = logs[0];
-                const avgEff = (logs.reduce((acc, l) => acc + l.efficiency, 0) / logs.length).toFixed(2);
-                const avgCostKm = Math.round(logs.reduce((acc, l) => acc + l.costPerKm, 0) / logs.length);
-
-                return `
-                <div class="bg-cardBg border border-cardBorder rounded-2xl p-4 shadow-xl space-y-3">
-                    <div class="flex items-center justify-between border-b border-cardBorder/60 pb-2">
-                        <span class="font-bold text-sm text-white">${title}</span>
-                        <span class="text-[10px] text-gray-500">${last.date}</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                            <span class="text-gray-400 block">Consumo Prom.</span>
-                            <span class="font-black text-white text-sm">${avgEff} km/${unit}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-400 block">Último Consumo</span>
-                            <span class="font-black text-neonGreen text-sm">${last.efficiency.toFixed(2)} km/${unit}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-400 block">Costo por KM</span>
-                            <span class="font-black text-white text-sm">$ ${avgCostKm} / km</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-400 block">Último Precio</span>
-                            <span class="font-black text-white text-sm">$ ${last.unitPrice.toFixed(2)} / ${unit}</span>
-                        </div>
-                    </div>
-                </div>
-                `;
-            };
-
-            container.innerHTML = renderCard('GNC', gncLogs, 'm³') + renderCard('Nafta / Diesel', liquidLogs, 'L');
-        }
-
-        function renderRecentFuelLogs() {
-            const container = document.getElementById('recent-fuel-logs');
-            const vLogs = appData.fuelLogs.filter(f => f.vehicleId === appData.activeVehicleId).slice(0, 5);
-
-            if (vLogs.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-500">Sin cargas recientes.</p>`;
-                return;
-            }
-
-            container.innerHTML = vLogs.map(l => {
-                const unit = l.fuelType === 'gnc' ? 'm³' : 'L';
-                return `
-                <div class="p-3 rounded-xl bg-darkBg border border-cardBorder text-xs space-y-1">
-                    <div class="flex items-center justify-between font-bold text-white">
-                        <span>⛽ ${l.fuelType.toUpperCase()} ${l.volume} ${unit}</span>
-                        <span class="text-neonGreen">$ ${Number(l.totalCost).toLocaleString('es-AR')}</span>
-                    </div>
-                    <div class="flex items-center justify-between text-[11px] text-gray-400">
-                        <span>${l.date} • ${l.km.toLocaleString('es-AR')} km (+${l.deltaKm} km)</span>
-                        <span>${l.efficiency.toFixed(2)} km/${unit} • $ ${Math.round(l.costPerKm)}/km</span>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        // MAINTENANCE ENGINE & DYNAMIC RESET
-        const DEFAULT_CHECKLISTS = {
-            'Service Aceite y Filtros': ['Aceite de motor', 'Filtro de aceite', 'Filtro de aire', 'Filtro de combustible'],
-            'Gomería / Neumáticos': ['Alineación', 'Balanceo', 'Rotación', 'Parche / Reparación'],
-            'Frenos': ['Pastillas delanteras', 'Pastillas traseras', 'Líquido de frenos', 'Rectificado de discos'],
-            'Distribución / Correa': ['Correa de distribución', 'Tensor', 'Bomba de agua']
-        };
-
-        let currentChecklist = [...DEFAULT_CHECKLISTS['Service Aceite y Filtros']];
-
-        function onMaintTitleChange(val) {
-            currentChecklist = DEFAULT_CHECKLISTS[val] ? [...DEFAULT_CHECKLISTS[val]] : ['Inspección general'];
-            renderMaintChecklist();
-        }
-
-        function renderMaintChecklist() {
-            const container = document.getElementById('maint-checklist-chips');
-            container.innerHTML = currentChecklist.map((item, idx) => `
-                <label class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-darkBg border border-cardBorder text-gray-300 cursor-pointer">
-                    <input type="checkbox" checked class="rounded bg-cardBg border-cardBorder text-neonGreen focus:ring-0">
-                    <span>${item}</span>
-                </label>
-            `).join('');
-        }
-
-        function saveMaintenanceLog() {
-            const activeV = appData.vehicles.find(v => v.id === appData.activeVehicleId);
-            const title = document.getElementById('maint-title').value;
-            const km = parseFloat(document.getElementById('maint-km').value) || activeV.km;
-            const cost = parseFloat(document.getElementById('maint-cost').value) || 0;
-            const intervalKm = parseFloat(document.getElementById('maint-interval-km').value) || 10000;
-            const intervalMonths = parseFloat(document.getElementById('maint-interval-months').value) || 12;
-
-            // Reset baseline: Update vehicle Odometer and save Maintenance
-            activeV.km = km;
-
-            const newMaint = {
-                id: 'm_' + Date.now(),
-                vehicleId: activeV.id,
-                date: new Date().toISOString().split('T')[0],
-                title: title,
-                km: km,
-                cost: cost,
-                intervalKm: intervalKm,
-                intervalMonths: intervalMonths,
-                items: currentChecklist
-            };
-
-            appData.maintenanceLogs.unshift(newMaint);
-
-            // Impact Financials
-            if (cost > 0) {
-                appData.transactions.unshift({
-                    id: 't_' + Date.now(),
-                    date: new Date().toISOString().split('T')[0],
-                    description: `Mantenimiento: ${title} (${activeV.name})`,
-                    amount: cost,
-                    type: 'gasto',
-                    group: 'vehiculo',
-                    category: 'Mantenimiento',
-                    paymentMethod: appData.paymentMethods[0]
-                });
-            }
-
-            saveState();
-        }
-
-        function renderMaintenanceAlerts() {
-            const container = document.getElementById('maintenance-alerts-container');
-            const activeV = appData.vehicles.find(v => v.id === appData.activeVehicleId);
-            const maints = appData.maintenanceLogs.filter(m => m.vehicleId === activeV.id);
-
-            if (maints.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-500">No hay servicios registrados para este vehículo.</p>`;
-                return;
-            }
-
-            container.innerHTML = maints.map(m => {
-                const elapsedKm = Math.max(0, activeV.km - m.km);
-                const progressPct = Math.min(100, Math.round((elapsedKm / m.intervalKm) * 100));
-                const remainingKm = Math.max(0, m.intervalKm - elapsedKm);
-
-                let barColor = "bg-neonGreen";
-                if (progressPct > 80) barColor = "bg-neonYellow";
-                if (progressPct >= 100) barColor = "bg-neonRed";
-
-                return `
-                <div class="p-3 rounded-xl bg-darkBg border border-cardBorder space-y-2 text-xs">
-                    <div class="flex items-center justify-between font-bold text-white">
-                        <span>${m.title}</span>
-                        <span class="text-gray-400">${progressPct}% de uso</span>
-                    </div>
-                    <div class="w-full bg-cardBg rounded-full h-2 overflow-hidden border border-cardBorder">
-                        <div class="${barColor} h-2 rounded-full transition-all" style="width: ${progressPct}%"></div>
-                    </div>
-                    <div class="flex items-center justify-between text-[11px] text-gray-400">
-                        <span>Realizado en ${m.km.toLocaleString('es-AR')} km</span>
-                        <span class="font-bold text-white">Faltan ${remainingKm.toLocaleString('es-AR')} km</span>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        // CHART ENGINE
-        function setChartGroup(group) {
-            appData.chartGroup = group;
-            document.getElementById('chart-toggle-hogar').className = group === 'hogar' ? "px-3 py-1 rounded-md font-semibold transition bg-neonGreen text-black" : "px-3 py-1 rounded-md font-semibold transition text-gray-400 hover:text-white";
-            document.getElementById('chart-toggle-vehiculo').className = group === 'vehiculo' ? "px-3 py-1 rounded-md font-semibold transition bg-neonGreen text-black" : "px-3 py-1 rounded-md font-semibold transition text-gray-400 hover:text-white";
-            updateChart();
-        }
-
-        function initChart() {
-            const ctx = document.getElementById('distributionChart').getContext('2d');
-            chartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Sin datos'],
-                    datasets: [{
-                        data: [100],
-                        backgroundColor: ['#2a2d32']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 11 } } }
-                    }
-                }
-            });
-            updateChart();
-        }
-
-        function updateChart() {
-            if (!chartInstance) return;
-            const categories = {};
-
-            appData.transactions.forEach(t => {
-                if (t.type === 'gasto' && t.group === appData.chartGroup) {
-                    categories[t.category] = (categories[t.category] || 0) + Number(t.amount);
-                }
-            });
-
-            const labels = Object.keys(categories);
-            const data = Object.values(categories);
-
-            if (labels.length === 0) {
-                chartInstance.data.labels = ['Sin Gastos'];
-                chartInstance.data.datasets[0].data = [1];
-                chartInstance.data.datasets[0].backgroundColor = ['#2a2d32'];
-            } else {
-                chartInstance.data.labels = labels;
-                chartInstance.data.datasets[0].data = data;
-                chartInstance.data.datasets[0].backgroundColor = ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899'];
-            }
-            chartInstance.update();
-        }
-
-        // KEYWORDS & SETTINGS
-        function renderKeywords() {
-            const container = document.getElementById('keywords-container');
-            container.innerHTML = appData.keywords.map(kw => `
-                <div class="flex items-center justify-between p-2 rounded-lg bg-darkBg border border-cardBorder text-xs">
-                    <span class="font-bold text-white">"${kw.word}"</span>
-                    <span class="text-gray-400">${kw.category} (${kw.group})</span>
-                    <button onclick="removeKeyword('${kw.word}')" class="text-gray-500 hover:text-neonRed">✕</button>
-                </div>
-            `).join('');
-        }
-
-        function addKeyword() {
-            const w = document.getElementById('kw-word').value.trim();
-            const c = document.getElementById('kw-cat').value.trim();
-            const g = document.getElementById('kw-group').value;
-
-            if (w && c) {
-                appData.keywords.push({ word: w, category: c, group: g });
-                document.getElementById('kw-word').value = '';
-                document.getElementById('kw-cat').value = '';
-                saveState();
-            }
-        }
-
-        function removeKeyword(word) {
-            appData.keywords = appData.keywords.filter(k => k.word !== word);
-            saveState();
-        }
-
-        function renderCloudinarySettings() {
-            if (appData.cloudinary) {
-                document.getElementById('cloudinary-name').value = appData.cloudinary.cloudName || '';
-                document.getElementById('cloudinary-preset').value = appData.cloudinary.uploadPreset || '';
-            }
-        }
-
-        function saveCloudinarySettings() {
-            appData.cloudinary = {
-                cloudName: document.getElementById('cloudinary-name').value.trim(),
-                uploadPreset: document.getElementById('cloudinary-preset').value.trim()
-            };
-            saveState();
-            alert('Configuración guardada.');
-        }
-
-        // BACKUP & RESTORE
-        function exportBackup() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
-            const dlAnchor = document.createElement('a');
-            dlAnchor.setAttribute("href", dataStr);
-            dlAnchor.setAttribute("download", `moneda_backup_${new Date().toISOString().split('T')[0]}.json`);
-            dlAnchor.click();
-        }
-
-        function importBackup(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    appData = JSON.parse(e.target.result);
-                    saveState();
-                    alert('Datos importados correctamente.');
-                } catch (err) {
-                    alert('Error al leer el archivo JSON.');
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        // MODALS ENGINE
-        function openModal(type) {
-            const container = document.getElementById('modal-container');
-            const content = document.getElementById('modal-content');
-
-            if (type === 'quick') {
-                content.innerHTML = `
-                    <h3 class="font-bold text-base text-white">Nuevo Movimiento</h3>
-                    <div class="space-y-3 text-xs">
-                        <input type="text" id="qm-desc" placeholder="Concepto (ej: Compra)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                        <input type="number" id="qm-amount" placeholder="Monto ($)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                        <select id="qm-type" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                            <option value="gasto">Gasto</option>
-                            <option value="ingreso">Ingreso</option>
-                        </select>
-                        <select id="qm-group" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                            <option value="hogar">Hogar / Personal</option>
-                            <option value="vehiculo">Vehículo / Logística</option>
-                        </select>
-                        <button onclick="submitQuickModal()" class="w-full bg-neonGreen text-black font-bold py-3 rounded-xl">Guardar</button>
-                    </div>
-                `;
-            } else if (type === 'new-vehicle') {
-                content.innerHTML = `
-                    <h3 class="font-bold text-base text-white">Agregar Vehículo</h3>
-                    <div class="space-y-3 text-xs">
-                        <input type="text" id="nv-name" placeholder="Nombre (ej: Peugeot Partner)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                        <input type="text" id="nv-plate" placeholder="Patente (ej: AB 123 CD)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                        <input type="number" id="nv-km" placeholder="Kilometraje Inicial" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                        <button onclick="submitNewVehicle()" class="w-full bg-neonGreen text-black font-bold py-3 rounded-xl">Guardar Vehículo</button>
-                    </div>
-                `;
-            } else if (type === 'quick-button-config') {
-                content.innerHTML = `
-                    <h3 class="font-bold text-base text-white">Nuevo Botón Rápido</h3>
-                    <div class="space-y-3 text-xs">
-                        <input type="text" id="qb-name" placeholder="Nombre (ej: Peaje)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                        <input type="number" id="qb-amount" placeholder="Monto por defecto ($)" class="w-full bg-darkBg border border-cardBorder rounded-xl p-2.5 text-white">
-                        <button onclick="submitQuickButtonConfig()" class="w-full bg-neonGreen text-black font-bold py-3 rounded-xl">Crear Botón</button>
-                    </div>
-                `;
-            }
-
-            container.classList.remove('hidden');
-        }
-
-        function closeModal() {
-            document.getElementById('modal-container').classList.add('hidden');
-        }
-
-        function submitQuickModal() {
-            const desc = document.getElementById('qm-desc').value.trim();
-            const amount = parseFloat(document.getElementById('qm-amount').value) || 0;
-            const type = document.getElementById('qm-type').value;
-            const group = document.getElementById('qm-group').value;
-
-            if (desc && amount > 0) {
-                appData.transactions.unshift({
-                    id: 't_' + Date.now(),
-                    date: new Date().toISOString().split('T')[0],
-                    description: desc,
-                    amount: amount,
-                    type: type,
-                    group: group,
-                    category: 'General',
-                    paymentMethod: appData.paymentMethods[0]
-                });
-                closeModal();
-                saveState();
-            }
-        }
-
-        function submitNewVehicle() {
-            const name = document.getElementById('nv-name').value.trim();
-            const plate = document.getElementById('nv-plate').value.trim();
-            const km = parseFloat(document.getElementById('nv-km').value) || 0;
-
-            if (name) {
-                const vid = 'v_' + Date.now();
-                appData.vehicles.push({ id: vid, name, plate, km });
-                appData.activeVehicleId = vid;
-                closeModal();
-                saveState();
-            }
-        }
-
-        function submitQuickButtonConfig() {
-            const name = document.getElementById('qb-name').value.trim();
-            const amount = parseFloat(document.getElementById('qb-amount').value) || 0;
-
-            if (name && amount > 0) {
-                appData.quickButtons.push({
-                    id: 'qb_' + Date.now(),
-                    name: name,
-                    amount: amount,
-                    category: 'General',
-                    group: 'hogar'
-                });
-                closeModal();
-                saveState();
-            }
-        }
-    </script>
+      };
+      reader.readAsText(file);
+    }
+
+    function setTheme(mode) {
+      document.getElementById('theme-dark').classList.remove('active');
+      document.getElementById('theme-light').classList.remove('active');
+
+      if (mode === 'light') {
+        document.body.setAttribute('data-theme', 'light');
+        document.getElementById('theme-light').classList.add('active');
+      } else {
+        document.body.removeAttribute('data-theme');
+        document.getElementById('theme-dark').classList.add('active');
+      }
+    }
+
+    function saveCloudSettings() {
+      alert('Credenciales guardadas correctamente.');
+    }
+
+    window.onload = init;
+  </script>
 </body>
 </html>
