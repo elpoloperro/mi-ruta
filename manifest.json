@@ -1,0 +1,26 @@
+{
+  "name": "moneda. — tus gastos, en una frase",
+  "short_name": "moneda.",
+  "start_url": "./moneda.html",
+  "display": "standalone",
+  "background_color": "#1E1E1E",
+  "theme_color": "#B5763A",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Registrar gasto",
+      "short_name": "Gasto",
+      "url": "./moneda.html?action=expense",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Registrar ingreso",
+      "short_name": "Ingreso",
+      "url": "./moneda.html?action=income",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
