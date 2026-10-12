@@ -335,6 +335,12 @@
   .cat-name{ font-weight:600; font-size:14px; display:flex; align-items:center; gap:6px; min-width:0; }
   .cat-name .icon{ flex-shrink:0; }
   .cat-name .label-text{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cat-name-edit{
+    font-family:inherit; font-weight:600; font-size:14px; color:var(--ink); background:none;
+    border:none; border-bottom:1px solid transparent; padding:1px 0; min-width:0; flex:1;
+  }
+  .cat-name-edit:hover{ border-bottom-color:var(--paper-line); }
+  .cat-name-edit:focus{ outline:none; border-bottom-color:var(--coin); }
   .cat-del{ background:none; border:none; color:#c2c2b5; cursor:pointer; font-size:13px; padding:0 2px; }
   .cat-del:hover{ color:var(--danger); }
   .cat-nums{ font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--ink-soft); white-space:nowrap; display:flex; align-items:center; }
@@ -519,6 +525,7 @@
   .day-summary-total{
     font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600; color:var(--ink-soft);
   }
+  .day-summary-income{ color:var(--income); }
   .day-summary-count{
     font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-soft); opacity:0.55;
   }
@@ -1051,7 +1058,10 @@
   <div class="settings-block">
     <div class="section-title cat-section-toggle" id="catSectionToggle" style="margin-top:0;">
       <span>Diccionario y presupuestos por categoría <span id="catSectionCaret">▸</span></span>
-      <span class="add-link" id="toggleNewCat">+ categoría</span>
+      <span style="display:flex;gap:12px;">
+        <span class="add-link" id="openReclassifyBtn">🔀 reclasificar</span>
+        <span class="add-link" id="toggleNewCat">+ categoría</span>
+      </span>
     </div>
     <p class="settings-help">Tocá una categoría para ver/editar su presupuesto y sus palabras clave. El grupo (🏠 Hogar / 🚗 Vehículo) separa visualmente el feed de movimientos y el panel de Inicio — tocalo para cambiarlo.</p>
     <div class="cat-summary" id="catSummary"></div>
@@ -1093,6 +1103,7 @@
     </select>
     <select id="filterCat"><option value="">Todas</option></select>
     <button class="export-btn" id="exportBtn">⬇ CSV</button>
+    <button class="export-btn" id="openReclassifyBtnMov">🔀 reclasificar</button>
   </div>
   <div id="filterTotal" class="filter-total" style="display:none;"></div>
   <div id="movements"></div>
@@ -3110,7 +3121,7 @@
       const wordChips = (cat.words||[]).map(w => `<span class="kw-chip" data-cat="${cat.key}" data-word="${escapeHtml(w)}">${escapeHtml(w)} <span class="kw-x">✕</span></span>`).join('');
       card.innerHTML = `
         <div class="cat-top">
-          <div class="cat-name"><span class="icon">${cat.icon}</span><span class="label-text">${cat.label}</span>${cat.key !== 'otros' ? `<button class="cat-del" data-cat="${cat.key}" title="Eliminar categoría">✕</button>` : ''}</div>
+          <div class="cat-name"><span class="icon">${cat.icon}</span><input type="text" class="cat-name-edit label-text" data-cat="${cat.key}" value="${escapeHtml(cat.label)}" title="Tocá para renombrar">${cat.key !== 'otros' ? `<button class="cat-del" data-cat="${cat.key}" title="Eliminar categoría">✕</button>` : ''}</div>
           <div class="cat-nums"><span class="spent">${fmt(spent)}</span>&nbsp;/&nbsp;$<input type="text" class="budget-edit" data-cat="${cat.key}" value="${budget}"></div>
         </div>
         <div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${pct}%"></div></div>
@@ -3180,6 +3191,15 @@
         if(!isNaN(val) && val >= 0){ findCategory(catKey).budget = val; await saveCategories(); render(); }
       });
     });
+    catsEl.querySelectorAll('.cat-name-edit').forEach(inp => {
+      inp.addEventListener('keydown', (e) => { if(e.key === 'Enter') inp.blur(); });
+      inp.addEventListener('change', async (e) => {
+        const catKey = e.target.dataset.cat;
+        const val = e.target.value.trim();
+        if(val){ findCategory(catKey).label = val; await saveCategories(); render(); }
+        else e.target.value = findCategory(catKey).label; // no se permite vaciar el nombre
+      });
+    });
     catsEl.querySelectorAll('.cat-del').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const catKey = e.target.dataset.cat;
@@ -3236,11 +3256,13 @@
     const sorted = [...list].sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
     const catOptions = categories.map(c => `<option value="${c.key}">${c.icon} ${c.label}</option>`).join('');
 
-    const dayTotals = {};
+    const dayExpense = {};
+    const dayIncome = {};
     const dayCounts = {};
     sorted.forEach(mv => {
       const dk = mv.date.slice(0,10);
-      if(!mv.isIncome) dayTotals[dk] = (dayTotals[dk]||0) + mv.amount;
+      if(mv.isIncome) dayIncome[dk] = (dayIncome[dk]||0) + mv.amount;
+      else dayExpense[dk] = (dayExpense[dk]||0) + mv.amount;
       dayCounts[dk] = (dayCounts[dk]||0) + 1;
     });
 
@@ -3252,16 +3274,21 @@
     function appendDaySummary(dayKey){
       const dh = new Date(dayKey + 'T12:00:00');
       const label = dh.toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'long' });
-      const total = dayTotals[dayKey] || 0;
+      const exp = dayExpense[dayKey] || 0;
+      const inc = dayIncome[dayKey] || 0;
       const count = dayCounts[dayKey] || 0;
       const isExpanded = expandedDays.has(dayKey);
       const bar = document.createElement('div');
       bar.className = 'day-summary' + (isExpanded ? ' expanded' : '');
+      const totalsHtml = [
+        exp ? `<span class="day-summary-total">${fmt(exp)}</span>` : '',
+        inc ? `<span class="day-summary-total day-summary-income">+${fmt(inc)}</span>` : ''
+      ].join('') || `<span class="day-summary-total">$0</span>`;
       bar.innerHTML = `
         <span class="day-summary-arrow">▸</span>
         <span class="day-summary-label">${label.charAt(0).toUpperCase() + label.slice(1)}</span>
         <span class="day-summary-count">(${count})</span>
-        <span class="day-summary-total">${fmt(total)}</span>
+        ${totalsHtml}
       `;
       bar.addEventListener('click', () => {
         if(expandedDays.has(dayKey)) expandedDays.delete(dayKey);
@@ -3810,6 +3837,28 @@
   document.getElementById('addMaintBtn').addEventListener('click', addMaintEntry);
 
   toggleNewCat.addEventListener('click', () => { newCatRow.style.display = newCatRow.style.display === 'none' ? 'flex' : 'none'; });
+  // Mueve en bloque todos los gastos de una categoría (filtrando opcionalmente por una palabra en el texto/nota)
+  // a otra categoría — útil para reordenar cuando dos categorías quedaron con palabras clave superpuestas.
+  function openReclassifyTool(){
+    const catOpts = categories.map(c => ({ value:c.key, label:`${c.icon} ${c.label}` }));
+    openFormModal('Reclasificar movimientos', [
+      { id:'from', label:'Desde categoría', type:'select', value: categories[0].key, options: catOpts },
+      { id:'word', label:'Buscar palabra en el texto (opcional, ej: cena)' },
+      { id:'to', label:'Hacia categoría', type:'select', value: categories[0].key, options: catOpts }
+    ], async (v) => {
+      if(v.from === v.to){ alert('Elegí dos categorías distintas.'); return false; }
+      const word = normalize(v.word.trim());
+      const matches = movements.filter(m => !m.isIncome && m.category === v.from &&
+        (!word || normalize(m.raw + ' ' + (m.note||'')).includes(word)));
+      if(!matches.length){ alert('No se encontró ningún movimiento con esos datos.'); return false; }
+      matches.forEach(m => m.category = v.to);
+      await saveMovements();
+      render();
+      alert(`Se movieron ${matches.length} movimiento${matches.length===1?'':'s'} a ${findCategory(v.to).label}.`);
+    }, 'Mover');
+  }
+  document.getElementById('openReclassifyBtn').addEventListener('click', openReclassifyTool);
+  document.getElementById('openReclassifyBtnMov').addEventListener('click', openReclassifyTool);
   addCatBtn.addEventListener('click', async () => {
     const icon = document.getElementById('newCatIcon').value.trim() || '🏷️';
     const name = document.getElementById('newCatName').value.trim();
