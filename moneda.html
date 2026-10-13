@@ -1716,9 +1716,9 @@
   async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); markLocalChange(); } catch(e){ console.error(e); } }
   async function saveFixedPayments(){ try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); markLocalChange(); } catch(e){ console.error(e); } }
   async function savePaymentMethods(){ try{ localStorage.setItem('moneda_payment_methods', JSON.stringify(paymentMethods)); markLocalChange(); } catch(e){ console.error(e); } }
-  function saveFinConfig(){ try{ localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig)); }catch(e){} }
-  function saveFinGoals(){ try{ localStorage.setItem('moneda_fin_goals', JSON.stringify(finGoals)); }catch(e){} }
-  function saveFinCuotas(){ try{ localStorage.setItem('moneda_fin_cuotas', JSON.stringify(finCuotas)); }catch(e){} }
+  function saveFinConfig(){ try{ localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig)); markLocalChange(); }catch(e){} }
+  function saveFinGoals(){ try{ localStorage.setItem('moneda_fin_goals', JSON.stringify(finGoals)); markLocalChange(); }catch(e){} }
+  function saveFinCuotas(){ try{ localStorage.setItem('moneda_fin_cuotas', JSON.stringify(finCuotas)); markLocalChange(); }catch(e){} }
   function setPmSectionOpen(open){
     document.getElementById('pmSectionBody').style.display = open ? 'block' : 'none';
     document.getElementById('pmSectionCaret').classList.toggle('open', open);
@@ -3187,8 +3187,11 @@
     const pct = goal > 0 ? Math.max(0, Math.min(100, (actual/goal)*100)) : 0;
     const el = document.getElementById('finSavingsGoal');
     if(totalIncome <= 0){ el.innerHTML = '<div class="empty-chart">Cargá ingresos este mes para ver tu meta.</div>'; return; }
+    const fixedTotal = totalFixedPerMonth();
+    const variableTotal = Math.max(0, totalExpense - fixedTotal);
     el.innerHTML = `
       <div class="fin-stat">${fmt(actual)} <span class="fin-stat-sub">de una meta de ${fmt(goal)} (${finConfig.savingsGoalPct}% del ingreso)</span>${finUsdLine(actual)}</div>
+      <div class="fin-stat-sub" style="margin:4px 0 8px;">Gastos fijos: ${fmt(fixedTotal)} · Gastos variables: ${fmt(variableTotal)}</div>
       <div class="veh-bar"><i style="width:${pct}%;${actual < 0 ? 'background:var(--danger);' : ''}"></i></div>
       <div class="daily-limit" ${actual < 0 ? 'style="color:var(--danger)"' : ''}>${actual >= goal ? '✅ Meta cumplida' : (actual < 0 ? 'Este mes gastaste más de lo que entró' : `Te faltan ${fmt(goal-actual)} para la meta`)}</div>
     `;
@@ -4558,7 +4561,7 @@
   function setCatBudgetGroup(key, group){
     const ov = catBudgetOverrides();
     ov[key] = group;
-    try{ localStorage.setItem('moneda_cat_budget_group', JSON.stringify(ov)); }catch(e){}
+    try{ localStorage.setItem('moneda_cat_budget_group', JSON.stringify(ov)); markLocalChange(); }catch(e){}
   }
   function catDebtOverrides(){
     try{ return JSON.parse(localStorage.getItem('moneda_cat_debt') || '{}'); }catch(e){ return {}; }
@@ -4571,7 +4574,7 @@
   function setCatDebt(key, val){
     const ov = catDebtOverrides();
     ov[key] = val;
-    try{ localStorage.setItem('moneda_cat_debt', JSON.stringify(ov)); }catch(e){}
+    try{ localStorage.setItem('moneda_cat_debt', JSON.stringify(ov)); markLocalChange(); }catch(e){}
   }
 
   // ---- Filtro Hogar/Vehículo en Movimientos ----
