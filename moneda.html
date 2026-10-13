@@ -1559,6 +1559,9 @@
         if(Array.isArray(cloud.categories) && cloud.categories.length) categories = cloud.categories;
         if(Array.isArray(cloud.quickButtons)) quickButtons = cloud.quickButtons;
         if(Array.isArray(cloud.fixedPayments)) fixedPayments = cloud.fixedPayments;
+        if(cloud.finConfig && typeof cloud.finConfig === 'object') finConfig = Object.assign({}, FIN_CONFIG_DEFAULTS, cloud.finConfig);
+        if(Array.isArray(cloud.finGoals)) finGoals = cloud.finGoals;
+        if(cloud.finCuotas !== undefined) finCuotas = cloud.finCuotas;
         prevIds = new Set(movements.map(m => m.id));
         try{
           localStorage.setItem('moneda_movements', JSON.stringify(movements));
@@ -1566,6 +1569,11 @@
           localStorage.setItem('moneda_categories', JSON.stringify(categories));
           localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons));
           localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments));
+          localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig));
+          localStorage.setItem('moneda_fin_goals', JSON.stringify(finGoals));
+          localStorage.setItem('moneda_fin_cuotas', JSON.stringify(finCuotas));
+          if(cloud.catBudgetGroups && typeof cloud.catBudgetGroups === 'object') localStorage.setItem('moneda_cat_budget_group', JSON.stringify(cloud.catBudgetGroups));
+          if(cloud.catDebt && typeof cloud.catDebt === 'object') localStorage.setItem('moneda_cat_debt', JSON.stringify(cloud.catDebt));
           localStorage.setItem('moneda_updated_at', cloud.updatedAt);
         }catch(e){}
         setSyncStatus('ok');
@@ -1592,6 +1600,9 @@
         if(Array.isArray(cloud.categories) && cloud.categories.length){ categories = cloud.categories; otherChanged = true; }
         if(Array.isArray(cloud.quickButtons) && (cloud.quickButtons.length || !quickButtons.length)){ quickButtons = cloud.quickButtons; otherChanged = true; }
         if(Array.isArray(cloud.fixedPayments) && (cloud.fixedPayments.length || !fixedPayments.length)){ fixedPayments = cloud.fixedPayments; otherChanged = true; }
+        if(cloud.finConfig && typeof cloud.finConfig === 'object'){ finConfig = Object.assign({}, FIN_CONFIG_DEFAULTS, cloud.finConfig); otherChanged = true; }
+        if(Array.isArray(cloud.finGoals) && (cloud.finGoals.length || !finGoals.length)){ finGoals = cloud.finGoals; otherChanged = true; }
+        if(cloud.finCuotas !== undefined){ finCuotas = cloud.finCuotas; otherChanged = true; }
       }
       try{
         localStorage.setItem('moneda_movements', JSON.stringify(movements));
@@ -1599,6 +1610,11 @@
         localStorage.setItem('moneda_categories', JSON.stringify(categories));
         localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons));
         localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments));
+        localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig));
+        localStorage.setItem('moneda_fin_goals', JSON.stringify(finGoals));
+        localStorage.setItem('moneda_fin_cuotas', JSON.stringify(finCuotas));
+        if(cloudNewer && cloud.catBudgetGroups && typeof cloud.catBudgetGroups === 'object') localStorage.setItem('moneda_cat_budget_group', JSON.stringify(cloud.catBudgetGroups));
+        if(cloudNewer && cloud.catDebt && typeof cloud.catDebt === 'object') localStorage.setItem('moneda_cat_debt', JSON.stringify(cloud.catDebt));
         if(cloudNewer) localStorage.setItem('moneda_updated_at', cloud.updatedAt);
       }catch(e){}
       if(needsPush){ markLocalChange(); scheduleSync(); }
@@ -1619,6 +1635,8 @@
     try{
       const payload = {
         movements, categories, quickButtons, fixedPayments, deleted: deletedIds,
+        finConfig, finGoals, finCuotas,
+        catBudgetGroups: catBudgetOverrides(), catDebt: catDebtOverrides(),
         updatedAt: localStorage.getItem('moneda_updated_at') || new Date().toISOString()
       };
       const res = await fetch(SYNC_URL, { method:'POST', body: JSON.stringify(payload), cache:'no-store' });
