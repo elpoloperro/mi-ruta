@@ -320,6 +320,11 @@
   .legend-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   .trend-row{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px; }
   .trend-row .tr-label{ width:78px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Igual que .trend-row pero para Finanzas, donde los montos en pesos y las etiquetas son más largos
+     que el "↑23%" compacto del gráfico de categorías original — necesitan más ancho para no cortarse. */
+  .fin-trend-row{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px; flex-wrap:wrap; }
+  .fin-trend-row .tr-label{ width:auto; min-width:90px; overflow:visible; text-overflow:clip; white-space:normal; }
+  .fin-trend-row .trend-pct{ width:auto; min-width:100px; }
   .trend-bars{ flex:1; display:flex; flex-direction:column; gap:2px; }
   .trend-bar-bg{ background:var(--paper); border-radius:4px; height:6px; overflow:hidden; }
   .trend-bar-fill{ height:100%; border-radius:4px; }
@@ -642,8 +647,8 @@
   .bottom-nav .nav-item{
     background:none; border:none; color:var(--ink-soft); cursor:pointer;
     display:flex; flex-direction:column; align-items:center; gap:3px;
-    font-size:10px; font-family:'Space Grotesk', sans-serif; font-weight:600;
-    padding:6px 10px; flex:1; max-width:84px;
+    font-size:9.5px; font-family:'Space Grotesk', sans-serif; font-weight:600;
+    padding:6px 4px; flex:1; max-width:70px; min-width:0;
   }
   .bottom-nav .nav-item span:first-child{ font-size:19px; line-height:1; }
   .bottom-nav .nav-item.active{ color:var(--coin); }
@@ -725,6 +730,19 @@
   }
   .group-badge.vehiculo{ background:var(--coin-soft); color:var(--coin); border-color:var(--coin); }
   .group-badge.hogar{ background:var(--card-2); }
+  .cat-badges-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .bg-badge{ font-family:'JetBrains Mono', monospace; font-size:10px; padding:2px 8px; border-radius:999px; cursor:pointer; border:1px solid var(--paper-line); color:var(--ink-soft); flex-shrink:0; white-space:nowrap; background:var(--card-2); }
+  .bg-badge.necesidad{ background:#2f6b4a22; color:#3f7a5c; border-color:#3f7a5c; }
+  .bg-badge.deseo{ background:#8a5aa822; color:#8a5aa8; border-color:#8a5aa8; }
+  .bg-badge.ahorro{ background:#c98a2c22; color:#c98a2c; border-color:#c98a2c; }
+  .debt-badge{ font-family:'JetBrains Mono', monospace; font-size:10px; padding:2px 8px; border-radius:999px; cursor:pointer; border:1px solid var(--paper-line); color:var(--ink-soft); flex-shrink:0; white-space:nowrap; background:var(--card-2); }
+  .debt-badge.on{ background:#ef444422; color:var(--danger); border-color:var(--danger); }
+
+  /* ---------- Finanzas ---------- */
+  .fin-stat{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:18px; color:var(--ink); }
+  .fin-stat-sub{ font-family:'Space Grotesk', sans-serif; font-weight:400; font-size:11px; color:var(--ink-soft); }
+  .fin-amount-edit{ cursor:pointer; border-bottom:1px dashed var(--ink-soft); }
+  .fin-usd{ font-size:11px; color:var(--ink-soft); }
 
   .move-group-pills{ display:flex; gap:6px; }
   .move-group-pills .group-pill{ padding:6px 11px; }
@@ -761,6 +779,7 @@
     <button class="nav-item active" data-tab="home"><span class="nav-ico">🏠</span><span>Inicio</span></button>
     <button class="nav-item" data-tab="movements"><span class="nav-ico">📋</span><span>Movimientos</span></button>
     <button class="nav-item" data-tab="vehicle"><span class="nav-ico">🚗</span><span>Vehículo</span></button>
+    <button class="nav-item" data-tab="finanzas"><span class="nav-ico">📊</span><span>Finanzas</span></button>
     <button class="nav-item" data-tab="settings"><span class="nav-ico">⚙️</span><span>Ajustes</span></button>
   </nav>
 
@@ -1054,6 +1073,72 @@
   </div>
   </section>
 
+  <section class="screen" id="screen-finanzas" data-screen="finanzas">
+    <div class="section-title" style="margin-top:0;">
+      <span>Finanzas</span>
+      <span class="add-link" id="finConfigBtn">⚙ configurar</span>
+    </div>
+    <div id="finBanners"></div>
+
+    <div class="chart-card">
+      <h3>Necesidad / Deseo / Ahorro</h3>
+      <div id="finBudgetGroups"></div>
+    </div>
+
+    <div class="charts-row charts-grid">
+      <div class="chart-card">
+        <h3>Ahorro del mes</h3>
+        <div id="finSavingsGoal"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Fondo de emergencia <span class="fin-stat-sub">(renta fija / líquido)</span></h3>
+        <div id="finEmergency"></div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-grid">
+      <div class="chart-card">
+        <h3>Inversiones <span class="fin-stat-sub">(variable)</span></h3>
+        <div id="finInvestments"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Patrimonio total disponible</h3>
+        <div id="finTotalWealth"></div>
+      </div>
+    </div>
+
+    <div class="charts-row charts-grid">
+      <div class="chart-card">
+        <h3>Ahorro mes a mes</h3>
+        <div id="finSavingsHistory"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Deuda / ingreso</h3>
+        <div id="finDebtRatio"></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <span>Plan de cuotas</span>
+      <span class="add-link" id="finCuotasConfigBtn">⚙ configurar</span>
+    </div>
+    <div id="finCuotas"></div>
+
+    <div class="section-title">
+      <span>Metas de ahorro</span>
+      <span class="add-link" id="finGoalAddBtn">+ meta</span>
+    </div>
+    <div id="finGoals"></div>
+
+    <div class="section-title">
+      <span>Gastos por método de pago</span>
+    </div>
+    <div class="chart-card">
+      <select id="finMethodSelect" style="margin-bottom:10px;"></select>
+      <div id="finMethodChart"></div>
+    </div>
+  </section>
+
   <section class="screen" data-screen="settings">
   <div class="settings-block">
     <div class="section-title cat-section-toggle" id="catSectionToggle" style="margin-top:0;">
@@ -1116,6 +1201,7 @@
     <button class="nav-item" data-tab="movements"><span>📋</span><span>Movim.</span></button>
     <button class="fab" id="fabAdd" title="Registrar rápido">+</button>
     <button class="nav-item" data-tab="vehicle"><span>🚗</span><span>Vehículo</span></button>
+    <button class="nav-item" data-tab="finanzas"><span>📊</span><span>Finanzas</span></button>
     <button class="nav-item" data-tab="settings"><span>⚙️</span><span>Ajustes</span></button>
   </nav>
 
@@ -1157,6 +1243,12 @@
 
   let movements = [];
   let categories = [];
+  // ---- Finanzas: todo esto queda guardado solo en este dispositivo (no viaja por el sync a la nube
+  // ni al backup JSON), igual que las fotos o los recordatorios de vehículo. Es análisis, no datos crudos.
+  let finConfig = {};
+  let finGoals = [];
+  let finCuotas = null;
+  const FIN_CONFIG_DEFAULTS = { pctNecesidad:50, pctDeseo:30, pctAhorro:20, savingsGoalPct:20, emergencyMonths:4, fixedAlertPct:50, usdRate:0, emergencySaved:0, emergencySavedUsd:0, investmentsArs:0 };
   let viewDate = new Date();
   let recognizing = false;
   let recognition = null;
@@ -1403,6 +1495,10 @@
     try{ vehiclePlates = JSON.parse(localStorage.getItem('moneda_vehicle_plates') || '{}'); }catch(e){ vehiclePlates = {}; }
     try{ vehTemplates = JSON.parse(localStorage.getItem('moneda_vehicle_templates') || '[]'); }catch(e){ vehTemplates = []; }
     vehEntriesOpen = localStorage.getItem('moneda_vehentries_open') !== '0';
+    try{ finConfig = Object.assign({}, FIN_CONFIG_DEFAULTS, JSON.parse(localStorage.getItem('moneda_fin_config') || '{}')); }
+    catch(e){ finConfig = Object.assign({}, FIN_CONFIG_DEFAULTS); }
+    try{ finGoals = JSON.parse(localStorage.getItem('moneda_fin_goals') || '[]'); }catch(e){ finGoals = []; }
+    try{ finCuotas = JSON.parse(localStorage.getItem('moneda_fin_cuotas') || 'null'); }catch(e){ finCuotas = null; }
     if(vehicles.length === 0) vehicles = ['Kangoo 21'];
     currentVehicle = localStorage.getItem('moneda_vehicle_current') || vehicles[0];
     await pullFromCloud();
@@ -1602,6 +1698,9 @@
   async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); markLocalChange(); } catch(e){ console.error(e); } }
   async function saveFixedPayments(){ try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); markLocalChange(); } catch(e){ console.error(e); } }
   async function savePaymentMethods(){ try{ localStorage.setItem('moneda_payment_methods', JSON.stringify(paymentMethods)); markLocalChange(); } catch(e){ console.error(e); } }
+  function saveFinConfig(){ try{ localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig)); }catch(e){} }
+  function saveFinGoals(){ try{ localStorage.setItem('moneda_fin_goals', JSON.stringify(finGoals)); }catch(e){} }
+  function saveFinCuotas(){ try{ localStorage.setItem('moneda_fin_cuotas', JSON.stringify(finCuotas)); }catch(e){} }
   function setPmSectionOpen(open){
     document.getElementById('pmSectionBody').style.display = open ? 'block' : 'none';
     document.getElementById('pmSectionCaret').classList.toggle('open', open);
@@ -1622,9 +1721,19 @@
       </span>`).join('') || '<div class="veh-local-note">Todavía no tenés métodos de pago cargados.</div>';
     el.querySelectorAll('.pm-chip-act[data-act=edit]').forEach(b => b.addEventListener('click', () => {
       const i = Number(b.dataset.i);
-      openFormModal('Editar método de pago', [{ id:'n', label:'Nombre', value: paymentMethods[i] }], (v) => {
+      openFormModal('Editar método de pago', [{ id:'n', label:'Nombre', value: paymentMethods[i] }], async (v) => {
         if(!v.n){ alert('Poné un nombre.'); return false; }
-        paymentMethods[i] = v.n; savePaymentMethods(); renderPaymentMethods();
+        const oldName = paymentMethods[i];
+        paymentMethods[i] = v.n;
+        // Si renombrás un método, los movimientos ya cargados con el nombre viejo quedarían
+        // huérfanos (no matchean más ningún ítem del select) y desaparecen de los filtros/gráficos.
+        // Los actualizamos para que sigan apuntando al método renombrado.
+        if(oldName !== v.n){
+          let touched = false;
+          movements.forEach(mv => { if(mv.method === oldName){ mv.method = v.n; touched = true; } });
+          if(touched) await saveMovements();
+        }
+        savePaymentMethods(); renderPaymentMethods(); renderFinanzas();
       });
     }));
     el.querySelectorAll('.pm-chip-act[data-act=del]').forEach(b => b.addEventListener('click', () => {
@@ -2665,6 +2774,15 @@
     });
     return match ? match.amount : null;
   }
+  // Suma de todos los pagos fijos, usando el monto configurado o (si es variable) lo efectivamente
+  // pagado este mes. La usa tanto "Pagos fijos" en Inicio como el fondo de emergencia / alerta en Finanzas.
+  function totalFixedPerMonth(){
+    return fixedPayments.reduce((s, fp) => {
+      if(fp.amount > 0) return s + fp.amount;
+      const actual = fixedPaymentActualAmount(fp);
+      return s + (actual || 0);
+    }, 0);
+  }
   async function toggleFixedPaid(fp){
     const mk = monthKeyOf(viewDate);
     fp.paidMonths = fp.paidMonths || [];
@@ -2999,6 +3117,323 @@
     trendChartEl.innerHTML = rows.length ? rows.join('') : '<div class="empty-chart">Sin datos suficientes.</div>';
   }
 
+  // ===================== Finanzas =====================
+  // Los <input type="number"> nunca aceptan "." como separador de miles (solo como decimal), así que
+  // si alguien tipea "1.517" pensando en mil quinientos diecisiete, el navegador lo guarda como 1,517.
+  // Para los montos de Finanzas usamos <input type="text"> + este parser, que entiende el formato
+  // argentino: coma = decimal, punto = miles (y un punto seguido de EXACTAMENTE 3 dígitos sin coma
+  // se interpreta como miles, no como decimal, que es el caso típico de "1.517").
+  function parseMoneyAR(str){
+    if(str == null) return 0;
+    let raw = String(str).trim();
+    if(!raw) return 0;
+    if(raw.includes(',')){
+      raw = raw.replace(/\./g, '').replace(',', '.');
+    } else {
+      const parts = raw.split('.');
+      if(parts.length === 2 && parts[1].length === 3) raw = parts.join('');
+    }
+    const n = parseFloat(raw);
+    return isNaN(n) ? 0 : n;
+  }
+  function finUsdLine(amountArs){
+    if(!finConfig.usdRate || finConfig.usdRate <= 0) return '';
+    return ` <span class="fin-usd">· USD ${fmt(amountArs / finConfig.usdRate).replace('$','')}</span>`;
+  }
+  function finBudgetTotals(moves){
+    const t = { necesidad:0, deseo:0, ahorro:0 };
+    moves.forEach(mv => { if(!mv.isIncome) t[catBudgetGroup(mv.category)] = (t[catBudgetGroup(mv.category)]||0) + mv.amount; });
+    return t;
+  }
+  function renderFinBudgetGroups(monthMoves, totalExpense){
+    const t = finBudgetTotals(monthMoves);
+    const rows = [
+      { key:'necesidad', label:'🧾 Necesidad', pctTarget: finConfig.pctNecesidad },
+      { key:'deseo', label:'🎈 Deseo', pctTarget: finConfig.pctDeseo },
+      { key:'ahorro', label:'💰 Ahorro/Deuda', pctTarget: finConfig.pctAhorro }
+    ].map(r => {
+      const amount = t[r.key] || 0;
+      const pctReal = totalExpense > 0 ? Math.round((amount/totalExpense)*100) : 0;
+      const over = pctReal > r.pctTarget + 5;
+      return `<div class="fin-trend-row">
+        <div class="tr-label">${r.label} · meta ${r.pctTarget}%</div>
+        <div class="trend-bars"><div class="trend-bar-bg"><div class="trend-bar-fill" style="width:${Math.min(100,pctReal)}%;background:${over ? 'var(--danger)' : 'var(--coin)'}"></div></div></div>
+        <div class="trend-pct" style="color:${over ? 'var(--danger)' : 'var(--ink-soft)'}">${pctReal}% · ${fmt(amount)}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('finBudgetGroups').innerHTML = totalExpense > 0 ? rows : '<div class="empty-chart">Sin gastos este mes.</div>';
+  }
+  function renderFinSavingsGoal(totalIncome, totalExpense){
+    const goal = totalIncome * (finConfig.savingsGoalPct / 100);
+    const actual = totalIncome - totalExpense;
+    const pct = goal > 0 ? Math.max(0, Math.min(100, (actual/goal)*100)) : 0;
+    const el = document.getElementById('finSavingsGoal');
+    if(totalIncome <= 0){ el.innerHTML = '<div class="empty-chart">Cargá ingresos este mes para ver tu meta.</div>'; return; }
+    el.innerHTML = `
+      <div class="fin-stat">${fmt(actual)} <span class="fin-stat-sub">de una meta de ${fmt(goal)} (${finConfig.savingsGoalPct}% del ingreso)</span>${finUsdLine(actual)}</div>
+      <div class="veh-bar"><i style="width:${pct}%;${actual < 0 ? 'background:var(--danger);' : ''}"></i></div>
+      <div class="daily-limit" ${actual < 0 ? 'style="color:var(--danger)"' : ''}>${actual >= goal ? '✅ Meta cumplida' : (actual < 0 ? 'Este mes gastaste más de lo que entró' : `Te faltan ${fmt(goal-actual)} para la meta`)}</div>
+    `;
+  }
+  function renderFinEmergency(){
+    const avgFixed = totalFixedPerMonth();
+    const objetivo = avgFixed * finConfig.emergencyMonths;
+    const savedArs = finConfig.emergencySaved || 0;
+    const savedUsd = finConfig.emergencySavedUsd || 0;
+    const usdInArs = finConfig.usdRate > 0 ? savedUsd * finConfig.usdRate : 0;
+    const total = savedArs + usdInArs;
+    const pct = objetivo > 0 ? Math.min(100, (total/objetivo)*100) : 0;
+    const el = document.getElementById('finEmergency');
+    const usdLine = savedUsd > 0
+      ? `<div class="fin-stat-sub">+ USD ${savedUsd.toLocaleString('es-AR')}${finConfig.usdRate > 0 ? ` (≈ ${fmt(usdInArs)})` : ' (cargá la cotización en "configurar" para sumarlos al total)'}</div>`
+      : '';
+    el.innerHTML = `
+      <div class="fin-stat"><span class="fin-amount-edit" id="finEmergencySavedEdit" title="Tocá para actualizar lo ahorrado">${fmt(total)}</span> <span class="fin-stat-sub">de ${fmt(objetivo)} (${finConfig.emergencyMonths} meses de tus gastos fijos: ${fmt(avgFixed)}/mes)</span></div>
+      ${usdLine}
+      <div class="veh-bar"><i style="width:${pct}%"></i></div>
+      <div class="daily-limit">${pct >= 100 ? '✅ Fondo completo' : `${Math.round(pct)}% del objetivo`}</div>
+    `;
+    document.getElementById('finEmergencySavedEdit').addEventListener('click', () => {
+      openFormModal('Fondo de emergencia', [
+        { id:'saved', label:'Monto ahorrado en pesos', type:'text', value: finConfig.emergencySaved || 0 },
+        { id:'savedUsd', label:'Monto ahorrado en USD (si tenés)', type:'text', value: finConfig.emergencySavedUsd || 0 }
+      ], async (v) => {
+        finConfig.emergencySaved = parseMoneyAR(v.saved);
+        finConfig.emergencySavedUsd = parseMoneyAR(v.savedUsd);
+        saveFinConfig(); renderFinanzas();
+      }, 'Guardar');
+    });
+  }
+  // Plata invertida en instrumentos que fluctúan (bonos, acciones, CEDEARs) — se muestra aparte del
+  // Fondo de emergencia a propósito: no cuenta para el objetivo de "meses de gastos fijos cubiertos"
+  // porque no es plata a la que accedés sin riesgo de pérdida en cualquier momento.
+  function renderFinInvestments(){
+    const val = finConfig.investmentsArs || 0;
+    const el = document.getElementById('finInvestments');
+    el.innerHTML = `
+      <div class="fin-stat"><span class="fin-amount-edit" id="finInvestmentsEdit" title="Tocá para actualizar">${fmt(val)}</span></div>
+      <div class="daily-limit">Bonos, acciones, CEDEARs y similares — no se cuentan para el objetivo del fondo de emergencia.</div>
+    `;
+    document.getElementById('finInvestmentsEdit').addEventListener('click', () => {
+      openFormModal('Inversiones (variable)', [
+        { id:'val', label:'Monto actual invertido (pesos)', type:'text', value: val }
+      ], async (v) => {
+        finConfig.investmentsArs = parseMoneyAR(v.val);
+        saveFinConfig(); renderFinanzas();
+      }, 'Guardar');
+    });
+  }
+  function renderFinTotalWealth(){
+    const savedArs = finConfig.emergencySaved || 0;
+    const savedUsd = finConfig.emergencySavedUsd || 0;
+    const usdInArs = finConfig.usdRate > 0 ? savedUsd * finConfig.usdRate : 0;
+    const investments = finConfig.investmentsArs || 0;
+    const total = savedArs + usdInArs + investments;
+    const el = document.getElementById('finTotalWealth');
+    el.innerHTML = `
+      <div class="fin-stat">${fmt(total)}</div>
+      <div class="daily-limit">Fondo de emergencia (${fmt(savedArs + usdInArs)}) + Inversiones (${fmt(investments)})${finConfig.usdRate <= 0 && savedUsd > 0 ? ' · falta cargar la cotización para incluir los USD' : ''}</div>
+    `;
+  }
+  function renderFinBanners(totalIncome){
+    const avgFixed = totalFixedPerMonth();
+    const pct = totalIncome > 0 ? (avgFixed/totalIncome)*100 : 0;
+    const el = document.getElementById('finBanners');
+    if(totalIncome > 0 && pct > finConfig.fixedAlertPct){
+      el.innerHTML = `<div class="banner warn-b">⚠️ Tus pagos fijos son el ${Math.round(pct)}% de tu ingreso este mes (tu límite configurado: ${finConfig.fixedAlertPct}%).</div>`;
+    } else {
+      el.innerHTML = '';
+    }
+  }
+  function renderFinSavingsHistory(){
+    const months = [];
+    for(let i = 5; i >= 0; i--){
+      const d = new Date(viewDate.getFullYear(), viewDate.getMonth() - i, 1);
+      let inc = 0, exp = 0;
+      monthMovements(d).forEach(mv => { if(mv.isIncome) inc += mv.amount; else exp += mv.amount; });
+      months.push({ label: d.toLocaleDateString('es-AR', { month:'short' }), saved: inc - exp });
+    }
+    const maxAbs = Math.max(1, ...months.map(m => Math.abs(m.saved)));
+    const rows = months.map(m => {
+      const pct = (Math.abs(m.saved)/maxAbs)*100;
+      return `<div class="fin-trend-row">
+        <div class="tr-label">${m.label}</div>
+        <div class="trend-bars"><div class="trend-bar-bg"><div class="trend-bar-fill" style="width:${pct}%;background:${m.saved >= 0 ? 'var(--coin)' : 'var(--danger)'}"></div></div></div>
+        <div class="trend-pct" style="color:${m.saved >= 0 ? 'var(--ink-soft)' : 'var(--danger)'}">${fmt(m.saved)}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('finSavingsHistory').innerHTML = rows;
+  }
+  function renderFinDebtRatio(monthMoves, totalIncome){
+    const debtTotal = monthMoves.filter(mv => !mv.isIncome && catIsDebt(mv.category)).reduce((s,mv)=>s+mv.amount,0);
+    const pct = totalIncome > 0 ? (debtTotal/totalIncome)*100 : 0;
+    const el = document.getElementById('finDebtRatio');
+    if(debtTotal <= 0){ el.innerHTML = '<div class="empty-chart">Sin categorías marcadas como deuda con gasto este mes.</div>'; return; }
+    el.innerHTML = `
+      <div class="fin-stat">${fmt(debtTotal)} <span class="fin-stat-sub">${totalIncome > 0 ? `· ${Math.round(pct)}% de tu ingreso` : ''}</span></div>
+      <div class="veh-bar"><i style="width:${Math.min(100,pct)}%;${pct > 40 ? 'background:var(--danger);' : ''}"></i></div>
+    `;
+  }
+  // Recorre, mes a mes, desde el último mes contado del plan hasta hoy, y suma una cuota cada vez
+  // que el pago fijo vinculado aparece como pagado ese mes (reutiliza la misma detección que "Pagos fijos").
+  function advanceCuotasPlan(){
+    if(!finCuotas || !finCuotas.linkedFixedId) return;
+    const fp = fixedPayments.find(f => f.id === finCuotas.linkedFixedId);
+    if(!fp) return;
+    let cursor = finCuotas.lastCountedMonth ? new Date(finCuotas.lastCountedMonth + '-01T12:00:00') : new Date();
+    if(!finCuotas.lastCountedMonth) cursor.setMonth(cursor.getMonth() - 1); // arranca desde el mes pasado si nunca se contó nada
+    const now = new Date();
+    let changed = false;
+    for(let i = 0; i < 36; i++){ // tope de seguridad, nunca debería iterar tanto
+      cursor.setMonth(cursor.getMonth() + 1);
+      if(monthKeyOf(cursor) > monthKeyOf(now)) break;
+      if(finCuotas.cuotaActual >= finCuotas.totalCuotas) break;
+      if(fixedPaymentPaid(fp, cursor)){
+        const amount = fixedPaymentActualAmount(fp, cursor) || fp.amount || 0;
+        finCuotas.cuotaActual += 1;
+        finCuotas.history = finCuotas.history || [];
+        finCuotas.history.push({ month: monthKeyOf(cursor), cuota: finCuotas.cuotaActual, amount });
+        if(finCuotas.history.length > 24) finCuotas.history = finCuotas.history.slice(-24);
+        finCuotas.lastCountedMonth = monthKeyOf(cursor);
+        changed = true;
+      }
+    }
+    if(changed) saveFinCuotas();
+  }
+  function renderFinCuotas(){
+    const el = document.getElementById('finCuotas');
+    if(!finCuotas){ el.innerHTML = '<div class="empty-chart">Sin plan configurado. Tocá "configurar" arriba.</div>'; return; }
+    advanceCuotasPlan();
+    const restantes = Math.max(0, finCuotas.totalCuotas - finCuotas.cuotaActual);
+    const adelantoFrac = (finCuotas.adelantoPct || 0) / 100;
+    const pct = finCuotas.totalCuotas > 0 ? Math.min(100, ((finCuotas.cuotaActual + adelantoFrac)/finCuotas.totalCuotas)*100) : 0;
+    const finDate = new Date(); finDate.setMonth(finDate.getMonth() + restantes);
+    const hist = finCuotas.history || [];
+    let trendLine = '';
+    if(hist.length >= 2){
+      const last = hist[hist.length-1], prev = hist[hist.length-2];
+      const diffAmt = last.amount - prev.amount;
+      const diffPct = prev.amount > 0 ? (diffAmt/prev.amount)*100 : 0;
+      trendLine = `<div class="daily-limit">Última cuota: ${fmt(last.amount)} · ${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}% (${diffAmt >= 0 ? '+' : ''}${fmt(diffAmt)}) vs. la anterior</div>`;
+    } else if(hist.length === 1){
+      trendLine = `<div class="daily-limit">Última cuota registrada: ${fmt(hist[0].amount)}</div>`;
+    }
+    el.innerHTML = `
+      <div class="chart-card">
+        <div class="fin-stat">${escapeHtml(finCuotas.name)} · cuota ${finCuotas.cuotaActual}/${finCuotas.totalCuotas}
+          <span class="fin-stat-sub">restan ${restantes}${finCuotas.adelantoPct ? ` (+${finCuotas.adelantoPct}% adelantado)` : ''}</span>
+        </div>
+        <div class="veh-bar"><i style="width:${pct}%"></i></div>
+        <div class="daily-limit">Fin estimado: ${finDate.toLocaleDateString('es-AR', { month:'long', year:'numeric' })}</div>
+        ${trendLine}
+        <span class="bg-badge necesidad" id="finCuotasAdelantoEdit" style="margin-top:8px;cursor:pointer;" title="Tocá para cargar un adelanto">✏️ Adelanto: ${finCuotas.adelantoPct || 0}%</span>
+      </div>
+    `;
+    document.getElementById('finCuotasAdelantoEdit').addEventListener('click', () => {
+      openFormModal('Adelanto de cuota', [
+        { id:'pct', label:'% ya cubierto de la última cuota', type:'number', value: finCuotas.adelantoPct || 0 }
+      ], async (v) => {
+        finCuotas.adelantoPct = Math.max(0, Math.min(100, parseFloat(v.pct) || 0));
+        saveFinCuotas(); renderFinCuotas();
+      }, 'Guardar');
+    });
+  }
+  function renderFinGoals(){
+    const el = document.getElementById('finGoals');
+    if(finGoals.length === 0){ el.innerHTML = '<div class="empty-chart">Sin metas todavía.</div>'; return; }
+    el.innerHTML = finGoals.map(g => {
+      const pct = g.target > 0 ? Math.min(100, (g.saved/g.target)*100) : 0;
+      const dateLine = g.targetDate ? ` · objetivo ${new Date(g.targetDate+'T12:00:00').toLocaleDateString('es-AR')}` : '';
+      let perMonth = '';
+      if(g.targetDate){
+        const months = Math.max(1, Math.round((new Date(g.targetDate+'T12:00:00') - new Date()) / (1000*60*60*24*30)));
+        const falta = Math.max(0, g.target - g.saved);
+        if(falta > 0) perMonth = `<div class="daily-limit">Necesitás ahorrar ${fmt(falta/months)}/mes para llegar</div>`;
+      }
+      return `
+      <div class="fp-card">
+        <div class="fp-left">
+          <span class="icon">🎯</span>
+          <div class="fp-info">
+            <div class="fp-name">${escapeHtml(g.name)}</div>
+            <div class="fp-meta">${fmt(g.saved)} / ${fmt(g.target)}${dateLine}</div>
+            <div class="veh-bar" style="margin-top:4px;"><i style="width:${pct}%"></i></div>
+            ${perMonth}
+          </div>
+        </div>
+        <div class="fp-right">
+          <button class="fp-edit" data-id="${g.id}" title="Editar meta">✎</button>
+          <button class="fp-del" data-id="${g.id}" title="Eliminar meta">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('.fp-edit').forEach(b => b.addEventListener('click', () => openGoalModal(finGoals.find(g => g.id == b.dataset.id))));
+    el.querySelectorAll('.fp-del').forEach(b => b.addEventListener('click', () => {
+      openConfirmModal('Eliminar meta', '¿Eliminar esta meta de ahorro?', async () => {
+        finGoals = finGoals.filter(g => g.id != b.dataset.id);
+        saveFinGoals(); renderFinGoals();
+      });
+    }));
+  }
+  function openGoalModal(goal){
+    openFormModal(goal ? 'Editar meta' : 'Nueva meta de ahorro', [
+      { id:'name', label:'Nombre (ej: Vacaciones)', value: goal ? goal.name : '' },
+      { id:'target', label:'Monto objetivo', type:'text', value: goal ? goal.target : '' },
+      { id:'saved', label:'Ya ahorrado', type:'text', value: goal ? goal.saved : 0 },
+      { id:'targetDate', label:'Fecha objetivo (opcional)', type:'date', value: goal ? (goal.targetDate || '') : '' }
+    ], async (v) => {
+      const target = parseMoneyAR(v.target);
+      if(!v.name.trim() || !target || target <= 0){ alert('Completá nombre y un monto objetivo válido.'); return false; }
+      if(goal){
+        goal.name = v.name.trim(); goal.target = target; goal.saved = parseMoneyAR(v.saved); goal.targetDate = v.targetDate || null;
+      } else {
+        finGoals.push({ id: Date.now(), name: v.name.trim(), target, saved: parseMoneyAR(v.saved), targetDate: v.targetDate || null });
+      }
+      saveFinGoals(); renderFinGoals();
+    }, 'Guardar');
+  }
+  function populateFinMethodSelect(){
+    const sel = document.getElementById('finMethodSelect');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Elegí un método de pago</option>' + paymentMethods.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+    if(paymentMethods.includes(prev)) sel.value = prev;
+  }
+  function renderFinMethodChart(){
+    const method = document.getElementById('finMethodSelect').value;
+    const el = document.getElementById('finMethodChart');
+    if(!method){ el.innerHTML = '<div class="empty-chart">Elegí un método para ver su evolución.</div>'; return; }
+    const months = [];
+    for(let i = 5; i >= 0; i--){
+      const d = new Date(viewDate.getFullYear(), viewDate.getMonth() - i, 1);
+      const total = monthMovements(d).filter(mv => !mv.isIncome && mv.method && mv.method.trim().toLowerCase() === method.trim().toLowerCase()).reduce((s,mv)=>s+mv.amount,0);
+      months.push({ label: d.toLocaleDateString('es-AR', { month:'short' }), total });
+    }
+    const maxVal = Math.max(1, ...months.map(m => m.total));
+    el.innerHTML = months.map(m => `
+      <div class="fin-trend-row">
+        <div class="tr-label">${m.label}</div>
+        <div class="trend-bars"><div class="trend-bar-bg"><div class="trend-bar-fill now" style="width:${(m.total/maxVal)*100}%"></div></div></div>
+        <div class="trend-pct" style="color:var(--ink-soft)">${fmt(m.total)}</div>
+      </div>`).join('');
+  }
+  function renderFinanzas(){
+    const monthMoves = monthMovements();
+    let totalIncome = 0, totalExpense = 0;
+    monthMoves.forEach(mv => { if(mv.isIncome) totalIncome += mv.amount; else totalExpense += mv.amount; });
+    renderFinBanners(totalIncome);
+    renderFinBudgetGroups(monthMoves, totalExpense);
+    renderFinSavingsGoal(totalIncome, totalExpense);
+    renderFinEmergency();
+    renderFinInvestments();
+    renderFinTotalWealth();
+    renderFinSavingsHistory();
+    renderFinDebtRatio(monthMoves, totalIncome);
+    renderFinCuotas();
+    renderFinGoals();
+    populateFinMethodSelect();
+    renderFinMethodChart();
+  }
+
   function renderFixedPayments(){
     const mk = monthKeyOf(viewDate);
     const now = new Date();
@@ -3017,11 +3452,7 @@
       fpSummary.innerHTML = '<span class="cat-summary-chip" style="cursor:default;">Sin pagos fijos cargados todavía</span>';
     } else {
       const paidCount = results.filter(r => r.paid).length;
-      const totalFixed = fixedPayments.reduce((s, fp) => {
-        if(fp.amount > 0) return s + fp.amount;
-        const actual = fixedPaymentActualAmount(fp);
-        return s + (actual || 0);
-      }, 0);
+      const totalFixed = totalFixedPerMonth();
       const totalChip = `<span class="cat-summary-chip" style="cursor:default;">💰 Total: ${fmt(totalFixed)}/mes</span>`;
       const summaryChip = `<span class="cat-summary-chip" style="cursor:default;">${paidCount}/${fixedPayments.length} al día</span>`;
       const chips = results.map(({fp, paid, overdue}) => {
@@ -3181,7 +3612,11 @@
         </div>
         <div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${pct}%"></div></div>
         ${dailyLine}
-        <span class="group-badge ${catGroup(cat.key)}" data-cat="${cat.key}" title="Tocá para cambiar de grupo (Hogar/Vehículo)">${catGroup(cat.key) === 'vehiculo' ? '🚗 Vehículo' : '🏠 Hogar'}</span>
+        <div class="cat-badges-row">
+          <span class="group-badge ${catGroup(cat.key)}" data-cat="${cat.key}" title="Tocá para cambiar de grupo (Hogar/Vehículo)">${catGroup(cat.key) === 'vehiculo' ? '🚗 Vehículo' : '🏠 Hogar'}</span>
+          <span class="bg-badge ${catBudgetGroup(cat.key)}" data-cat="${cat.key}" title="Tocá para cambiar: Necesidad → Deseo → Ahorro (para el resumen de Finanzas)">${BG_LABELS[catBudgetGroup(cat.key)]}</span>
+          <span class="debt-badge ${catIsDebt(cat.key) ? 'on' : ''}" data-cat="${cat.key}" title="Marcar/desmarcar como deuda (para el ratio deuda/ingreso de Finanzas)">💳 Deuda</span>
+        </div>
         <div class="kw-toggle" data-cat="${cat.key}">🔑 palabras clave (${(cat.words||[]).length})</div>
         <div class="kw-panel" id="kw-panel-${cat.key}" style="display:${openKwPanel === cat.key ? 'block' : 'none'};">
           <div class="kw-chips">${wordChips || '<span class="kw-empty">Sin palabras clave todavía</span>'}</div>
@@ -3206,6 +3641,21 @@
       el.addEventListener('click', () => {
         const key = el.dataset.cat;
         setCatGroup(key, catGroup(key) === 'vehiculo' ? 'hogar' : 'vehiculo');
+        render();
+      });
+    });
+    catsEl.querySelectorAll('.bg-badge').forEach(el => {
+      el.addEventListener('click', () => {
+        const key = el.dataset.cat;
+        const next = BG_ORDER[(BG_ORDER.indexOf(catBudgetGroup(key)) + 1) % BG_ORDER.length];
+        setCatBudgetGroup(key, next);
+        render();
+      });
+    });
+    catsEl.querySelectorAll('.debt-badge').forEach(el => {
+      el.addEventListener('click', () => {
+        const key = el.dataset.cat;
+        setCatDebt(key, !catIsDebt(key));
         render();
       });
     });
@@ -3280,6 +3730,7 @@
 
     renderFixedPayments();
     renderMovements();
+    renderFinanzas();
   }
 
   function renderMovements(){
@@ -3914,6 +4365,52 @@
   }
   document.getElementById('openReclassifyBtn').addEventListener('click', openReclassifyTool);
   document.getElementById('openReclassifyBtnMov').addEventListener('click', openReclassifyTool);
+
+  // ---- Finanzas: configuración general, plan de cuotas y metas ----
+  document.getElementById('finConfigBtn').addEventListener('click', () => {
+    openFormModal('Configurar Finanzas', [
+      { id:'pctNecesidad', label:'% objetivo Necesidad', type:'number', value: finConfig.pctNecesidad },
+      { id:'pctDeseo', label:'% objetivo Deseo', type:'number', value: finConfig.pctDeseo },
+      { id:'pctAhorro', label:'% objetivo Ahorro/Deuda', type:'number', value: finConfig.pctAhorro },
+      { id:'savingsGoalPct', label:'% de ahorro mensual buscado', type:'number', value: finConfig.savingsGoalPct },
+      { id:'emergencyMonths', label:'Meses de fondo de emergencia', type:'number', value: finConfig.emergencyMonths },
+      { id:'fixedAlertPct', label:'% de ingreso en fijos que dispara alerta', type:'number', value: finConfig.fixedAlertPct },
+      { id:'usdRate', label:'Cotización USD en pesos (0 = no mostrar en dólares)', type:'text', value: finConfig.usdRate }
+    ], async (v) => {
+      finConfig.pctNecesidad = parseFloat(v.pctNecesidad) || 0;
+      finConfig.pctDeseo = parseFloat(v.pctDeseo) || 0;
+      finConfig.pctAhorro = parseFloat(v.pctAhorro) || 0;
+      finConfig.savingsGoalPct = parseFloat(v.savingsGoalPct) || 0;
+      finConfig.emergencyMonths = parseFloat(v.emergencyMonths) || 0;
+      finConfig.fixedAlertPct = parseFloat(v.fixedAlertPct) || 0;
+      finConfig.usdRate = parseMoneyAR(v.usdRate);
+      saveFinConfig(); renderFinanzas();
+    }, 'Guardar');
+  });
+  document.getElementById('finCuotasConfigBtn').addEventListener('click', () => {
+    const fpOpts = fixedPayments.map(fp => ({ value: String(fp.id), label: fp.name }));
+    if(fpOpts.length === 0){ alert('Primero cargá el pago fijo de la cuota en Inicio → Pagos fijos.'); return; }
+    openFormModal('Configurar plan de cuotas', [
+      { id:'name', label:'Nombre del plan', value: finCuotas ? finCuotas.name : 'Plan Peugeot' },
+      { id:'totalCuotas', label:'Total de cuotas', type:'number', value: finCuotas ? finCuotas.totalCuotas : '' },
+      { id:'cuotaActual', label:'Cuota actual (en cuál vas)', type:'number', value: finCuotas ? finCuotas.cuotaActual : '' },
+      { id:'linkedFixedId', label:'Pago fijo vinculado', type:'select', value: finCuotas ? String(finCuotas.linkedFixedId) : fpOpts[0].value, options: fpOpts },
+      { id:'adelantoPct', label:'% ya adelantado de la última cuota', type:'number', value: finCuotas ? (finCuotas.adelantoPct||0) : 0 }
+    ], async (v) => {
+      const total = parseFloat(v.totalCuotas), actual = parseFloat(v.cuotaActual);
+      if(!v.name.trim() || !total || total <= 0 || isNaN(actual) || actual < 0){ alert('Completá nombre, total de cuotas y la cuota actual.'); return false; }
+      finCuotas = {
+        name: v.name.trim(), totalCuotas: total, cuotaActual: actual,
+        linkedFixedId: v.linkedFixedId, adelantoPct: parseFloat(v.adelantoPct) || 0,
+        lastCountedMonth: finCuotas ? finCuotas.lastCountedMonth : todayKey().slice(0,7),
+        history: finCuotas ? (finCuotas.history || []) : []
+      };
+      saveFinCuotas(); renderFinCuotas();
+    }, 'Guardar');
+  });
+  document.getElementById('finGoalAddBtn').addEventListener('click', () => openGoalModal(null));
+  document.getElementById('finMethodSelect').addEventListener('change', renderFinMethodChart);
+
   addCatBtn.addEventListener('click', async () => {
     const icon = document.getElementById('newCatIcon').value.trim() || '🏷️';
     const name = document.getElementById('newCatName').value.trim();
@@ -4021,6 +4518,44 @@
     try{ localStorage.setItem('moneda_cat_groups', JSON.stringify(ov)); }catch(e){}
   }
 
+  // ---- Clasificación Necesidad/Deseo/Ahorro y Deuda, para la pestaña Finanzas ----
+  // Igual patrón que catGroup/setCatGroup: overrides en su propia clave, con defaults razonables
+  // para que una categoría ya existente (sin tocar nada) ya arranque clasificada de forma sensata.
+  const BG_DEFAULTS = {
+    comida:'necesidad', transporte:'necesidad', servicios:'necesidad', salud:'necesidad',
+    vivienda:'necesidad', vehiculo:'necesidad', mascotas:'necesidad', herramientas:'necesidad', educacion:'necesidad',
+    entretenimiento:'deseo', otros:'deseo', ropa_cuidado:'deseo', suscripciones:'deseo', regalos:'deseo',
+    deudas:'ahorro'
+  };
+  const BG_LABELS = { necesidad:'🧾 Necesidad', deseo:'🎈 Deseo', ahorro:'💰 Ahorro' };
+  const BG_ORDER = ['necesidad','deseo','ahorro'];
+  function catBudgetOverrides(){
+    try{ return JSON.parse(localStorage.getItem('moneda_cat_budget_group') || '{}'); }catch(e){ return {}; }
+  }
+  function catBudgetGroup(key){
+    const ov = catBudgetOverrides();
+    if(ov[key]) return ov[key];
+    return BG_DEFAULTS[key] || 'deseo';
+  }
+  function setCatBudgetGroup(key, group){
+    const ov = catBudgetOverrides();
+    ov[key] = group;
+    try{ localStorage.setItem('moneda_cat_budget_group', JSON.stringify(ov)); }catch(e){}
+  }
+  function catDebtOverrides(){
+    try{ return JSON.parse(localStorage.getItem('moneda_cat_debt') || '{}'); }catch(e){ return {}; }
+  }
+  function catIsDebt(key){
+    const ov = catDebtOverrides();
+    if(key in ov) return ov[key];
+    return key === 'deudas';
+  }
+  function setCatDebt(key, val){
+    const ov = catDebtOverrides();
+    ov[key] = val;
+    try{ localStorage.setItem('moneda_cat_debt', JSON.stringify(ov)); }catch(e){}
+  }
+
   // ---- Filtro Hogar/Vehículo en Movimientos ----
   let movGroupFilter = 'todo';
   document.querySelectorAll('#movGroupToggle .group-pill').forEach(btn => {
@@ -4045,7 +4580,7 @@
   function switchTab(tab){
     document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.dataset.screen === tab));
     document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    document.getElementById('monthNavBar').style.display = (tab === 'home' || tab === 'movements') ? 'flex' : 'none';
+    document.getElementById('monthNavBar').style.display = (tab === 'home' || tab === 'movements' || tab === 'finanzas') ? 'flex' : 'none';
     window.scrollTo({ top:0 });
   }
   document.querySelectorAll('[data-tab]').forEach(btn => {
