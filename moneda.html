@@ -2947,7 +2947,7 @@
         const pct = (val/groupTotal)*100;
         const meta = VEH_SUB_META[key];
         stops.push(`${meta.color} ${acc}% ${acc+pct}%`);
-        legendItems.push({ label:meta.label, icon:meta.icon, pct: Math.round(pct), color:meta.color });
+        legendItems.push({ label:meta.label, icon:meta.icon, pct: Math.round(pct), color:meta.color, amount: val });
         acc += pct;
       });
     } else {
@@ -2960,13 +2960,13 @@
         const pct = (val/groupTotal)*100;
         const color = catColor(cat.key);
         stops.push(`${color} ${acc}% ${acc+pct}%`);
-        legendItems.push({ label:cat.label, icon:cat.icon, pct: Math.round(pct), color });
+        legendItems.push({ label:cat.label, icon:cat.icon, pct: Math.round(pct), color, amount: val });
         acc += pct;
       });
     }
     const gradient = `conic-gradient(${stops.join(', ')})`;
     const legendHtml = legendItems.sort((a,b)=>b.pct-a.pct).slice(0,6).map(li =>
-      `<div class="legend-item"><span class="legend-dot" style="background:${li.color}"></span>${li.icon} ${li.label} · ${li.pct}%</div>`
+      `<div class="legend-item"><span class="legend-dot" style="background:${li.color}"></span>${li.icon} ${li.label} · ${li.pct}% · ${fmt(li.amount)}</div>`
     ).join('');
     const dhLabel = donutGroup === 'hogar' ? 'Hogar' : (donutGroup === 'vehiculo' ? 'Vehículo' : 'Total');
     pieChartEl.innerHTML = `<div class="pie-wrap"><div class="donut-wrap"><div class="donut" style="background:${gradient}"></div><div class="donut-hole"><div class="dh-amount">${fmt(groupTotal)}</div><div class="dh-label">${dhLabel}</div></div></div><div class="legend">${legendHtml}</div></div>`;
