@@ -4512,7 +4512,7 @@
     else if(target === 'liters' && vals.total && vals.price) result = Math.round((vals.total / vals.price) * 100) / 100;
     else if(target === 'price' && vals.total && vals.liters) result = Math.round((vals.total / vals.liters) * 100) / 100;
     if(result == null) return;
-    document.getElementById(fieldIds[target]).value = target === 'total' ? fmt(result) : String(result);
+    document.getElementById(fieldIds[target]).value = String(result);
   }
   document.getElementById('vehFuelType').addEventListener('change', (e) => {
     const gnc = e.target.value === 'gnc';
