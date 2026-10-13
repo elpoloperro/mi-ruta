@@ -1825,10 +1825,11 @@
   function saveCloudinaryConfig(cloudName, uploadPreset){
     try{ localStorage.setItem('cloudinaryConfig', JSON.stringify({ cloudName: cloudName.trim(), uploadPreset: uploadPreset.trim() })); }catch(e){}
   }
-  // Sube un dataURL (ya redimensionado localmente) a Cloudinary y devuelve la URL pública, o null si falla
-  // o no está configurado — en ese caso el que llama sigue usando el dataURL local, como siempre.
+  // Sube un dataURL (ya redimensionado localmente) a Cloudinary y devuelve { url, error }.
+  // Si no está configurado o falla, url queda null y el que llama sigue usando el dataURL local, como siempre.
+  // "error" trae el motivo legible (de la respuesta de Cloudinary) para poder mostrarlo en pantalla sin consola.
   async function uploadToCloudinary(dataURL){
-    if(!isCloudinaryConfigured()) return null;
+    if(!isCloudinaryConfigured()) return { url: null, error: null };
     const { cloudName, uploadPreset } = getCloudinaryConfig();
     try{
       const blob = await (await fetch(dataURL)).blob();
@@ -1836,10 +1837,15 @@
       fd.append('file', blob);
       fd.append('upload_preset', uploadPreset);
       const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method:'POST', body: fd });
-      if(!res.ok) throw new Error('cloudinary upload failed');
+      if(!res.ok){
+        let msg = 'HTTP ' + res.status;
+        try{ const errData = await res.json(); if(errData && errData.error && errData.error.message) msg = errData.error.message; }catch(e2){}
+        console.error('cloudinary upload failed:', msg);
+        return { url: null, error: msg };
+      }
       const data = await res.json();
-      return data.secure_url || null;
-    }catch(e){ console.error(e); return null; }
+      return { url: data.secure_url || null, error: null };
+    }catch(e){ console.error(e); return { url: null, error: e.message || 'error de red' }; }
   }
 
   function resizeImageFile(file, maxDim, quality){
@@ -4524,10 +4530,10 @@
       previewEl.innerHTML = `<img src="${pendingFuelPhoto}">`;
       if(isCloudinaryConfigured()){
         previewEl.innerHTML += '<div class="veh-local-note" id="vehFuelPhotoCloudMsg" style="margin:4px 0 0;">☁️ subiendo…</div>';
-        const url = await uploadToCloudinary(pendingFuelPhoto);
+        const { url, error } = await uploadToCloudinary(pendingFuelPhoto);
         const msg = document.getElementById('vehFuelPhotoCloudMsg');
         if(url){ pendingFuelPhoto = url; if(msg) msg.textContent = '☁️ se va a guardar en la nube'; }
-        else if(msg) msg.textContent = '⚠️ no se pudo subir a la nube; se guarda solo en este dispositivo';
+        else if(msg) msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
       }
     }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
   });
@@ -4539,10 +4545,10 @@
       previewEl.innerHTML = `<img src="${pendingMaintPhoto}">`;
       if(isCloudinaryConfigured()){
         previewEl.innerHTML += '<div class="veh-local-note" id="vehMaintPhotoCloudMsg" style="margin:4px 0 0;">☁️ subiendo…</div>';
-        const url = await uploadToCloudinary(pendingMaintPhoto);
+        const { url, error } = await uploadToCloudinary(pendingMaintPhoto);
         const msg = document.getElementById('vehMaintPhotoCloudMsg');
         if(url){ pendingMaintPhoto = url; if(msg) msg.textContent = '☁️ se va a guardar en la nube'; }
-        else if(msg) msg.textContent = '⚠️ no se pudo subir a la nube; se guarda solo en este dispositivo';
+        else if(msg) msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
       }
     }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
   });
