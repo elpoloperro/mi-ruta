@@ -3359,7 +3359,26 @@
       }, 'Guardar');
     });
   }
-  function renderFinGoals(){
+  // Suma, mes a mes desde que la meta tiene un % asignado, el monto que le hubiera tocado a esa meta
+  // según el ingreso real de cada mes. Es un número "debería llevar" (plan), separado del "ya ahorrado"
+  // (real) que carga la persona a mano — así uno no se mezcla con el otro.
+  function finGoalExpectedTotal(g){
+    if(!g.monthlyPct || !g.monthlyPctSince) return null;
+    const [sy, sm] = g.monthlyPctSince.split('-').map(Number);
+    const now = viewDate || new Date();
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    let cursor = new Date(sy, sm - 1, 1);
+    if(cursor > end) return 0;
+    let total = 0, guard = 0;
+    while(cursor <= end && guard < 240){
+      const inc = monthMovements(cursor).reduce((s, mv) => s + (mv.isIncome ? mv.amount : 0), 0);
+      total += inc * (g.monthlyPct / 100);
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      guard++;
+    }
+    return total;
+  }
+  function renderFinGoals(totalIncome){
     const el = document.getElementById('finGoals');
     if(finGoals.length === 0){ el.innerHTML = '<div class="empty-chart">Sin metas todavía.</div>'; return; }
     el.innerHTML = finGoals.map(g => {
@@ -3371,6 +3390,24 @@
         const falta = Math.max(0, g.target - g.saved);
         if(falta > 0) perMonth = `<div class="daily-limit">Necesitás ahorrar ${fmt(falta/months)}/mes para llegar</div>`;
       }
+      let suggestLine = '';
+      if(g.monthlyPct > 0){
+        if(totalIncome > 0){
+          const suggested = totalIncome * (g.monthlyPct / 100);
+          suggestLine = `<div class="daily-limit">💡 Este mes te toca apartar: ${fmt(suggested)} (${g.monthlyPct}% de tu ingreso)</div>`;
+        } else {
+          suggestLine = `<div class="daily-limit">Cargá ingresos este mes para ver el monto sugerido (${g.monthlyPct}% del ingreso)</div>`;
+        }
+        const expectedTotal = finGoalExpectedTotal(g);
+        if(expectedTotal != null){
+          const diff = g.saved - expectedTotal;
+          if(diff >= 0){
+            suggestLine += `<div class="daily-limit" style="color:var(--coin)">✅ Vas al día: según el plan deberías llevar ${fmt(expectedTotal)} y llevás ${fmt(g.saved)}</div>`;
+          } else {
+            suggestLine += `<div class="daily-limit" style="color:var(--danger)">Deberías llevar ahorrado ${fmt(expectedTotal)} desde que arrancó el plan — te faltan ${fmt(Math.abs(diff))} para estar al día</div>`;
+          }
+        }
+      }
       return `
       <div class="fp-card">
         <div class="fp-left">
@@ -3380,6 +3417,7 @@
             <div class="fp-meta">${fmt(g.saved)} / ${fmt(g.target)}${dateLine}</div>
             <div class="veh-bar" style="margin-top:4px;"><i style="width:${pct}%"></i></div>
             ${perMonth}
+            ${suggestLine}
           </div>
         </div>
         <div class="fp-right">
@@ -3392,7 +3430,7 @@
     el.querySelectorAll('.fp-del').forEach(b => b.addEventListener('click', () => {
       openConfirmModal('Eliminar meta', '¿Eliminar esta meta de ahorro?', async () => {
         finGoals = finGoals.filter(g => g.id != b.dataset.id);
-        saveFinGoals(); renderFinGoals();
+        saveFinGoals(); renderFinanzas();
       });
     }));
   }
@@ -3401,16 +3439,23 @@
       { id:'name', label:'Nombre (ej: Vacaciones)', value: goal ? goal.name : '' },
       { id:'target', label:'Monto objetivo', type:'text', value: goal ? goal.target : '' },
       { id:'saved', label:'Ya ahorrado', type:'text', value: goal ? goal.saved : 0 },
-      { id:'targetDate', label:'Fecha objetivo (opcional)', type:'date', value: goal ? (goal.targetDate || '') : '' }
+      { id:'targetDate', label:'Fecha objetivo (opcional)', type:'date', value: goal ? (goal.targetDate || '') : '' },
+      { id:'monthlyPct', label:'% del ingreso mensual a destinar (opcional)', type:'number', value: goal ? (goal.monthlyPct || '') : '' }
     ], async (v) => {
       const target = parseMoneyAR(v.target);
       if(!v.name.trim() || !target || target <= 0){ alert('Completá nombre y un monto objetivo válido.'); return false; }
+      const monthlyPct = parseFloat(v.monthlyPct) || 0;
       if(goal){
         goal.name = v.name.trim(); goal.target = target; goal.saved = parseMoneyAR(v.saved); goal.targetDate = v.targetDate || null;
+        // Si recién ahora le ponés un % mensual (antes no tenía), el conteo de "deberías llevar ahorrado"
+        // arranca desde este mes, no retroactivo a meses donde todavía no existía ese objetivo.
+        if(monthlyPct > 0 && !goal.monthlyPct) goal.monthlyPctSince = monthKeyOf(viewDate || new Date());
+        goal.monthlyPct = monthlyPct;
+        if(monthlyPct <= 0) goal.monthlyPctSince = null;
       } else {
-        finGoals.push({ id: Date.now(), name: v.name.trim(), target, saved: parseMoneyAR(v.saved), targetDate: v.targetDate || null });
+        finGoals.push({ id: Date.now(), name: v.name.trim(), target, saved: parseMoneyAR(v.saved), targetDate: v.targetDate || null, monthlyPct, monthlyPctSince: monthlyPct > 0 ? monthKeyOf(viewDate || new Date()) : null });
       }
-      saveFinGoals(); renderFinGoals();
+      saveFinGoals(); renderFinanzas();
     }, 'Guardar');
   }
   function populateFinMethodSelect(){
@@ -3450,7 +3495,7 @@
     renderFinSavingsHistory();
     renderFinDebtRatio(monthMoves, totalIncome);
     renderFinCuotas();
-    renderFinGoals();
+    renderFinGoals(totalIncome);
     populateFinMethodSelect();
     renderFinMethodChart();
   }
