@@ -1290,7 +1290,25 @@
     const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
     return meses[d.getMonth()] + ' ' + d.getFullYear();
   }
-  function todayKey(){ return new Date().toISOString().slice(0,10); }
+  // Devuelve la fecha calendario LOCAL (no UTC) de un Date/ISO string, como "YYYY-MM-DD".
+  // Clave para que el día que agrupa un movimiento coincida con el día que se le muestra:
+  // antes se usaba localDayKey(mv.date) (día UTC) para agrupar pero toLocaleDateString (día local)
+  // para mostrar, y de 21:00 a 23:59 (hora Arg) esos dos días difieren.
+  function localDayKey(dateInput){
+    const d = (dateInput instanceof Date) ? dateInput : new Date(dateInput);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  function todayKey(){ return localDayKey(new Date()); }
+  // Igual que d.toISOString() pero sin convertir a UTC: conserva la fecha/hora LOCAL tal cual.
+  // Evita que un movimiento cargado entre 21:00 y 23:59 (hora Arg) "salte" al día siguiente
+  // al guardarse (toISOString sí hace ese salto porque pasa a UTC = local + 3hs).
+  function toLocalISOString(d){
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${String(d.getMilliseconds()).padStart(3,'0')}`;
+  }
   function catColor(key){
     const idx = categories.findIndex(c => c.key === key);
     return PALETTE[idx % PALETTE.length] || '#999';
@@ -1396,8 +1414,8 @@
     populateVehSelect();
     renderVehEntries();
     updateRawHistory();
-    composerDate.value = new Date().toISOString().slice(0,10);
-    document.getElementById('vehFuelDate').value = new Date().toISOString().slice(0,10);
+    composerDate.value = todayKey();
+    document.getElementById('vehFuelDate').value = todayKey();
     // Atajo desde la pantalla de inicio ("Registrar gasto"/"Registrar ingreso"): va directo al input listo para escribir.
     const action = new URLSearchParams(location.search).get('action');
     if(action === 'income'){ input.value = 'cobré '; }
@@ -1406,7 +1424,7 @@
       if(input.setSelectionRange) input.setSelectionRange(input.value.length, input.value.length);
       input.scrollIntoView({ block:'center' });
     }
-    document.getElementById('vehMaintDate').value = new Date().toISOString().slice(0,10);
+    document.getElementById('vehMaintDate').value = todayKey();
     setCatSectionOpen(false);
     setFpSectionOpen(false);
     setVehSectionOpen(true); // el módulo Vehículo ahora es su propia pestaña: se muestra siempre abierto
@@ -1857,7 +1875,7 @@
   function applyEntryToReminders(entry, ids){
     vehicleReminders.forEach(r => {
       if(!ids.includes(r.id) || r.done) return;
-      const dateStr = entry.date.slice(0,10);
+      const dateStr = localDayKey(entry.date);
       logReminderCompletion(r, entry.km, dateStr);
       if(r.mode === 'repeat'){ r.startKm = entry.km || currentKm(entry.vehicle); r.startDate = dateStr; delete r.dueKm; delete r.dueDate; }
       else r.done = true;
@@ -1989,7 +2007,7 @@
   function vehDate(dateStr){ const d = new Date(); const [yy, mm, dd] = (dateStr || todayKey()).split('-').map(Number); d.setFullYear(yy, mm - 1, dd); return d; }
   async function saveToll(name, amount, dateStr){
     const entry = { id: Date.now(), amount, category: 'vehiculo', raw: 'Peaje' + (name ? ' — ' + name : ''), note: '', isIncome: false,
-      date: vehDate(dateStr).toISOString(), vehType: 'toll', tollName: name, vehicle: currentVehicle };
+      date: toLocalISOString(vehDate(dateStr)), vehType: 'toll', tollName: name, vehicle: currentVehicle };
     movements.push(entry);
     await saveMovements();
     renderVehEntries(); renderBanners(); render();
@@ -2390,7 +2408,7 @@
       editFuelEntryModal(mv);
     } else if(mv.vehType === 'toll'){
       openFormModal('Editar peaje', [
-        { id:'date', label:'Fecha', type:'date', value: mv.date.slice(0,10) },
+        { id:'date', label:'Fecha', type:'date', value: localDayKey(mv.date) },
         { id:'amount', label:'Monto', type:'number', value: mv.amount },
         { id:'name', label:'Nombre (opcional)', value: mv.tollName || '' }
       ], async (v) => {
@@ -2406,7 +2424,7 @@
       }, 'Guardar');
     } else if(mv.vehType === 'maint'){
       openFormModal('Editar mantenimiento', [
-        { id:'date', label:'Fecha', type:'date', value: mv.date.slice(0,10) },
+        { id:'date', label:'Fecha', type:'date', value: localDayKey(mv.date) },
         { id:'type', label:'Tipo', type:'select', value: mv.maintType, options: MAINT_TYPE_OPTIONS },
         { id:'km', label:'Km', type:'number', value: mv.km || '' },
         { id:'cost', label:'Costo', type:'number', value: mv.amount },
@@ -2454,7 +2472,7 @@
       recalc();
     }
     openFormModal('Editar carga', [
-      { id:'date', label:'Fecha', type:'date', value: mv.date.slice(0,10) },
+      { id:'date', label:'Fecha', type:'date', value: localDayKey(mv.date) },
       { id:'fuelType', label:'Combustible', type:'select', value: mv.fuelType, options: Object.keys(FUEL_LABELS).map(k => ({ value:k, label:FUEL_LABELS[k] })) },
       { id:'km', label:'Odómetro (km)', type:'number', value: mv.km || '' },
       { id:'liters', label:'Litros / m³', type:'number', value: mv.liters || '' },
@@ -2799,7 +2817,7 @@
       chip.addEventListener('click', async () => {
         const entry = { id: Date.now(), amount:s.amount, category:s.category, raw:s.raw, isIncome:s.isIncome, date:new Date().toISOString() };
         movements.push(entry);
-        if(expandedDays) expandedDays.add(entry.date.slice(0,10));
+        if(expandedDays) expandedDays.add(localDayKey(entry.date));
         await saveMovements();
         render();
       });
@@ -2856,7 +2874,7 @@
   function openQuickConfirm(idx){
     const qb = quickButtons[idx];
     const catOptions = categories.map(c => `<option value="${c.key}">${c.icon} ${c.label}</option>`).join('');
-    const todayStr = new Date().toISOString().slice(0,10);
+    const todayStr = todayKey();
     quickConfirmWrap.innerHTML = `
       <div class="quick-confirm">
         <div class="quick-confirm-title">${qb.icon} ${qb.name} · ${fmt(qb.amount)}</div>
@@ -2881,7 +2899,7 @@
       d.setFullYear(yy, mm-1, dd);
       const entry = { id: Date.now(), amount:qb.amount, category:cat, raw:qb.name, isIncome:false, date:d.toISOString() };
       movements.push(entry);
-      if(expandedDays) expandedDays.add(entry.date.slice(0,10));
+      if(expandedDays) expandedDays.add(localDayKey(entry.date));
       await saveMovements();
       quickConfirmWrap.innerHTML = '';
       viewDate = new Date();
@@ -2890,25 +2908,62 @@
   }
 
 
-  let lastPieTotals = {}, lastPieTotalExpense = 0;
+  let lastPieTotals = {}, lastPieTotalExpense = 0, lastPieMoves = [];
+  // Cuando la dona está filtrada a "Vehículo", la categoría 'vehiculo' es una sola (todo lo del auto
+  // comparte esa categoría), así que ahí la desglosamos por vehType en vez de por categoría, para
+  // ver combustible/GNC/mantenimiento/peaje por separado en vez de un solo gajo de 100%.
+  const VEH_SUB_META = {
+    combustible: { label:'Combustible', icon:'⛽', color: PALETTE[0] },
+    gnc:         { label:'GNC',         icon:'🔥', color: PALETTE[1] },
+    mantenimiento:{ label:'Mantenimiento', icon:'🔧', color: PALETTE[2] },
+    peaje:       { label:'Peaje',       icon:'🎫', color: PALETTE[3] }
+  };
+  function vehicleSubTotals(moves){
+    const subs = { combustible:0, gnc:0, mantenimiento:0, peaje:0 };
+    moves.forEach(mv => {
+      if(mv.isIncome || mv.category !== 'vehiculo') return;
+      if(mv.vehType === 'fuel') subs[mv.fuelType === 'gnc' ? 'gnc' : 'combustible'] += mv.amount;
+      else if(mv.vehType === 'maint') subs.mantenimiento += mv.amount;
+      else if(mv.vehType === 'toll') subs.peaje += mv.amount;
+      else subs.combustible += mv.amount;
+    });
+    return subs;
+  }
   // donutGroup ('todo'|'hogar'|'vehiculo') filtra qué categorías entran en la dona, vía catGroup(cat.key).
-  function renderPieChart(totals, totalExpense){
+  function renderPieChart(totals, totalExpense, monthMoves){
     lastPieTotals = totals || {}; lastPieTotalExpense = totalExpense || 0;
-    const groupCats = categories.filter(c => donutGroup === 'todo' || catGroup(c.key) === donutGroup);
-    const groupTotal = groupCats.reduce((s, c) => s + (totals[c.key] || 0), 0);
-    if(groupTotal <= 0){ pieChartEl.innerHTML = '<div class="empty-chart">Sin gastos de este grupo en el mes.</div>'; return; }
+    if(monthMoves) lastPieMoves = monthMoves;
     let acc = 0;
     const stops = [];
     const legendItems = [];
-    groupCats.forEach(cat => {
-      const val = totals[cat.key] || 0;
-      if(val <= 0) return;
-      const pct = (val/groupTotal)*100;
-      const color = catColor(cat.key);
-      stops.push(`${color} ${acc}% ${acc+pct}%`);
-      legendItems.push({ label:cat.label, icon:cat.icon, pct: Math.round(pct), color });
-      acc += pct;
-    });
+    let groupTotal = 0;
+    if(donutGroup === 'vehiculo'){
+      const subs = vehicleSubTotals(lastPieMoves);
+      groupTotal = Object.values(subs).reduce((s,v)=>s+v, 0);
+      if(groupTotal <= 0){ pieChartEl.innerHTML = '<div class="empty-chart">Sin gastos de este grupo en el mes.</div>'; return; }
+      Object.keys(VEH_SUB_META).forEach(key => {
+        const val = subs[key];
+        if(val <= 0) return;
+        const pct = (val/groupTotal)*100;
+        const meta = VEH_SUB_META[key];
+        stops.push(`${meta.color} ${acc}% ${acc+pct}%`);
+        legendItems.push({ label:meta.label, icon:meta.icon, pct: Math.round(pct), color:meta.color });
+        acc += pct;
+      });
+    } else {
+      const groupCats = categories.filter(c => donutGroup === 'todo' || catGroup(c.key) === donutGroup);
+      groupTotal = groupCats.reduce((s, c) => s + (totals[c.key] || 0), 0);
+      if(groupTotal <= 0){ pieChartEl.innerHTML = '<div class="empty-chart">Sin gastos de este grupo en el mes.</div>'; return; }
+      groupCats.forEach(cat => {
+        const val = totals[cat.key] || 0;
+        if(val <= 0) return;
+        const pct = (val/groupTotal)*100;
+        const color = catColor(cat.key);
+        stops.push(`${color} ${acc}% ${acc+pct}%`);
+        legendItems.push({ label:cat.label, icon:cat.icon, pct: Math.round(pct), color });
+        acc += pct;
+      });
+    }
     const gradient = `conic-gradient(${stops.join(', ')})`;
     const legendHtml = legendItems.sort((a,b)=>b.pct-a.pct).slice(0,6).map(li =>
       `<div class="legend-item"><span class="legend-dot" style="background:${li.color}"></span>${li.icon} ${li.label} · ${li.pct}%</div>`
@@ -3084,7 +3139,7 @@
     categories.forEach(c => prevTotals[c.key] = 0);
     monthMovements(prevDate).forEach(mv => { if(!mv.isIncome) prevTotals[mv.category] = (prevTotals[mv.category]||0) + mv.amount; });
 
-    renderPieChart(totals, totalExpense);
+    renderPieChart(totals, totalExpense, monthMoves);
     renderTrendChart(totals, prevTotals);
     renderSuggestions();
 
@@ -3260,7 +3315,7 @@
     const dayIncome = {};
     const dayCounts = {};
     sorted.forEach(mv => {
-      const dk = mv.date.slice(0,10);
+      const dk = localDayKey(mv.date);
       if(mv.isIncome) dayIncome[dk] = (dayIncome[dk]||0) + mv.amount;
       else dayExpense[dk] = (dayExpense[dk]||0) + mv.amount;
       dayCounts[dk] = (dayCounts[dk]||0) + 1;
@@ -3332,7 +3387,7 @@
       el.addEventListener('click', (e) => {
         if(el.querySelector('input')) return;
         const current = field === 'amount' ? mv.amount
-          : field === 'date' ? mv.date.slice(0,10)
+          : field === 'date' ? localDayKey(mv.date)
           : field === 'note' ? (mv.note || '')
           : mv.raw;
         const inp = document.createElement('input');
@@ -3365,7 +3420,7 @@
     let lastDayKey = null;
     let currentDayBody = null;
     sorted.forEach(mv => {
-      const dayKey = mv.date.slice(0,10);
+      const dayKey = localDayKey(mv.date);
       if(dayKey !== lastDayKey){
         currentDayBody = appendDaySummary(dayKey);
         lastDayKey = dayKey;
@@ -3447,7 +3502,7 @@
     const entry = { id: Date.now(), amount:parsed.amount, category: parsed.isIncome ? parsed.category : chosenCat, raw:parsed.raw, note, isIncome:parsed.isIncome, date:d.toISOString() };
     if(method) entry.method = method;
     movements.push(entry);
-    if(expandedDays) expandedDays.add(entry.date.slice(0,10));
+    if(expandedDays) expandedDays.add(localDayKey(entry.date));
     await saveMovements();
     if(parsed.isIncome){
       preview.className = 'parse-preview show income';
@@ -3864,6 +3919,8 @@
     const name = document.getElementById('newCatName').value.trim();
     const budget = parseFloat(document.getElementById('newCatBudget').value.replace(/[^\d.]/g,'')) || 0;
     if(!name){ alert('Ponele un nombre a la categoría.'); return; }
+    const dupe = categories.find(c => normalize(c.label) === normalize(name));
+    if(dupe){ alert(`Ya existe una categoría llamada "${dupe.label}" (${dupe.icon}). Usá esa para no duplicar los totales.`); return; }
     const key = 'c_' + name.toLowerCase().replace(/[^a-z0-9]+/g,'_') + '_' + Date.now();
     categories.splice(categories.length - 1, 0, { key, label:name, icon, words:[], budget, builtin:false });
     await saveCategories(); populateFilterOptions();
