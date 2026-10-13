@@ -1118,6 +1118,16 @@
       </div>
     </div>
 
+    <div class="chart-card">
+      <h3>Historial del patrimonio total</h3>
+      <div id="finWealthHistory"></div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Presupuesto por categoría</h3>
+      <div id="finCategoryBudgets"></div>
+    </div>
+
     <div class="section-title">
       <span>Plan de cuotas</span>
       <span class="add-link" id="finCuotasConfigBtn">⚙ configurar</span>
@@ -1137,6 +1147,11 @@
       <select id="finMethodSelect" style="margin-bottom:10px;"></select>
       <div id="finMethodChart"></div>
     </div>
+
+    <div class="section-title">
+      <span>Meses cerrados</span>
+    </div>
+    <div id="finMonthCloses"></div>
   </section>
 
   <section class="screen" data-screen="settings">
@@ -1243,11 +1258,13 @@
 
   let movements = [];
   let categories = [];
-  // ---- Finanzas: todo esto queda guardado solo en este dispositivo (no viaja por el sync a la nube
-  // ni al backup JSON), igual que las fotos o los recordatorios de vehículo. Es análisis, no datos crudos.
+  // ---- Finanzas: esta config/estado sí viaja por el sync a la nube (ver syncPush/pullFromCloud),
+  // igual que movimientos/categorías. Las fotos y recordatorios de vehículo en cambio quedan solo locales.
   let finConfig = {};
   let finGoals = [];
   let finCuotas = null;
+  let finCloses = []; // "cierres" mensuales congelados: {month, income, expense, saved, necesidad, deseo, ahorro}
+  let finWealthHistory = []; // puntos en el tiempo del patrimonio total: {date, total}
   const FIN_CONFIG_DEFAULTS = { pctNecesidad:50, pctDeseo:30, pctAhorro:20, savingsGoalPct:20, emergencyMonths:4, fixedAlertPct:50, usdRate:0, emergencySaved:0, emergencySavedUsd:0, investmentsArs:0 };
   let viewDate = new Date();
   let recognizing = false;
@@ -1499,9 +1516,12 @@
     catch(e){ finConfig = Object.assign({}, FIN_CONFIG_DEFAULTS); }
     try{ finGoals = JSON.parse(localStorage.getItem('moneda_fin_goals') || '[]'); }catch(e){ finGoals = []; }
     try{ finCuotas = JSON.parse(localStorage.getItem('moneda_fin_cuotas') || 'null'); }catch(e){ finCuotas = null; }
+    try{ finCloses = JSON.parse(localStorage.getItem('moneda_fin_closes') || '[]'); }catch(e){ finCloses = []; }
+    try{ finWealthHistory = JSON.parse(localStorage.getItem('moneda_fin_wealth_history') || '[]'); }catch(e){ finWealthHistory = []; }
     if(vehicles.length === 0) vehicles = ['Kangoo 21'];
     currentVehicle = localStorage.getItem('moneda_vehicle_current') || vehicles[0];
     await pullFromCloud();
+    ensureFinMonthCloses();
     await applyCategoryUpgrades();
     populateFilterOptions();
     renderBanners();
@@ -1562,6 +1582,8 @@
         if(cloud.finConfig && typeof cloud.finConfig === 'object') finConfig = Object.assign({}, FIN_CONFIG_DEFAULTS, cloud.finConfig);
         if(Array.isArray(cloud.finGoals)) finGoals = cloud.finGoals;
         if(cloud.finCuotas !== undefined) finCuotas = cloud.finCuotas;
+        if(Array.isArray(cloud.finCloses)) finCloses = cloud.finCloses;
+        if(Array.isArray(cloud.finWealthHistory)) finWealthHistory = cloud.finWealthHistory;
         prevIds = new Set(movements.map(m => m.id));
         try{
           localStorage.setItem('moneda_movements', JSON.stringify(movements));
@@ -1572,6 +1594,8 @@
           localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig));
           localStorage.setItem('moneda_fin_goals', JSON.stringify(finGoals));
           localStorage.setItem('moneda_fin_cuotas', JSON.stringify(finCuotas));
+          localStorage.setItem('moneda_fin_closes', JSON.stringify(finCloses));
+          localStorage.setItem('moneda_fin_wealth_history', JSON.stringify(finWealthHistory));
           if(cloud.catBudgetGroups && typeof cloud.catBudgetGroups === 'object') localStorage.setItem('moneda_cat_budget_group', JSON.stringify(cloud.catBudgetGroups));
           if(cloud.catDebt && typeof cloud.catDebt === 'object') localStorage.setItem('moneda_cat_debt', JSON.stringify(cloud.catDebt));
           localStorage.setItem('moneda_updated_at', cloud.updatedAt);
@@ -1604,6 +1628,22 @@
         if(Array.isArray(cloud.finGoals) && (cloud.finGoals.length || !finGoals.length)){ finGoals = cloud.finGoals; otherChanged = true; }
         if(cloud.finCuotas !== undefined){ finCuotas = cloud.finCuotas; otherChanged = true; }
       }
+      // Cierres mensuales y puntos del patrimonio son registros que solo se agregan (nunca se pisan):
+      // se combinan por clave en vez de "el más nuevo gana", así no se pierde un cierre hecho en otro dispositivo.
+      if(Array.isArray(cloud.finCloses)){
+        const closeMap = new Map();
+        finCloses.forEach(c => closeMap.set(c.month, c));
+        cloud.finCloses.forEach(c => { if(!closeMap.has(c.month)) closeMap.set(c.month, c); });
+        const mergedCloses = Array.from(closeMap.values()).sort((a,b) => a.month < b.month ? -1 : 1);
+        if(mergedCloses.length !== finCloses.length){ finCloses = mergedCloses; otherChanged = true; } else { finCloses = mergedCloses; }
+      }
+      if(Array.isArray(cloud.finWealthHistory)){
+        const wealthMap = new Map();
+        finWealthHistory.forEach(w => wealthMap.set(w.date, w));
+        cloud.finWealthHistory.forEach(w => { if(!wealthMap.has(w.date)) wealthMap.set(w.date, w); });
+        const mergedWealth = Array.from(wealthMap.values()).sort((a,b) => a.date < b.date ? -1 : 1);
+        if(mergedWealth.length !== finWealthHistory.length){ finWealthHistory = mergedWealth; otherChanged = true; } else { finWealthHistory = mergedWealth; }
+      }
       try{
         localStorage.setItem('moneda_movements', JSON.stringify(movements));
         localStorage.setItem('moneda_deleted_ids', JSON.stringify(deletedIds));
@@ -1613,6 +1653,8 @@
         localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig));
         localStorage.setItem('moneda_fin_goals', JSON.stringify(finGoals));
         localStorage.setItem('moneda_fin_cuotas', JSON.stringify(finCuotas));
+        localStorage.setItem('moneda_fin_closes', JSON.stringify(finCloses));
+        localStorage.setItem('moneda_fin_wealth_history', JSON.stringify(finWealthHistory));
         if(cloudNewer && cloud.catBudgetGroups && typeof cloud.catBudgetGroups === 'object') localStorage.setItem('moneda_cat_budget_group', JSON.stringify(cloud.catBudgetGroups));
         if(cloudNewer && cloud.catDebt && typeof cloud.catDebt === 'object') localStorage.setItem('moneda_cat_debt', JSON.stringify(cloud.catDebt));
         if(cloudNewer) localStorage.setItem('moneda_updated_at', cloud.updatedAt);
@@ -1635,7 +1677,7 @@
     try{
       const payload = {
         movements, categories, quickButtons, fixedPayments, deleted: deletedIds,
-        finConfig, finGoals, finCuotas,
+        finConfig, finGoals, finCuotas, finCloses, finWealthHistory,
         catBudgetGroups: catBudgetOverrides(), catDebt: catDebtOverrides(),
         updatedAt: localStorage.getItem('moneda_updated_at') || new Date().toISOString()
       };
@@ -1719,6 +1761,8 @@
   function saveFinConfig(){ try{ localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig)); markLocalChange(); }catch(e){} }
   function saveFinGoals(){ try{ localStorage.setItem('moneda_fin_goals', JSON.stringify(finGoals)); markLocalChange(); }catch(e){} }
   function saveFinCuotas(){ try{ localStorage.setItem('moneda_fin_cuotas', JSON.stringify(finCuotas)); markLocalChange(); }catch(e){} }
+  function saveFinCloses(){ try{ localStorage.setItem('moneda_fin_closes', JSON.stringify(finCloses)); markLocalChange(); }catch(e){} }
+  function saveFinWealthHistory(){ try{ localStorage.setItem('moneda_fin_wealth_history', JSON.stringify(finWealthHistory)); markLocalChange(); }catch(e){} }
   function setPmSectionOpen(open){
     document.getElementById('pmSectionBody').style.display = open ? 'block' : 'none';
     document.getElementById('pmSectionCaret').classList.toggle('open', open);
@@ -3196,6 +3240,18 @@
       <div class="daily-limit" ${actual < 0 ? 'style="color:var(--danger)"' : ''}>${actual >= goal ? '✅ Meta cumplida' : (actual < 0 ? 'Este mes gastaste más de lo que entró' : `Te faltan ${fmt(goal-actual)} para la meta`)}</div>
     `;
   }
+  // Promedio de "ahorro" (ingreso - gasto) de los últimos n meses CERRADOS (no cuenta el mes en curso,
+  // que todavía está a mitad de cargar). Se usa como ritmo estimado para proyectar fechas objetivo.
+  function avgRecentSavings(n){
+    let total = 0, count = 0;
+    for(let i = 1; i <= n; i++){
+      const d = new Date(viewDate.getFullYear(), viewDate.getMonth() - i, 1);
+      let inc = 0, exp = 0;
+      monthMovements(d).forEach(mv => { if(mv.isIncome) inc += mv.amount; else exp += mv.amount; });
+      if(inc > 0 || exp > 0){ total += (inc - exp); count++; }
+    }
+    return count > 0 ? total / count : 0;
+  }
   function renderFinEmergency(){
     const avgFixed = totalFixedPerMonth();
     const objetivo = avgFixed * finConfig.emergencyMonths;
@@ -3204,15 +3260,29 @@
     const usdInArs = finConfig.usdRate > 0 ? savedUsd * finConfig.usdRate : 0;
     const total = savedArs + usdInArs;
     const pct = objetivo > 0 ? Math.min(100, (total/objetivo)*100) : 0;
+    const mesesColchon = avgFixed > 0 ? (total / avgFixed) : 0;
     const el = document.getElementById('finEmergency');
     const usdLine = savedUsd > 0
       ? `<div class="fin-stat-sub">+ USD ${savedUsd.toLocaleString('es-AR')}${finConfig.usdRate > 0 ? ` (≈ ${fmt(usdInArs)})` : ' (cargá la cotización en "configurar" para sumarlos al total)'}</div>`
       : '';
+    let etaLine = '';
+    if(pct < 100 && objetivo > 0){
+      const ritmo = avgRecentSavings(3);
+      if(ritmo > 0){
+        const meses = Math.ceil((objetivo - total) / ritmo);
+        const etaDate = new Date(); etaDate.setMonth(etaDate.getMonth() + meses);
+        etaLine = `<div class="daily-limit">A tu ritmo de ahorro reciente (~${fmt(ritmo)}/mes), completarías el fondo en ~${meses} mes${meses===1?'':'es'} (${etaDate.toLocaleDateString('es-AR',{month:'long',year:'numeric'})})</div>`;
+      } else {
+        etaLine = `<div class="daily-limit">Tu ahorro promedio de los últimos meses es $0 o negativo — no se puede proyectar una fecha todavía</div>`;
+      }
+    }
     el.innerHTML = `
       <div class="fin-stat"><span class="fin-amount-edit" id="finEmergencySavedEdit" title="Tocá para actualizar lo ahorrado">${fmt(total)}</span> <span class="fin-stat-sub">de ${fmt(objetivo)} (${finConfig.emergencyMonths} meses de tus gastos fijos: ${fmt(avgFixed)}/mes)</span></div>
       ${usdLine}
+      <div class="fin-stat-sub" style="margin:4px 0 8px;">Con lo que tenés hoy, aguantás ${mesesColchon.toFixed(1)} mes${mesesColchon.toFixed(1) === '1.0' ? '' : 'es'} sin que entre un peso</div>
       <div class="veh-bar"><i style="width:${pct}%"></i></div>
       <div class="daily-limit">${pct >= 100 ? '✅ Fondo completo' : `${Math.round(pct)}% del objetivo`}</div>
+      ${etaLine}
     `;
     document.getElementById('finEmergencySavedEdit').addEventListener('click', () => {
       openFormModal('Fondo de emergencia', [
@@ -3221,7 +3291,7 @@
       ], async (v) => {
         finConfig.emergencySaved = parseMoneyAR(v.saved);
         finConfig.emergencySavedUsd = parseMoneyAR(v.savedUsd);
-        saveFinConfig(); renderFinanzas();
+        saveFinConfig(); recordWealthSnapshot(); renderFinanzas();
       }, 'Guardar');
     });
   }
@@ -3240,7 +3310,7 @@
         { id:'val', label:'Monto actual invertido (pesos)', type:'text', value: val }
       ], async (v) => {
         finConfig.investmentsArs = parseMoneyAR(v.val);
-        saveFinConfig(); renderFinanzas();
+        saveFinConfig(); recordWealthSnapshot(); renderFinanzas();
       }, 'Guardar');
     });
   }
@@ -3482,6 +3552,113 @@
         <div class="trend-pct" style="color:var(--ink-soft)">${fmt(m.total)}</div>
       </div>`).join('');
   }
+  // Congela, para cada mes ya terminado que todavía no tenga cierre guardado, cómo dio ese mes
+  // (ingreso, gasto, ahorro y el reparto Necesidad/Deseo/Ahorro). Una vez cerrado un mes no se vuelve
+  // a recalcular, así si más adelante reclasificás una categoría no te reescribe la historia.
+  function ensureFinMonthCloses(){
+    if(movements.length === 0) return;
+    const todayMk = monthKeyOf(new Date());
+    let earliest = null;
+    movements.forEach(mv => { const mk = (mv.date || '').slice(0,7); if(mk && (!earliest || mk < earliest)) earliest = mk; });
+    if(!earliest) return;
+    const closedKeys = new Set(finCloses.map(c => c.month));
+    const [ey, em] = earliest.split('-').map(Number);
+    let cursor = new Date(ey, em - 1, 1);
+    let changed = false, guard = 0;
+    while(monthKeyOf(cursor) < todayMk && guard < 240){
+      const mk = monthKeyOf(cursor);
+      if(!closedKeys.has(mk)){
+        const moves = monthMovements(cursor);
+        let income = 0, expense = 0;
+        moves.forEach(mv => { if(mv.isIncome) income += mv.amount; else expense += mv.amount; });
+        const t = finBudgetTotals(moves);
+        finCloses.push({ month: mk, income, expense, saved: income - expense, necesidad: t.necesidad, deseo: t.deseo, ahorro: t.ahorro });
+        changed = true;
+      }
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      guard++;
+    }
+    if(changed){
+      finCloses.sort((a,b) => a.month < b.month ? -1 : 1);
+      saveFinCloses();
+    }
+  }
+  function renderFinMonthCloses(){
+    const el = document.getElementById('finMonthCloses');
+    if(!el) return;
+    const last6 = finCloses.slice(-6);
+    if(last6.length === 0){ el.innerHTML = '<div class="empty-chart">Todavía no hay meses cerrados (se van agregando solos a medida que pasan los meses).</div>'; return; }
+    el.innerHTML = last6.map(c => {
+      const label = new Date(c.month + '-01T12:00:00').toLocaleDateString('es-AR', { month:'long', year:'numeric' });
+      return `
+      <div class="fp-card" style="flex-direction:column;align-items:stretch;">
+        <div class="fp-name" style="text-transform:capitalize;">${label}</div>
+        <div class="fin-stat-sub">Ingreso ${fmt(c.income)} · Gasto ${fmt(c.expense)} · Ahorro <span style="color:${c.saved >= 0 ? 'var(--coin)' : 'var(--danger)'}">${fmt(c.saved)}</span></div>
+        <div class="fin-stat-sub">🧾 Necesidad ${fmt(c.necesidad)} · 🎈 Deseo ${fmt(c.deseo)} · 💰 Ahorro/Deuda ${fmt(c.ahorro)}</div>
+      </div>`;
+    }).reverse().join('');
+  }
+  // Guarda un punto en el tiempo del patrimonio total (fondo de emergencia + inversiones) cada vez que
+  // se edita alguno de los dos. Si ya hay un punto de hoy, lo reemplaza en vez de duplicar.
+  function recordWealthSnapshot(){
+    const savedArs = finConfig.emergencySaved || 0;
+    const savedUsd = finConfig.emergencySavedUsd || 0;
+    const usdInArs = finConfig.usdRate > 0 ? savedUsd * finConfig.usdRate : 0;
+    const total = savedArs + usdInArs + (finConfig.investmentsArs || 0);
+    const today = todayKey();
+    const idx = finWealthHistory.findIndex(w => w.date === today);
+    if(idx >= 0) finWealthHistory[idx].total = total;
+    else finWealthHistory.push({ date: today, total });
+    finWealthHistory.sort((a,b) => a.date < b.date ? -1 : 1);
+    if(finWealthHistory.length > 365) finWealthHistory = finWealthHistory.slice(-365);
+    saveFinWealthHistory();
+  }
+  function renderFinWealthHistory(){
+    const el = document.getElementById('finWealthHistory');
+    if(!el) return;
+    if(finWealthHistory.length === 0){ el.innerHTML = '<div class="empty-chart">Todavía no hay historial — se arma solo a medida que actualizás el fondo de emergencia o las inversiones.</div>'; return; }
+    const months = [];
+    for(let i = 5; i >= 0; i--){
+      const d = new Date(viewDate.getFullYear(), viewDate.getMonth() - i, 1);
+      const mk = monthKeyOf(d);
+      // último punto conocido hasta el final de ese mes (lo que había "a esa altura")
+      const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      const endKey = localDayKey(endOfMonth);
+      const candidates = finWealthHistory.filter(w => w.date <= endKey);
+      const point = candidates.length ? candidates[candidates.length - 1] : null;
+      months.push({ label: d.toLocaleDateString('es-AR', { month:'short' }), total: point ? point.total : null });
+    }
+    const known = months.filter(m => m.total != null);
+    if(known.length === 0){ el.innerHTML = '<div class="empty-chart">Todavía no hay historial — se arma solo a medida que actualizás el fondo de emergencia o las inversiones.</div>'; return; }
+    const maxVal = Math.max(1, ...known.map(m => m.total));
+    el.innerHTML = months.map(m => `
+      <div class="fin-trend-row">
+        <div class="tr-label">${m.label}</div>
+        <div class="trend-bars"><div class="trend-bar-bg"><div class="trend-bar-fill now" style="width:${m.total != null ? (m.total/maxVal)*100 : 0}%"></div></div></div>
+        <div class="trend-pct" style="color:var(--ink-soft)">${m.total != null ? fmt(m.total) : 'sin datos'}</div>
+      </div>`).join('');
+  }
+  // Usa el tope mensual (budget) que ya le ponés a cada categoría en Ajustes, y que hasta ahora no se
+  // mostraba en ningún lado de Finanzas — acá se compara contra el gasto real del mes.
+  function renderFinCategoryBudgets(monthMoves){
+    const el = document.getElementById('finCategoryBudgets');
+    if(!el) return;
+    const spent = {};
+    monthMoves.forEach(mv => { if(!mv.isIncome) spent[mv.category] = (spent[mv.category]||0) + mv.amount; });
+    const rows = categories.filter(c => c.budget > 0).map(c => ({ cat:c, amount: spent[c.key] || 0 }))
+      .filter(r => r.amount > 0 || r.cat.budget > 0)
+      .sort((a,b) => (b.amount/b.cat.budget) - (a.amount/a.cat.budget));
+    if(rows.length === 0){ el.innerHTML = '<div class="empty-chart">Ninguna categoría tiene un presupuesto cargado (se configura en Ajustes, al crear/editar una categoría).</div>'; return; }
+    el.innerHTML = rows.map(r => {
+      const pct = r.cat.budget > 0 ? (r.amount / r.cat.budget) * 100 : 0;
+      const over = pct > 100;
+      return `<div class="fin-trend-row">
+        <div class="tr-label">${r.cat.icon} ${r.cat.label}</div>
+        <div class="trend-bars"><div class="trend-bar-bg"><div class="trend-bar-fill" style="width:${Math.min(100,pct)}%;background:${over ? 'var(--danger)' : 'var(--coin)'}"></div></div></div>
+        <div class="trend-pct" style="color:${over ? 'var(--danger)' : 'var(--ink-soft)'}">${fmt(r.amount)} / ${fmt(r.cat.budget)}</div>
+      </div>`;
+    }).join('');
+  }
   function renderFinanzas(){
     const monthMoves = monthMovements();
     let totalIncome = 0, totalExpense = 0;
@@ -3493,9 +3670,12 @@
     renderFinInvestments();
     renderFinTotalWealth();
     renderFinSavingsHistory();
+    renderFinWealthHistory();
     renderFinDebtRatio(monthMoves, totalIncome);
+    renderFinCategoryBudgets(monthMoves);
     renderFinCuotas();
     renderFinGoals(totalIncome);
+    renderFinMonthCloses();
     populateFinMethodSelect();
     renderFinMethodChart();
   }
