@@ -950,8 +950,10 @@
         <input type="text" class="budget-input" id="vehFuelTotal" placeholder="Total" inputmode="decimal">
       </div>
       <div class="new-cat-row">
-        <label class="veh-photo-label" for="vehFuelPhoto">📷 Foto del surtidor (opcional)</label>
+        <label class="veh-photo-label" for="vehFuelPhoto">📷 Sacar foto</label>
         <input type="file" accept="image/*" capture="environment" id="vehFuelPhoto" style="display:none;">
+        <label class="veh-photo-label" for="vehFuelPhotoFile">🖼 Elegir de archivos</label>
+        <input type="file" accept="image/*" id="vehFuelPhotoFile" style="display:none;">
       </div>
       <div class="veh-photo-preview" id="vehFuelPhotoPreview"></div>
       <button id="addFuelBtn" style="width:100%;">Guardar carga</button>
@@ -989,14 +991,25 @@
       </div>
       <div class="new-cat-row">
         <input type="text" class="budget-input" id="vehMaintKm" placeholder="Km" inputmode="numeric">
-        <input type="text" class="budget-input" id="vehMaintCost" placeholder="Costo" inputmode="decimal">
+        <input type="text" class="budget-input" id="vehMaintCost" placeholder="Costo total" inputmode="decimal">
+      </div>
+      <button type="button" class="veh-type-btn" id="vehMaintBreakdownToggle" style="width:100%;margin-bottom:6px;">🔩 Desglosar repuestos y mano de obra</button>
+      <div id="vehMaintBreakdown" style="display:none;">
+        <div id="vehMaintParts"></div>
+        <button type="button" class="veh-type-btn" id="vehMaintAddPart" style="width:100%;margin:4px 0;">+ Agregar repuesto</button>
+        <div class="new-cat-row">
+          <input type="text" class="budget-input" id="vehMaintLabor" placeholder="🛠 Mano de obra" inputmode="decimal">
+        </div>
+        <div class="veh-local-note" id="vehMaintBreakdownTotal" style="margin:4px 0 8px;"></div>
       </div>
       <div class="new-cat-row">
         <input type="text" class="name-input" id="vehMaintNote" placeholder="Detalle (ej: repuesto tal)">
       </div>
       <div class="new-cat-row">
-        <label class="veh-photo-label" for="vehMaintPhoto">📷 Foto (opcional)</label>
+        <label class="veh-photo-label" for="vehMaintPhoto">📷 Sacar foto</label>
         <input type="file" accept="image/*" capture="environment" id="vehMaintPhoto" style="display:none;">
+        <label class="veh-photo-label" for="vehMaintPhotoFile">🖼 Elegir de archivos</label>
+        <input type="file" accept="image/*" id="vehMaintPhotoFile" style="display:none;">
       </div>
       <div class="veh-photo-preview" id="vehMaintPhotoPreview"></div>
       <div id="vehMaintRemBox"></div>
@@ -1102,7 +1115,7 @@
         <div id="finInvestments"></div>
       </div>
       <div class="chart-card">
-        <h3>Patrimonio total disponible</h3>
+        <h3>Patrimonio neto</h3>
         <div id="finTotalWealth"></div>
       </div>
     </div>
@@ -1119,7 +1132,7 @@
     </div>
 
     <div class="chart-card">
-      <h3>Historial del patrimonio total</h3>
+      <h3>Historial del patrimonio neto</h3>
       <div id="finWealthHistory"></div>
     </div>
 
@@ -1265,7 +1278,7 @@
   let finCuotas = null;
   let finCloses = []; // "cierres" mensuales congelados: {month, income, expense, saved, necesidad, deseo, ahorro}
   let finWealthHistory = []; // puntos en el tiempo del patrimonio total: {date, total}
-  const FIN_CONFIG_DEFAULTS = { pctNecesidad:50, pctDeseo:30, pctAhorro:20, savingsGoalPct:20, emergencyMonths:4, fixedAlertPct:50, usdRate:0, emergencySaved:0, emergencySavedUsd:0, investmentsArs:0 };
+  const FIN_CONFIG_DEFAULTS = { pctNecesidad:50, pctDeseo:30, pctAhorro:20, savingsGoalPct:20, emergencyMonths:4, fixedAlertPct:50, usdRate:0, emergencySaved:0, emergencySavedUsd:0, investmentsArs:0, cashArs:0, debtArs:0 };
   let viewDate = new Date();
   let recognizing = false;
   let recognition = null;
@@ -1660,10 +1673,10 @@
         if(cloudNewer && cloud.catDebt && typeof cloud.catDebt === 'object') localStorage.setItem('moneda_cat_debt', JSON.stringify(cloud.catDebt));
         if(cloudNewer) localStorage.setItem('moneda_updated_at', cloud.updatedAt);
       }catch(e){}
-      mergeCloudPhotos(cloud.vehiclePhotos);
+      const photosChanged = mergeCloudPhotos(cloud.vehiclePhotos);
       if(needsPush){ markLocalChange(); scheduleSync(); }
       setSyncStatus('ok');
-      return changedLocal || otherChanged;
+      return changedLocal || otherChanged || photosChanged;
     }catch(e){
       console.error(e);
       setSyncStatus('offline');
@@ -1818,8 +1831,10 @@
   }
   function mergeCloudPhotos(cloudPhotos){
     if(!cloudPhotos || typeof cloudPhotos !== 'object') return;
-    Object.keys(cloudPhotos).forEach(id => { vehiclePhotos[id] = cloudPhotos[id]; });
-    try{ localStorage.setItem('moneda_vehicle_photos', JSON.stringify(vehiclePhotos)); }catch(e){}
+    let changed = false;
+    Object.keys(cloudPhotos).forEach(id => { if(vehiclePhotos[id] !== cloudPhotos[id]){ vehiclePhotos[id] = cloudPhotos[id]; changed = true; } });
+    if(changed){ try{ localStorage.setItem('moneda_vehicle_photos', JSON.stringify(vehiclePhotos)); }catch(e){} }
+    return changed;
   }
   function saveVehiclePhotos(){ try{ localStorage.setItem('moneda_vehicle_photos', JSON.stringify(vehiclePhotos)); markLocalChange(); } catch(e){ console.error(e); alert('No se pudo guardar la foto (puede que no haya espacio libre en el dispositivo).'); } }
 
@@ -2541,6 +2556,7 @@
         if(mv.place) sub += ' · ' + mv.place;
       } else {
         sub = `${d}${mv.km ? ' · ' + fmtNum(mv.km, 0) + ' km' : ''}`;
+        if(mv.vehType === 'maint') metrics = breakdownLine(mv);
       }
       row.innerHTML = `
         ${thumbHtml}
@@ -2618,11 +2634,18 @@
         { id:'date', label:'Fecha', type:'date', value: localDayKey(mv.date) },
         { id:'type', label:'Tipo', type:'select', value: mv.maintType, options: MAINT_TYPE_OPTIONS },
         { id:'km', label:'Km', type:'number', value: mv.km || '' },
-        { id:'cost', label:'Costo', type:'number', value: mv.amount },
+        { id:'parts', label:'Repuestos (nombre: precio; nombre: precio)', type:'text', value: (mv.parts || []).map(p => p.name + ': ' + p.amount).join('; ') },
+        { id:'labor', label:'Mano de obra', type:'number', value: mv.labor || '' },
+        { id:'cost', label:'Costo total (se recalcula si cargás desglose)', type:'number', value: mv.amount },
         { id:'note', label:'Detalle (opcional)', value: mv.note || '' }
       ], async (v) => {
-        const cost = parseEditNum(v.cost);
+        const parts = parsePartsText(v.parts);
+        const labor = Math.round(parseEditNum(v.labor) || 0);
+        const bdSum = parts.reduce((s,p) => s + p.amount, 0) + labor;
+        const cost = bdSum > 0 ? bdSum : parseEditNum(v.cost);
         if(!cost){ alert('Cargá un costo válido.'); return false; }
+        if(parts.length) mv.parts = parts; else delete mv.parts;
+        if(labor > 0) mv.labor = labor; else delete mv.labor;
         mv.amount = Math.round(cost);
         mv.maintType = v.type;
         mv.note = v.note.trim();
@@ -2711,15 +2734,15 @@
       vehType: 'fuel', km, liters, pricePerLiter: price, fuelType, unit, vehicle: currentVehicle
     };
     movements.push(entry);
-    await saveMovements();
     if(pendingFuelPhoto){ vehiclePhotos[entry.id] = pendingFuelPhoto; saveVehiclePhotos(); }
     pendingFuelPhoto = null;
+    await saveMovements();
     fuelManualOrder = [];
     document.getElementById('vehFuelKm').value = '';
     document.getElementById('vehFuelLiters').value = '';
     document.getElementById('vehFuelPrice').value = '';
     document.getElementById('vehFuelTotal').value = '';
-    document.getElementById('vehFuelPhoto').value = '';
+    document.getElementById('vehFuelPhoto').value = ''; document.getElementById('vehFuelPhotoFile').value = '';
     document.getElementById('vehFuelPhotoPreview').innerHTML = '';
     document.getElementById('vehFuelDate').value = todayKey();
     renderVehEntries();
@@ -2727,12 +2750,74 @@
     render();
   }
 
+  // ---- Desglose de mantenimiento: repuestos (nombre + precio) y mano de obra por separado ----
+  function addMaintPartRow(name, amount){
+    const wrap = document.getElementById('vehMaintParts');
+    const row = document.createElement('div');
+    row.className = 'new-cat-row veh-part-row';
+    row.innerHTML = `<input type="text" class="name-input veh-part-name" placeholder="Repuesto (ej: filtro de aceite)" value="${escapeHtml(name || '')}">
+      <input type="text" class="budget-input veh-part-price" placeholder="Precio" inputmode="decimal" value="${amount ? escapeHtml(String(amount)) : ''}">
+      <button type="button" class="veh-entry-del" title="Quitar">✕</button>`;
+    row.querySelector('button').addEventListener('click', () => { row.remove(); updateMaintBreakdownTotal(); });
+    row.querySelectorAll('input').forEach(i => i.addEventListener('input', updateMaintBreakdownTotal));
+    wrap.appendChild(row);
+  }
+  function readMaintBreakdown(){
+    const parts = [];
+    document.querySelectorAll('#vehMaintParts .veh-part-row').forEach(r => {
+      const name = r.querySelector('.veh-part-name').value.trim();
+      const amount = Math.round(parseMoney(r.querySelector('.veh-part-price').value) || 0);
+      if(amount > 0) parts.push({ name: name || 'Repuesto', amount });
+    });
+    const labor = Math.round(parseMoney(document.getElementById('vehMaintLabor').value) || 0);
+    const sum = parts.reduce((s,p) => s + p.amount, 0) + labor;
+    return { parts, labor, sum };
+  }
+  function updateMaintBreakdownTotal(){
+    const bd = readMaintBreakdown();
+    const el = document.getElementById('vehMaintBreakdownTotal');
+    if(bd.sum > 0){
+      el.textContent = `Repuestos ${fmt(bd.sum - bd.labor)} + mano de obra ${fmt(bd.labor)} = ${fmt(bd.sum)}`;
+      document.getElementById('vehMaintCost').value = String(bd.sum);
+    } else el.textContent = '';
+  }
+  function resetMaintBreakdown(){
+    document.getElementById('vehMaintParts').innerHTML = '';
+    document.getElementById('vehMaintLabor').value = '';
+    document.getElementById('vehMaintBreakdownTotal').textContent = '';
+    document.getElementById('vehMaintBreakdown').style.display = 'none';
+  }
+  document.getElementById('vehMaintBreakdownToggle').addEventListener('click', () => {
+    const box = document.getElementById('vehMaintBreakdown');
+    const open = box.style.display === 'none';
+    box.style.display = open ? 'block' : 'none';
+    if(open && !document.querySelector('#vehMaintParts .veh-part-row')) addMaintPartRow();
+  });
+  document.getElementById('vehMaintAddPart').addEventListener('click', () => addMaintPartRow());
+  document.getElementById('vehMaintLabor').addEventListener('input', updateMaintBreakdownTotal);
+  function breakdownLine(mv){
+    if(!(mv.parts && mv.parts.length) && !mv.labor) return '';
+    const bits = (mv.parts || []).map(p => `🔩 ${escapeHtml(p.name)} ${fmt(p.amount)}`);
+    if(mv.labor) bits.push(`🛠 Mano de obra ${fmt(mv.labor)}`);
+    return bits.join(' · ');
+  }
+  function parsePartsText(txt){
+    return (txt || '').split(/[;\n]/).map(t => t.trim()).filter(Boolean).map(t => {
+      const i = t.lastIndexOf(':');
+      const name = i >= 0 ? t.slice(0, i).trim() : t;
+      const amount = Math.round(parseMoney(i >= 0 ? t.slice(i + 1) : '') || 0);
+      return { name: name || 'Repuesto', amount };
+    }).filter(p => p.amount > 0);
+  }
+
   async function addMaintEntry(){
     const dateStr = document.getElementById('vehMaintDate').value || todayKey();
     const maintType = document.getElementById('vehMaintType').value;
     const km = parseFloat(document.getElementById('vehMaintKm').value.replace(/[^\d.]/g,'')) || 0;
-    const cost = parseMoney(document.getElementById('vehMaintCost').value);
+    let cost = parseMoney(document.getElementById('vehMaintCost').value);
     const note = document.getElementById('vehMaintNote').value.trim();
+    const bd = readMaintBreakdown();
+    if(bd.sum > 0) cost = bd.sum; // con desglose, el costo total es la suma de repuestos + mano de obra
     if(!cost){ alert('Cargá el costo.'); return; }
     const d = new Date(); const [yy,mm,dd] = dateStr.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
     const entry = {
@@ -2740,7 +2825,11 @@
       raw: `${maintType}${note ? ' — ' + note : ''}`, note, isIncome: false, date: d.toISOString(),
       vehType: 'maint', maintType, km, vehicle: currentVehicle
     };
+    if(bd.parts.length) entry.parts = bd.parts;
+    if(bd.labor > 0) entry.labor = bd.labor;
     movements.push(entry);
+    if(pendingMaintPhoto){ vehiclePhotos[entry.id] = pendingMaintPhoto; saveVehiclePhotos(); }
+    pendingMaintPhoto = null;
     await saveMovements();
     applyEntryToReminders(entry, Array.from(document.querySelectorAll('#vehMaintRemBox input[type=checkbox]:checked')).map(i => Number(i.dataset.rid)));
     const qk = document.getElementById('vehQuickRemKm'), qm = document.getElementById('vehQuickRemMonths');
@@ -2752,12 +2841,11 @@
         saveVehicleState();
       }
     }
-    if(pendingMaintPhoto){ vehiclePhotos[entry.id] = pendingMaintPhoto; saveVehiclePhotos(); }
-    pendingMaintPhoto = null;
     document.getElementById('vehMaintKm').value = '';
+    resetMaintBreakdown();
     document.getElementById('vehMaintCost').value = '';
     document.getElementById('vehMaintNote').value = '';
-    document.getElementById('vehMaintPhoto').value = '';
+    document.getElementById('vehMaintPhoto').value = ''; document.getElementById('vehMaintPhotoFile').value = '';
     document.getElementById('vehMaintPhotoPreview').innerHTML = '';
     document.getElementById('vehMaintDate').value = todayKey();
     renderVehEntries();
@@ -3334,17 +3422,36 @@
       }, 'Guardar');
     });
   }
-  function renderFinTotalWealth(){
+  // Patrimonio neto = lo que tenés (efectivo/cuentas + fondo de emergencia + inversiones) menos lo que debés.
+  function wealthBreakdown(){
     const savedArs = finConfig.emergencySaved || 0;
     const savedUsd = finConfig.emergencySavedUsd || 0;
     const usdInArs = finConfig.usdRate > 0 ? savedUsd * finConfig.usdRate : 0;
     const investments = finConfig.investmentsArs || 0;
-    const total = savedArs + usdInArs + investments;
+    const cash = finConfig.cashArs || 0;
+    const debt = finConfig.debtArs || 0;
+    const assets = cash + savedArs + usdInArs + investments;
+    return { savedArs, savedUsd, usdInArs, investments, cash, debt, assets, net: assets - debt };
+  }
+  function renderFinTotalWealth(){
+    const w = wealthBreakdown();
     const el = document.getElementById('finTotalWealth');
     el.innerHTML = `
-      <div class="fin-stat">${fmt(total)}</div>
-      <div class="daily-limit">Fondo de emergencia (${fmt(savedArs + usdInArs)}) + Inversiones (${fmt(investments)})${finConfig.usdRate <= 0 && savedUsd > 0 ? ' · falta cargar la cotización para incluir los USD' : ''}</div>
+      <div class="fin-stat"><span class="fin-amount-edit" id="finNetWorthEdit" title="Tocá para cargar efectivo/cuentas y deudas" style="${w.net < 0 ? 'color:var(--danger);' : ''}">${fmt(w.net)}</span></div>
+      <div class="daily-limit">💵 Efectivo y cuentas ${fmt(w.cash)} + 🛟 Fondo de emergencia ${fmt(w.savedArs + w.usdInArs)} + 📈 Inversiones ${fmt(w.investments)} = ${fmt(w.assets)} · − 💳 Deudas ${fmt(w.debt)}${finConfig.usdRate <= 0 && w.savedUsd > 0 ? ' · falta cargar la cotización para incluir los USD' : ''}</div>
+      <div class="daily-limit">Tocá el monto para cargar tu efectivo/cuentas y tus deudas pendientes.</div>
     `;
+    document.getElementById('finNetWorthEdit').addEventListener('click', () => {
+      const cuotaHint = (finCuotas && finCuotas.totalCuotas) ? ` (${finCuotas.name}: restan ${Math.max(0, finCuotas.totalCuotas - finCuotas.cuotaActual)} cuotas)` : '';
+      openFormModal('Patrimonio neto', [
+        { id:'cash', label:'Efectivo y cuentas hoy (pesos)', type:'text', value: finConfig.cashArs || 0 },
+        { id:'debt', label:'Deudas pendientes en total (pesos)' + cuotaHint, type:'text', value: finConfig.debtArs || 0 }
+      ], async (v) => {
+        finConfig.cashArs = parseMoneyAR(v.cash);
+        finConfig.debtArs = parseMoneyAR(v.debt);
+        saveFinConfig(); recordWealthSnapshot(); renderFinanzas();
+      }, 'Guardar');
+    });
   }
   function renderFinBanners(totalIncome){
     const avgFixed = totalFixedPerMonth();
@@ -3621,10 +3728,7 @@
   // Guarda un punto en el tiempo del patrimonio total (fondo de emergencia + inversiones) cada vez que
   // se edita alguno de los dos. Si ya hay un punto de hoy, lo reemplaza en vez de duplicar.
   function recordWealthSnapshot(){
-    const savedArs = finConfig.emergencySaved || 0;
-    const savedUsd = finConfig.emergencySavedUsd || 0;
-    const usdInArs = finConfig.usdRate > 0 ? savedUsd * finConfig.usdRate : 0;
-    const total = savedArs + usdInArs + (finConfig.investmentsArs || 0);
+    const total = wealthBreakdown().net;
     const today = todayKey();
     const idx = finWealthHistory.findIndex(w => w.date === today);
     if(idx >= 0) finWealthHistory[idx].total = total;
@@ -3650,11 +3754,11 @@
     }
     const known = months.filter(m => m.total != null);
     if(known.length === 0){ el.innerHTML = '<div class="empty-chart">Todavía no hay historial — se arma solo a medida que actualizás el fondo de emergencia o las inversiones.</div>'; return; }
-    const maxVal = Math.max(1, ...known.map(m => m.total));
+    const maxVal = Math.max(1, ...known.map(m => Math.abs(m.total)));
     el.innerHTML = months.map(m => `
       <div class="fin-trend-row">
         <div class="tr-label">${m.label}</div>
-        <div class="trend-bars"><div class="trend-bar-bg"><div class="trend-bar-fill now" style="width:${m.total != null ? (m.total/maxVal)*100 : 0}%"></div></div></div>
+        <div class="trend-bars"><div class="trend-bar-bg"><div class="trend-bar-fill now" style="width:${m.total != null ? (Math.abs(m.total)/maxVal)*100 : 0}%${m.total != null && m.total < 0 ? ';background:var(--danger)' : ''}"></div></div></div>
         <div class="trend-pct" style="color:var(--ink-soft)">${m.total != null ? fmt(m.total) : 'sin datos'}</div>
       </div>`).join('');
   }
@@ -4536,7 +4640,7 @@
   document.getElementById('vehFuelLiters').addEventListener('input', () => onFuelFieldInput('liters'));
   document.getElementById('vehFuelPrice').addEventListener('input', () => onFuelFieldInput('price'));
   document.getElementById('vehFuelTotal').addEventListener('input', () => onFuelFieldInput('total'));
-  document.getElementById('vehFuelPhoto').addEventListener('change', async (e) => {
+  const onFuelPhoto = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     try{
       pendingFuelPhoto = await resizeImageFile(file, 900, 0.65);
@@ -4550,8 +4654,9 @@
         else if(msg) msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
       }
     }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
-  });
-  document.getElementById('vehMaintPhoto').addEventListener('change', async (e) => {
+  };
+  ['vehFuelPhoto','vehFuelPhotoFile'].forEach(id => document.getElementById(id).addEventListener('change', onFuelPhoto));
+  const onMaintPhoto = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     try{
       pendingMaintPhoto = await resizeImageFile(file, 900, 0.65);
@@ -4565,7 +4670,8 @@
         else if(msg) msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
       }
     }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
-  });
+  };
+  ['vehMaintPhoto','vehMaintPhotoFile'].forEach(id => document.getElementById(id).addEventListener('change', onMaintPhoto));
   document.getElementById('vehSelect').addEventListener('change', (e) => {
     currentVehicle = e.target.value; saveVehicleState(); renderVehEntries();
   });
