@@ -900,6 +900,8 @@
       <button type="button" id="cloudSaveBtn">Guardar</button>
     </div>
     <div class="settings-status" id="cloudStatus"></div>
+    <button type="button" class="veh-type-btn" id="cloudMigrateBtn" style="width:100%;margin-top:8px;">☁️ Subir a la nube las fotos guardadas solo en este dispositivo</button>
+    <div class="settings-status" id="cloudMigrateStatus"></div>
   </div>
 
   <div class="settings-block">
@@ -4923,6 +4925,23 @@
     if(isCloudinaryConfigured()){ statusEl.textContent = '☁️ Configurado: las fotos nuevas de Vehículo se suben a la nube.'; statusEl.classList.add('ok'); }
     else { statusEl.textContent = 'Sin configurar todavía: las fotos se guardan solo en este dispositivo (como siempre).'; statusEl.classList.remove('ok'); }
   }
+  // Fotos que quedaron solo en este dispositivo (base64) porque en su momento la subida falló o Cloudinary
+  // todavía no estaba configurado: se suben ahora y se reemplaza por el link, así también llegan a los otros dispositivos.
+  document.getElementById('cloudMigrateBtn').addEventListener('click', async () => {
+    const st = document.getElementById('cloudMigrateStatus');
+    if(!isCloudinaryConfigured()){ st.textContent = 'Primero configurá y guardá Cloudinary arriba.'; return; }
+    const ids = Object.keys(vehiclePhotos).filter(id => typeof vehiclePhotos[id] === 'string' && vehiclePhotos[id].startsWith('data:'));
+    if(ids.length === 0){ st.textContent = 'No hay fotos pendientes: todas las de este dispositivo ya están en la nube.'; return; }
+    let ok = 0, fail = 0, lastErr = '';
+    for(let i = 0; i < ids.length; i++){
+      st.textContent = `Subiendo ${i + 1} de ${ids.length}…`;
+      const { url, error } = await uploadToCloudinary(vehiclePhotos[ids[i]]);
+      if(url){ vehiclePhotos[ids[i]] = url; ok++; } else { fail++; lastErr = error || ''; }
+    }
+    saveVehiclePhotos();
+    renderVehEntries();
+    st.textContent = `Listo: ${ok} subida${ok === 1 ? '' : 's'}${fail ? `, ${fail} con error (${lastErr})` : ''}.`;
+  });
   document.getElementById('cloudSaveBtn').addEventListener('click', () => {
     saveCloudinaryConfig(document.getElementById('cloudCloudName').value, document.getElementById('cloudUploadPreset').value);
     refreshCloudinaryForm();
