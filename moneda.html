@@ -1826,7 +1826,7 @@
   // en vehiclePhotos es apenas un link (texto liviano), así que ese sí viaja en la sincronización.
   function cloudPhotoEntries(){
     const out = {};
-    Object.keys(vehiclePhotos).forEach(id => { if(typeof vehiclePhotos[id] === 'string' && vehiclePhotos[id].startsWith('http')) out[id] = vehiclePhotos[id]; });
+    Object.keys(vehiclePhotos).forEach(id => { if(typeof vehiclePhotos[id] === 'string' && (vehiclePhotos[id] === '' || vehiclePhotos[id].startsWith('http'))) out[id] = vehiclePhotos[id]; });
     return out;
   }
   function mergeCloudPhotos(cloudPhotos){
@@ -2610,6 +2610,57 @@
     return (raw !== '' && !isNaN(n)) ? n : null;
   }
   // Edita una entrada de "Últimas cargas" (combustible, peaje o mantenimiento) con un modal propio.
+  // Editor de foto dentro de los modales "Editar carga / Editar mantenimiento": ver, reemplazar (cámara o
+  // archivos) o quitar la foto del registro. Los cambios recién se aplican al tocar Guardar.
+  function attachPhotoEditor(mv){
+    const state = { changed:false, value: vehiclePhotos[mv.id] || null, promise: null };
+    const form = confirmModalWrap.querySelector('.modal-form');
+    const box = document.createElement('div');
+    box.className = 'modal-field';
+    box.innerHTML = `<span>Foto</span>
+      <div id="mePhotoPreview" class="veh-photo-preview" style="margin:4px 0;"></div>
+      <div class="new-cat-row">
+        <label class="veh-photo-label" for="mePhotoCam">📷 Sacar foto</label>
+        <input type="file" accept="image/*" capture="environment" id="mePhotoCam" style="display:none;">
+        <label class="veh-photo-label" for="mePhotoFile">🖼 Elegir de archivos</label>
+        <input type="file" accept="image/*" id="mePhotoFile" style="display:none;">
+      </div>
+      <button type="button" class="veh-type-btn" id="mePhotoRemove" style="margin-top:6px;">🗑 Quitar foto</button>
+      <div class="veh-local-note" id="mePhotoMsg" style="margin:4px 0 0;"></div>`;
+    form.appendChild(box);
+    const prev = box.querySelector('#mePhotoPreview'), msg = box.querySelector('#mePhotoMsg'), rm = box.querySelector('#mePhotoRemove');
+    function paint(){
+      prev.innerHTML = state.value ? `<img src="${state.value}">` : '<div class="veh-local-note" style="margin:0;">Sin foto</div>';
+      rm.style.display = state.value ? '' : 'none';
+    }
+    paint();
+    async function pick(e){
+      const file = e.target.files[0]; if(!file) return;
+      state.promise = (async () => {
+        try{
+          let val = await resizeImageFile(file, 900, 0.65);
+          state.value = val; state.changed = true; paint();
+          if(isCloudinaryConfigured()){
+            msg.textContent = '☁️ subiendo…';
+            const { url, error } = await uploadToCloudinary(val);
+            if(url){ state.value = url; msg.textContent = '☁️ se va a guardar en la nube'; }
+            else msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
+          }
+        }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
+      })();
+    }
+    box.querySelector('#mePhotoCam').addEventListener('change', pick);
+    box.querySelector('#mePhotoFile').addEventListener('change', pick);
+    rm.addEventListener('click', () => { state.value = null; state.changed = true; msg.textContent = ''; paint(); });
+    return {
+      async apply(){
+        if(state.promise) await state.promise;
+        if(!state.changed) return;
+        if(state.value) vehiclePhotos[mv.id] = state.value; else vehiclePhotos[mv.id] = ''; // '' = foto quitada (viaja al sync para que se quite en los demás dispositivos)
+        saveVehiclePhotos();
+      }
+    };
+  }
   function editVehEntry(mv){
     if(mv.vehType === 'fuel'){
       editFuelEntryModal(mv);
@@ -2630,6 +2681,7 @@
         renderVehEntries(); renderBanners(); render();
       }, 'Guardar');
     } else if(mv.vehType === 'maint'){
+      let photoEd = null;
       openFormModal('Editar mantenimiento', [
         { id:'date', label:'Fecha', type:'date', value: localDayKey(mv.date) },
         { id:'type', label:'Tipo', type:'select', value: mv.maintType, options: MAINT_TYPE_OPTIONS },
@@ -2639,6 +2691,7 @@
         { id:'cost', label:'Costo total (se recalcula si cargás desglose)', type:'number', value: mv.amount },
         { id:'note', label:'Detalle (opcional)', value: mv.note || '' }
       ], async (v) => {
+        if(photoEd) await photoEd.apply();
         const parts = parsePartsText(v.parts);
         const labor = Math.round(parseEditNum(v.labor) || 0);
         const bdSum = parts.reduce((s,p) => s + p.amount, 0) + labor;
@@ -2656,6 +2709,7 @@
         await saveMovements();
         renderVehEntries(); renderBanners(); render();
       }, 'Guardar');
+      photoEd = attachPhotoEditor(mv);
     }
   }
   // Modal de edición de carga de combustible: mismo autocalculador 2-de-3 que el formulario de carga nueva.
@@ -2685,6 +2739,7 @@
       }
       recalc();
     }
+    let photoEd = null;
     openFormModal('Editar carga', [
       { id:'date', label:'Fecha', type:'date', value: localDayKey(mv.date) },
       { id:'fuelType', label:'Combustible', type:'select', value: mv.fuelType, options: Object.keys(FUEL_LABELS).map(k => ({ value:k, label:FUEL_LABELS[k] })) },
@@ -2693,6 +2748,7 @@
       { id:'price', label:'Precio x unidad', type:'number', value: mv.pricePerLiter || '' },
       { id:'total', label:'Total', type:'number', value: mv.amount || '' }
     ], async (v) => {
+      if(photoEd) await photoEd.apply();
       let liters = parseEditNum(v.liters), price = parseEditNum(v.price), total = parseEditNum(v.total);
       if(liters && price && !total) total = Math.round(liters * price);
       else if(total && price && !liters) liters = Math.round((total / price) * 100) / 100;
@@ -2712,6 +2768,7 @@
     }, 'Guardar');
     // Engancha el autocálculo a los 3 campos recién creados por openFormModal
     ['liters','price','total'].forEach(f => document.getElementById(fieldIds[f]).addEventListener('input', () => onInput(f)));
+    photoEd = attachPhotoEditor(mv);
   }
   async function addFuelEntry(){
     const dateStr = document.getElementById('vehFuelDate').value || todayKey();
