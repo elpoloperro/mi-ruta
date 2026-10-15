@@ -550,6 +550,8 @@
     font-size:12px; color:var(--ink-soft); cursor:pointer; text-align:center;
   }
   .veh-photo-preview{ margin:6px 0 10px 0; }
+  .veh-prev-item{ position:relative; display:inline-block; margin:0 8px 8px 0; }
+  .veh-prev-x{ position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; border:none; background:var(--danger); color:#fff; font-size:11px; line-height:20px; padding:0; cursor:pointer; }
   .veh-photo-preview img{ max-width:90px; max-height:90px; border-radius:8px; border:1px solid var(--paper-line); }
   .veh-entry{
     display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--paper-line);
@@ -1011,7 +1013,7 @@
         <label class="veh-photo-label" for="vehMaintPhoto">📷 Sacar foto</label>
         <input type="file" accept="image/*" capture="environment" id="vehMaintPhoto" style="display:none;">
         <label class="veh-photo-label" for="vehMaintPhotoFile">🖼 Elegir de archivos</label>
-        <input type="file" accept="image/*" id="vehMaintPhotoFile" style="display:none;">
+        <input type="file" accept="image/*" multiple id="vehMaintPhotoFile" style="display:none;">
       </div>
       <div class="veh-photo-preview" id="vehMaintPhotoPreview"></div>
       <div id="vehMaintRemBox"></div>
@@ -1353,7 +1355,9 @@
   let vehiclePlates = {};
   let vehTemplates = [];
   let pendingFuelPhoto = null;
-  let pendingMaintPhoto = null;
+  let pendingMaintPhotos = []; // [{val}] fotos del mantenimiento en carga (val = link de la nube o base64)
+  let maintPhotoMsg = '';
+  let maintPhotoQueue = Promise.resolve();
 
   // Reemplaza prompt()/confirm(), que muchos celus bloquean cuando la app está instalada como ícono.
   // fields: [{id,label,type,value,placeholder}]. onSubmit(values) devuelve false para dejar el modal abierto (error de validación).
@@ -1826,15 +1830,29 @@
   // Las fotos guardadas como base64 (sin Cloudinary configurado) quedan solo en este dispositivo: mandar esas
   // imágenes pesadas al backend de Google Sheets lo rompería. Pero cuando SÍ hay Cloudinary, lo que se guarda
   // en vehiclePhotos es apenas un link (texto liviano), así que ese sí viaja en la sincronización.
+  function photosOf(id){ const v = vehiclePhotos[id]; if(Array.isArray(v)) return v.filter(Boolean); return v ? [v] : []; }
+  function storePhotos(id, arr){
+    arr = (arr || []).filter(Boolean);
+    if(arr.length === 0) vehiclePhotos[id] = '';            // '' = sin fotos (viaja al sync para quitarlas en los demás dispositivos)
+    else if(arr.length === 1) vehiclePhotos[id] = arr[0];   // una sola foto: mismo formato de siempre
+    else vehiclePhotos[id] = arr;
+  }
   function cloudPhotoEntries(){
     const out = {};
-    Object.keys(vehiclePhotos).forEach(id => { if(typeof vehiclePhotos[id] === 'string' && (vehiclePhotos[id] === '' || vehiclePhotos[id].startsWith('http'))) out[id] = vehiclePhotos[id]; });
+    Object.keys(vehiclePhotos).forEach(id => {
+      const v = vehiclePhotos[id];
+      if(typeof v === 'string' && (v === '' || v.startsWith('http'))) out[id] = v;
+      else if(Array.isArray(v)){
+        const urls = v.filter(x => typeof x === 'string' && x.startsWith('http'));
+        if(urls.length) out[id] = urls.length === 1 ? urls[0] : urls;
+      }
+    });
     return out;
   }
   function mergeCloudPhotos(cloudPhotos){
     if(!cloudPhotos || typeof cloudPhotos !== 'object') return;
     let changed = false;
-    Object.keys(cloudPhotos).forEach(id => { if(vehiclePhotos[id] !== cloudPhotos[id]){ vehiclePhotos[id] = cloudPhotos[id]; changed = true; } });
+    Object.keys(cloudPhotos).forEach(id => { if(JSON.stringify(vehiclePhotos[id]) !== JSON.stringify(cloudPhotos[id])){ vehiclePhotos[id] = cloudPhotos[id]; changed = true; } });
     if(changed){ try{ localStorage.setItem('moneda_vehicle_photos', JSON.stringify(vehiclePhotos)); }catch(e){} }
     return changed;
   }
@@ -1907,11 +1925,14 @@
     try{ localStorage.setItem('moneda_vehsection_open', open ? '1' : '0'); }catch(e){}
   }
 
-  function openVehPhotoModal(dataURL){
+  function openVehPhotoModal(photos){
+    const list = Array.isArray(photos) ? photos : [photos];
     vehPhotoModalWrap.innerHTML = `
       <div class="modal-overlay" id="vehPhotoOverlay">
         <div class="modal-card" style="max-width:90vw;">
-          <img class="veh-photo-modal-img" src="${dataURL}">
+          <div style="max-height:72vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
+            ${list.map(src => `<img class="veh-photo-modal-img" src="${src}" style="${list.length > 1 ? 'max-height:none;' : ''}">`).join('')}
+          </div>
           <div class="modal-btns" style="margin-top:12px;">
             <button class="modal-btn-cancel" id="vehPhotoCloseBtn">Cerrar</button>
           </div>
@@ -2545,7 +2566,8 @@
       const row = document.createElement('div');
       row.className = 'veh-entry';
       const d = new Date(mv.date).toLocaleDateString('es-AR');
-      const photo = vehiclePhotos[mv.id];
+      const photoList = photosOf(mv.id);
+      const photo = photoList[0];
       const thumbHtml = photo
         ? `<img class="veh-entry-thumb" src="${photo}">`
         : `<div class="veh-entry-icon">${vehIcon(mv)}</div>`;
@@ -2557,7 +2579,7 @@
         if(m) metrics = `+${fmtNum(m.dist, 0)} km${m.kpu ? ' · ' + fmtNum(m.kpu, 2) + ' km/' + u : ''} · ${fmt(Math.round(m.cpk))}/km`;
         if(mv.place) sub += ' · ' + mv.place;
       } else {
-        sub = `${d}${mv.km ? ' · ' + fmtNum(mv.km, 0) + ' km' : ''}`;
+        sub = `${d}${mv.km ? ' · ' + fmtNum(mv.km, 0) + ' km' : ''}${photoList.length > 1 ? ' · 📷 ' + photoList.length : ''}`;
         if(mv.vehType === 'maint') metrics = breakdownLine(mv);
       }
       row.innerHTML = `
@@ -2571,7 +2593,7 @@
         <button class="veh-entry-del veh-entry-edit" title="Editar">✎</button>
         <button class="veh-entry-del veh-entry-remove" title="Eliminar">✕</button>
       `;
-      if(photo) row.querySelector('.veh-entry-thumb').addEventListener('click', () => openVehPhotoModal(photo));
+      if(photo) row.querySelector('.veh-entry-thumb').addEventListener('click', () => openVehPhotoModal(photoList));
       row.querySelector('.veh-entry-edit').addEventListener('click', () => editVehEntry(mv));
       row.querySelector('.veh-entry-remove').addEventListener('click', () => {
         openConfirmModal('Eliminar registro', '¿Eliminar este registro de vehículo? También se borra su foto si tiene.', async () => {
@@ -2615,50 +2637,55 @@
   // Editor de foto dentro de los modales "Editar carga / Editar mantenimiento": ver, reemplazar (cámara o
   // archivos) o quitar la foto del registro. Los cambios recién se aplican al tocar Guardar.
   function attachPhotoEditor(mv){
-    const state = { changed:false, value: vehiclePhotos[mv.id] || null, promise: null };
+    const state = { changed:false, list: photosOf(mv.id).slice(), promise: Promise.resolve() };
     const form = confirmModalWrap.querySelector('.modal-form');
     const box = document.createElement('div');
     box.className = 'modal-field';
-    box.innerHTML = `<span>Foto</span>
+    box.innerHTML = `<span>Fotos</span>
       <div id="mePhotoPreview" class="veh-photo-preview" style="margin:4px 0;"></div>
       <div class="new-cat-row">
         <label class="veh-photo-label" for="mePhotoCam">📷 Sacar foto</label>
         <input type="file" accept="image/*" capture="environment" id="mePhotoCam" style="display:none;">
         <label class="veh-photo-label" for="mePhotoFile">🖼 Elegir de archivos</label>
-        <input type="file" accept="image/*" id="mePhotoFile" style="display:none;">
+        <input type="file" accept="image/*" multiple id="mePhotoFile" style="display:none;">
       </div>
-      <button type="button" class="veh-type-btn" id="mePhotoRemove" style="margin-top:6px;">🗑 Quitar foto</button>
       <div class="veh-local-note" id="mePhotoMsg" style="margin:4px 0 0;"></div>`;
     form.appendChild(box);
-    const prev = box.querySelector('#mePhotoPreview'), msg = box.querySelector('#mePhotoMsg'), rm = box.querySelector('#mePhotoRemove');
+    const prev = box.querySelector('#mePhotoPreview'), msg = box.querySelector('#mePhotoMsg');
     function paint(){
-      prev.innerHTML = state.value ? `<img src="${state.value}">` : '<div class="veh-local-note" style="margin:0;">Sin foto</div>';
-      rm.style.display = state.value ? '' : 'none';
+      prev.innerHTML = state.list.length
+        ? state.list.map((src, i) => `<span class="veh-prev-item"><img src="${src}"><button type="button" class="veh-prev-x" data-i="${i}" title="Quitar">✕</button></span>`).join('')
+        : '<div class="veh-local-note" style="margin:0;">Sin fotos</div>';
+      prev.querySelectorAll('.veh-prev-x').forEach(b => b.addEventListener('click', () => { state.list.splice(Number(b.dataset.i), 1); state.changed = true; paint(); }));
     }
     paint();
-    async function pick(e){
-      const file = e.target.files[0]; if(!file) return;
-      state.promise = (async () => {
-        try{
-          let val = await resizeImageFile(file, 900, 0.65);
-          state.value = val; state.changed = true; paint();
-          if(isCloudinaryConfigured()){
-            msg.textContent = '☁️ subiendo…';
-            const { url, error } = await uploadToCloudinary(val);
-            if(url){ state.value = url; msg.textContent = '☁️ se va a guardar en la nube'; }
-            else msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
-          }
-        }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
-      })();
+    function pick(e){
+      const files = Array.from(e.target.files || []);
+      e.target.value = '';
+      files.forEach(file => {
+        state.promise = state.promise.then(async () => {
+          try{
+            const val = await resizeImageFile(file, 900, 0.65);
+            state.list.push(val); state.changed = true; paint();
+            const idx = state.list.length - 1;
+            if(isCloudinaryConfigured()){
+              msg.textContent = '☁️ subiendo…';
+              const { url, error } = await uploadToCloudinary(val);
+              if(url){ const k = state.list.indexOf(val); if(k >= 0) state.list[k] = url; msg.textContent = '☁️ se va a guardar en la nube'; }
+              else msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
+              paint();
+            }
+          }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
+        });
+      });
     }
     box.querySelector('#mePhotoCam').addEventListener('change', pick);
     box.querySelector('#mePhotoFile').addEventListener('change', pick);
-    rm.addEventListener('click', () => { state.value = null; state.changed = true; msg.textContent = ''; paint(); });
     return {
       async apply(){
-        if(state.promise) await state.promise;
+        await state.promise;
         if(!state.changed) return;
-        if(state.value) vehiclePhotos[mv.id] = state.value; else vehiclePhotos[mv.id] = ''; // '' = foto quitada (viaja al sync para que se quite en los demás dispositivos)
+        storePhotos(mv.id, state.list);
         saveVehiclePhotos();
       }
     };
@@ -2887,8 +2914,9 @@
     if(bd.parts.length) entry.parts = bd.parts;
     if(bd.labor > 0) entry.labor = bd.labor;
     movements.push(entry);
-    if(pendingMaintPhoto){ vehiclePhotos[entry.id] = pendingMaintPhoto; saveVehiclePhotos(); }
-    pendingMaintPhoto = null;
+    await maintPhotoQueue; // por si alguna foto todavía se está subiendo
+    if(pendingMaintPhotos.length){ storePhotos(entry.id, pendingMaintPhotos.map(p => p.val)); saveVehiclePhotos(); }
+    pendingMaintPhotos = []; maintPhotoMsg = '';
     await saveMovements();
     applyEntryToReminders(entry, Array.from(document.querySelectorAll('#vehMaintRemBox input[type=checkbox]:checked')).map(i => Number(i.dataset.rid)));
     const qk = document.getElementById('vehQuickRemKm'), qm = document.getElementById('vehQuickRemMonths');
@@ -2905,7 +2933,7 @@
     document.getElementById('vehMaintCost').value = '';
     document.getElementById('vehMaintNote').value = '';
     document.getElementById('vehMaintPhoto').value = ''; document.getElementById('vehMaintPhotoFile').value = '';
-    document.getElementById('vehMaintPhotoPreview').innerHTML = '';
+    renderMaintPhotoPreview();
     document.getElementById('vehMaintDate').value = todayKey();
     renderVehEntries();
     renderBanners();
@@ -4715,20 +4743,30 @@
     }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
   };
   ['vehFuelPhoto','vehFuelPhotoFile'].forEach(id => document.getElementById(id).addEventListener('change', onFuelPhoto));
-  const onMaintPhoto = async (e) => {
-    const file = e.target.files[0]; if(!file) return;
-    try{
-      pendingMaintPhoto = await resizeImageFile(file, 900, 0.65);
-      const previewEl = document.getElementById('vehMaintPhotoPreview');
-      previewEl.innerHTML = `<img src="${pendingMaintPhoto}">`;
-      if(isCloudinaryConfigured()){
-        previewEl.innerHTML += '<div class="veh-local-note" id="vehMaintPhotoCloudMsg" style="margin:4px 0 0;">☁️ subiendo…</div>';
-        const { url, error } = await uploadToCloudinary(pendingMaintPhoto);
-        const msg = document.getElementById('vehMaintPhotoCloudMsg');
-        if(url){ pendingMaintPhoto = url; if(msg) msg.textContent = '☁️ se va a guardar en la nube'; }
-        else if(msg) msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
-      }
-    }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
+  function renderMaintPhotoPreview(){
+    const el = document.getElementById('vehMaintPhotoPreview');
+    el.innerHTML = pendingMaintPhotos.map((p, i) => `<span class="veh-prev-item"><img src="${p.val}"><button type="button" class="veh-prev-x" data-i="${i}" title="Quitar">✕</button></span>`).join('')
+      + (maintPhotoMsg ? `<div class="veh-local-note" id="vehMaintPhotoCloudMsg" style="margin:4px 0 0;">${escapeHtml(maintPhotoMsg)}</div>` : '');
+    el.querySelectorAll('.veh-prev-x').forEach(b => b.addEventListener('click', () => { pendingMaintPhotos.splice(Number(b.dataset.i), 1); renderMaintPhotoPreview(); }));
+  }
+  const onMaintPhoto = (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    files.forEach(file => {
+      maintPhotoQueue = maintPhotoQueue.then(async () => {
+        try{
+          const item = { val: await resizeImageFile(file, 900, 0.65) };
+          pendingMaintPhotos.push(item); maintPhotoMsg = ''; renderMaintPhotoPreview();
+          if(isCloudinaryConfigured()){
+            maintPhotoMsg = '☁️ subiendo…'; renderMaintPhotoPreview();
+            const { url, error } = await uploadToCloudinary(item.val);
+            if(url){ item.val = url; maintPhotoMsg = '☁️ se van a guardar en la nube'; }
+            else maintPhotoMsg = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
+            renderMaintPhotoPreview();
+          }
+        }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
+      });
+    });
   };
   ['vehMaintPhoto','vehMaintPhotoFile'].forEach(id => document.getElementById(id).addEventListener('change', onMaintPhoto));
   document.getElementById('vehSelect').addEventListener('change', (e) => {
@@ -4930,13 +4968,18 @@
   document.getElementById('cloudMigrateBtn').addEventListener('click', async () => {
     const st = document.getElementById('cloudMigrateStatus');
     if(!isCloudinaryConfigured()){ st.textContent = 'Primero configurá y guardá Cloudinary arriba.'; return; }
-    const ids = Object.keys(vehiclePhotos).filter(id => typeof vehiclePhotos[id] === 'string' && vehiclePhotos[id].startsWith('data:'));
+    const ids = Object.keys(vehiclePhotos).filter(id => photosOf(id).some(x => x.startsWith('data:')));
     if(ids.length === 0){ st.textContent = 'No hay fotos pendientes: todas las de este dispositivo ya están en la nube.'; return; }
     let ok = 0, fail = 0, lastErr = '';
     for(let i = 0; i < ids.length; i++){
-      st.textContent = `Subiendo ${i + 1} de ${ids.length}…`;
-      const { url, error } = await uploadToCloudinary(vehiclePhotos[ids[i]]);
-      if(url){ vehiclePhotos[ids[i]] = url; ok++; } else { fail++; lastErr = error || ''; }
+      st.textContent = `Subiendo registro ${i + 1} de ${ids.length}…`;
+      const list = photosOf(ids[i]).slice();
+      for(let k = 0; k < list.length; k++){
+        if(!list[k].startsWith('data:')) continue;
+        const { url, error } = await uploadToCloudinary(list[k]);
+        if(url){ list[k] = url; ok++; } else { fail++; lastErr = error || ''; }
+      }
+      storePhotos(ids[i], list);
     }
     saveVehiclePhotos();
     renderVehEntries();
