@@ -1026,6 +1026,13 @@
     </div>
     <div id="vehEntriesWrap"><div id="vehEntries"></div></div>
 
+    <div class="veh-subtitle">🔎 Historial de mantenimiento</div>
+    <div class="veh-local-note" id="vehMaintKmNow" style="margin:0 0 8px;"></div>
+    <div id="vehMaintLast"></div>
+    <div class="new-cat-row" style="margin:10px 0 6px;"><input type="text" class="name-input" id="vehMaintSearch" placeholder="Buscar: filtro, aceite, pastillas, correa…" style="width:100%;"></div>
+    <div id="vehMaintChips" class="move-group-pills" style="flex-wrap:wrap;margin-bottom:8px;"></div>
+    <div id="vehMaintResults"></div>
+
     <div class="veh-subtitle">Estadísticas</div>
     <div class="veh-type-btns">
       <button type="button" class="veh-type-btn active" id="vehStatCargasBtn">Cargas</button>
@@ -2548,6 +2555,83 @@
     document.getElementById('vehEntriesCaret').style.transform = open ? 'rotate(90deg)' : 'none';
     try{ localStorage.setItem('moneda_vehentries_open', open ? '1' : '0'); }catch(e){}
   }
+  // ---- Historial de mantenimiento: "última vez" por tipo + buscador, con los km recorridos desde cada cambio ----
+  let maintFilterType = '';
+  function agoText(iso){
+    const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    if(days < 1) return 'hoy';
+    if(days < 31) return `hace ${days} día${days === 1 ? '' : 's'}`;
+    const m = Math.floor(days / 30.44);
+    if(m < 12) return `hace ${m} mes${m === 1 ? '' : 'es'}`;
+    const y = Math.floor(m / 12), r = m % 12;
+    return `hace ${y} año${y === 1 ? '' : 's'}${r ? ` y ${r} mes${r === 1 ? '' : 'es'}` : ''}`;
+  }
+  function kmSinceText(mv, cur){
+    if(!mv.km) return 'sin km registrado en ese momento';
+    return `${fmtNum(mv.km, 0)} km · van ${fmtNum(Math.max(0, cur - mv.km), 0)} km desde entonces`;
+  }
+  function renderMaintHistory(){
+    const lastEl = document.getElementById('vehMaintLast');
+    if(!lastEl) return;
+    const chipsEl = document.getElementById('vehMaintChips'), resEl = document.getElementById('vehMaintResults');
+    const cur = currentKm(currentVehicle);
+    document.getElementById('vehMaintKmNow').textContent = cur ? `Km actual registrado de ${currentVehicle}: ${fmtNum(cur, 0)} km (el más alto que cargaste)` : '';
+    const list = vehMovs().filter(m => m.vehType === 'maint').sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+    if(list.length === 0){
+      lastEl.innerHTML = ''; chipsEl.innerHTML = '';
+      resEl.innerHTML = '<div class="empty">Todavía no hay mantenimientos cargados para este vehículo.</div>';
+      return;
+    }
+    const typeOf = m => m.maintType || 'Otro';
+    const seen = {};
+    list.forEach(m => { if(!seen[typeOf(m)]) seen[typeOf(m)] = m; });
+    const types = Object.keys(seen);
+    lastEl.innerHTML = types.map(t => {
+      const m = seen[t];
+      return `<div style="border:1px solid var(--paper-line);border-radius:10px;padding:8px 10px;margin-bottom:6px;">
+        <div class="veh-entry-title">${escapeHtml(t)} <span class="veh-entry-sub">· ${agoText(m.date)} (${new Date(m.date).toLocaleDateString('es-AR')})</span></div>
+        <div class="veh-entry-metrics">${kmSinceText(m, cur)}</div>
+      </div>`;
+    }).join('');
+    if(maintFilterType && !types.includes(maintFilterType)) maintFilterType = '';
+    chipsEl.innerHTML = ['', ...types].map(t => `<button type="button" class="group-pill${t === maintFilterType ? ' active' : ''}" data-t="${escapeHtml(t)}">${t ? escapeHtml(t) : 'Todos'}</button>`).join('');
+    chipsEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { maintFilterType = b.dataset.t; renderMaintHistory(); }));
+    const q = normalize((document.getElementById('vehMaintSearch').value || '').trim());
+    const shown = list.filter(m => {
+      if(maintFilterType && typeOf(m) !== maintFilterType) return false;
+      if(!q) return true;
+      const hay = normalize([typeOf(m), m.note || '', m.raw || '', (m.parts || []).map(p => p.name).join(' '), m.labor ? 'mano de obra' : ''].join(' '));
+      return hay.includes(q);
+    });
+    if(shown.length === 0){ resEl.innerHTML = '<div class="empty">No hay resultados.</div>'; return; }
+    resEl.innerHTML = '';
+    shown.slice(0, 50).forEach(m => {
+      const row = document.createElement('div');
+      row.className = 'veh-entry';
+      const photos = photosOf(m.id);
+      const bl = breakdownLine(m);
+      row.innerHTML = `
+        ${photos[0] ? `<img class="veh-entry-thumb" src="${photos[0]}">` : `<div class="veh-entry-icon">🔧</div>`}
+        <div class="veh-entry-info">
+          <div class="veh-entry-title">${escapeHtml(m.raw || typeOf(m))}</div>
+          <div class="veh-entry-sub">${new Date(m.date).toLocaleDateString('es-AR')} · ${agoText(m.date)}${photos.length > 1 ? ' · 📷 ' + photos.length : ''}</div>
+          <div class="veh-entry-metrics">${kmSinceText(m, cur)}</div>
+          ${bl ? `<div class="veh-entry-metrics">${bl}</div>` : ''}
+        </div>
+        <div class="veh-entry-amount">${fmt(m.amount)}</div>
+        <button class="veh-entry-del veh-entry-edit" title="Editar">✎</button>`;
+      if(photos[0]) row.querySelector('.veh-entry-thumb').addEventListener('click', () => openVehPhotoModal(photos));
+      row.querySelector('.veh-entry-edit').addEventListener('click', () => editVehEntry(m));
+      resEl.appendChild(row);
+    });
+    if(shown.length > 50){
+      const more = document.createElement('div'); more.className = 'veh-local-note';
+      more.textContent = `Mostrando 50 de ${shown.length}: afiná la búsqueda para ver el resto.`;
+      resEl.appendChild(more);
+    }
+  }
+  document.getElementById('vehMaintSearch').addEventListener('input', renderMaintHistory);
+
   function renderVehEntries(){
     setVehEntriesOpen(vehEntriesOpen);
     renderVehStats();
@@ -2557,6 +2641,7 @@
     renderVehChart();
     renderVehTemplates();
     renderMaintRemBox();
+    renderMaintHistory();
     const met = fuelMetrics();
     const all = vehMovs().sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     if(all.length === 0){ vehEntriesEl.innerHTML = '<div class="empty">Todavía no cargaste combustible ni mantenimiento.</div>'; return; }
