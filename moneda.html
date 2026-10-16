@@ -924,7 +924,7 @@
     <span>Vehículo <span id="vehSectionCaret">▸</span></span>
   </div>
   <div id="vehSectionBody" style="display:block;">
-    <div class="veh-local-note">Si tenés Cloudinary configurado, las fotos se suben a la nube y el link se sincroniza entre dispositivos. Sin Cloudinary, las fotos quedan guardadas solo en este dispositivo. Los datos numéricos siempre se sincronizan como cualquier movimiento. Los recordatorios, las plantillas y las patentes quedan solo en este dispositivo.</div>
+    <div class="veh-local-note">Si tenés Cloudinary configurado, las fotos se suben a la nube y el link se sincroniza entre dispositivos. Sin Cloudinary, las fotos quedan guardadas solo en este dispositivo. Los datos numéricos siempre se sincronizan como cualquier movimiento. Los recordatorios, las plantillas y las patentes también se sincronizan entre dispositivos.</div>
     <div class="veh-veh-row">
       <select id="vehSelect"></select>
       <button type="button" class="veh-type-btn" id="vehPlateBtn" style="flex:0 0 auto;">✎ Patente</button>
@@ -1027,13 +1027,17 @@
     </div>
     <div id="vehEntriesWrap"><div id="vehEntries"></div></div>
 
-    <div class="veh-subtitle">🔎 Historial de mantenimiento</div>
+    <div class="veh-section-toggle" id="vehMaintHistToggle" style="cursor:pointer;margin:16px 0 4px;">
+      <span style="display:flex;align-items:center;gap:6px;">🔎 Historial de mantenimiento <span id="vehMaintHistCaret" style="font-size:10px;transition:transform .2s ease;">▸</span></span>
+    </div>
+    <div id="vehMaintHistWrap" style="display:none;">
     <div class="veh-local-note" id="vehMaintKmNow" style="margin:0 0 8px;"></div>
     <div id="vehMaintLast"></div>
     <div class="new-cat-row" style="margin:10px 0 6px;"><input type="text" class="name-input" id="vehMaintSearch" placeholder="Buscar: filtro, aceite, pastillas, correa…" style="width:100%;"></div>
     <div id="vehMaintChips" class="move-group-pills" style="flex-wrap:wrap;margin-bottom:8px;"></div>
     <div id="vehMaintResults"></div>
     <div id="vehMaintGeneral"></div>
+    </div>
 
     <div class="veh-subtitle">Estadísticas</div>
     <div class="veh-type-btns">
@@ -1549,6 +1553,7 @@
     if(vehicles.length === 0) vehicles = ['Kangoo 21'];
     currentVehicle = localStorage.getItem('moneda_vehicle_current') || vehicles[0];
     await pullFromCloud();
+    vehSyncSnap = vehSyncSnapshot();
     ensureFinMonthCloses();
     await applyCategoryUpgrades();
     await migrateSeguros();
@@ -1630,6 +1635,7 @@
           localStorage.setItem('moneda_updated_at', cloud.updatedAt);
         }catch(e){}
         mergeCloudPhotos(cloud.vehiclePhotos);
+        applyCloudVehicleData(cloud);
         setSyncStatus('ok');
         return true;
       }
@@ -1657,6 +1663,7 @@
         if(cloud.finConfig && typeof cloud.finConfig === 'object'){ finConfig = Object.assign({}, FIN_CONFIG_DEFAULTS, cloud.finConfig); otherChanged = true; }
         if(Array.isArray(cloud.finGoals) && (cloud.finGoals.length || !finGoals.length)){ finGoals = cloud.finGoals; otherChanged = true; }
         if(cloud.finCuotas !== undefined){ finCuotas = cloud.finCuotas; otherChanged = true; }
+        if(applyCloudVehicleData(cloud)) otherChanged = true;
       }
       // Cierres mensuales y puntos del patrimonio son registros que solo se agregan (nunca se pisan):
       // se combinan por clave en vez de "el más nuevo gana", así no se pierde un cierre hecho en otro dispositivo.
@@ -1690,7 +1697,8 @@
         if(cloudNewer) localStorage.setItem('moneda_updated_at', cloud.updatedAt);
       }catch(e){}
       const photosChanged = mergeCloudPhotos(cloud.vehiclePhotos);
-      if(needsPush){ markLocalChange(); scheduleSync(); }
+      const vehMissingInCloud = cloud.vehicleReminders === undefined && (vehicleReminders.length || vehTemplates.length || Object.keys(vehiclePlates).length);
+      if(needsPush || vehMissingInCloud){ markLocalChange(); scheduleSync(); }
       setSyncStatus('ok');
       return changedLocal || otherChanged || photosChanged;
     }catch(e){
@@ -1711,6 +1719,7 @@
         finConfig, finGoals, finCuotas, finCloses, finWealthHistory,
         catBudgetGroups: catBudgetOverrides(), catDebt: catDebtOverrides(),
         vehiclePhotos: cloudPhotoEntries(),
+        vehicles, vehicleReminders, vehTemplates, vehiclePlates,
         updatedAt: localStorage.getItem('moneda_updated_at') || new Date().toISOString()
       };
       const res = await fetch(SYNC_URL, { method:'POST', body: JSON.stringify(payload), cache:'no-store' });
@@ -1979,14 +1988,35 @@
     document.getElementById('vehPhotoOverlay').addEventListener('click', (e) => { if(e.target.id === 'vehPhotoOverlay') close(); });
   }
 
-  function saveVehicleState(){
+  // Recordatorios, plantillas, patentes y lista de vehículos ahora viajan en la sincronización. El vehículo
+  // "actual" sigue siendo propio de cada dispositivo. Solo se marca un cambio para sincronizar si lo que viaja
+  // cambió de verdad (cambiar de vehículo en el selector no cuenta).
+  let vehSyncSnap = '';
+  function vehSyncSnapshot(){ return JSON.stringify([vehicles, vehicleReminders, vehiclePlates, vehTemplates]); }
+  function persistVehicleLocal(){
     try{
       localStorage.setItem('moneda_vehicles', JSON.stringify(vehicles));
-      localStorage.setItem('moneda_vehicle_current', currentVehicle);
       localStorage.setItem('moneda_vehicle_reminders', JSON.stringify(vehicleReminders));
       localStorage.setItem('moneda_vehicle_plates', JSON.stringify(vehiclePlates));
       localStorage.setItem('moneda_vehicle_templates', JSON.stringify(vehTemplates));
     }catch(e){ console.error(e); }
+  }
+  function applyCloudVehicleData(cloud){
+    let changed = false;
+    if(Array.isArray(cloud.vehicleReminders)){ vehicleReminders = cloud.vehicleReminders; changed = true; }
+    if(Array.isArray(cloud.vehTemplates)){ vehTemplates = cloud.vehTemplates; changed = true; }
+    if(cloud.vehiclePlates && typeof cloud.vehiclePlates === 'object'){ vehiclePlates = cloud.vehiclePlates; changed = true; }
+    if(Array.isArray(cloud.vehicles) && cloud.vehicles.length){ vehicles = cloud.vehicles; changed = true; }
+    if(changed){ persistVehicleLocal(); vehSyncSnap = vehSyncSnapshot(); }
+    return changed;
+  }
+  function saveVehicleState(){
+    try{
+      persistVehicleLocal();
+      localStorage.setItem('moneda_vehicle_current', currentVehicle);
+    }catch(e){ console.error(e); }
+    const snap = vehSyncSnapshot();
+    if(snap !== vehSyncSnap){ vehSyncSnap = snap; markLocalChange(); }
   }
   function entryVehicle(mv){ return mv.vehicle || vehicles[0]; }
   function allVehicles(){
@@ -2590,6 +2620,7 @@
   }
   // ---- Historial de mantenimiento: "última vez" por tipo + buscador, con los km recorridos desde cada cambio ----
   let maintFilterType = '';
+  let maintShowAll = false;
   function agoText(iso){
     const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
     if(days < 1) return 'hoy';
@@ -2672,7 +2703,7 @@
     }).join('');
     if(maintFilterType && !types.includes(maintFilterType)) maintFilterType = '';
     chipsEl.innerHTML = ['', ...types].map(t => `<button type="button" class="group-pill${t === maintFilterType ? ' active' : ''}" data-t="${escapeHtml(t)}">${t ? escapeHtml(t) : 'Todos'}</button>`).join('');
-    chipsEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { maintFilterType = b.dataset.t; renderMaintHistory(); }));
+    chipsEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { maintFilterType = b.dataset.t; maintShowAll = false; renderMaintHistory(); }));
     const q = normalize((document.getElementById('vehMaintSearch').value || '').trim());
     const shown = list.filter(m => {
       if(maintFilterType && typeOf(m) !== maintFilterType) return false;
@@ -2682,7 +2713,7 @@
     });
     if(shown.length === 0){ resEl.innerHTML = '<div class="empty">No hay resultados.</div>'; return; }
     resEl.innerHTML = '';
-    shown.slice(0, 50).forEach(m => {
+    shown.slice(0, maintShowAll ? 50 : 8).forEach(m => {
       const row = document.createElement('div');
       row.className = 'veh-entry';
       const photos = photosOf(m.id);
@@ -2701,13 +2732,26 @@
       row.querySelector('.veh-entry-edit').addEventListener('click', () => editVehEntry(m));
       resEl.appendChild(row);
     });
-    if(shown.length > 50){
+    if(!maintShowAll && shown.length > 8){
+      const b = document.createElement('button');
+      b.className = 'veh-type-btn'; b.style.width = '100%'; b.style.marginTop = '8px';
+      b.textContent = `Ver todo (${shown.length - 8} más)`;
+      b.addEventListener('click', () => { maintShowAll = true; renderMaintHistory(); });
+      resEl.appendChild(b);
+    } else if(shown.length > 50){
       const more = document.createElement('div'); more.className = 'veh-local-note';
       more.textContent = `Mostrando 50 de ${shown.length}: afiná la búsqueda para ver el resto.`;
       resEl.appendChild(more);
     }
   }
-  document.getElementById('vehMaintSearch').addEventListener('input', renderMaintHistory);
+  document.getElementById('vehMaintSearch').addEventListener('input', () => { maintShowAll = false; renderMaintHistory(); });
+  function setMaintHistOpen(open){
+    document.getElementById('vehMaintHistWrap').style.display = open ? 'block' : 'none';
+    document.getElementById('vehMaintHistCaret').style.transform = open ? 'rotate(90deg)' : 'none';
+    try{ localStorage.setItem('moneda_mainthist_open', open ? '1' : '0'); }catch(e){}
+  }
+  document.getElementById('vehMaintHistToggle').addEventListener('click', () => setMaintHistOpen(document.getElementById('vehMaintHistWrap').style.display === 'none'));
+  try{ setMaintHistOpen(localStorage.getItem('moneda_mainthist_open') === '1'); }catch(e){}
 
   function renderVehEntries(){
     setVehEntriesOpen(vehEntriesOpen);
