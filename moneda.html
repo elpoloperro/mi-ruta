@@ -491,6 +491,7 @@
   .modal-card{
     background:var(--paper); border:none; border-radius:2px;
     padding:24px; max-width:340px; width:100%; box-shadow:0 8px 30px rgba(0,0,0,0.14);
+    display:flex; flex-direction:column; max-height:calc(100vh - 40px); /* si el contenido es largo, el formulario scrollea y los botones quedan siempre visibles */
   }
   .modal-title{ font-weight:600; font-size:16px; margin-bottom:8px; }
   .modal-text{ font-size:13px; color:var(--ink-soft); margin-bottom:20px; line-height:1.5; }
@@ -612,7 +613,8 @@
   .veh-remcheck-row label{ display:flex; gap:8px; align-items:center; flex:1; min-width:0; }
   .veh-remcheck-act{ color:var(--ink-soft); font-size:12px; padding:2px 3px; cursor:pointer; flex-shrink:0; }
   .veh-remcheck-act:hover{ color:var(--ink); }
-  .modal-form{ display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+  .modal-form{ display:flex; flex-direction:column; gap:10px; margin-bottom:18px; overflow-y:auto; flex:1 1 auto; min-height:0; padding-right:2px; }
+  .modal-title,.modal-btns{ flex-shrink:0; }
   .modal-field{ display:flex; flex-direction:column; gap:4px; }
   .modal-field span{ font-family:'JetBrains Mono', monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
   .modal-field input, .modal-field select{
