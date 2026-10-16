@@ -990,7 +990,6 @@
           <option value="Servicio de gomería">Servicio de gomería</option>
           <option value="Frenos">Frenos</option>
           <option value="VTV">VTV</option>
-          <option value="Seguro">Seguro</option>
           <option value="Repuesto">Repuesto</option>
           <option value="Otro">Otro</option>
         </select>
@@ -1034,6 +1033,7 @@
     <div class="new-cat-row" style="margin:10px 0 6px;"><input type="text" class="name-input" id="vehMaintSearch" placeholder="Buscar: filtro, aceite, pastillas, correa…" style="width:100%;"></div>
     <div id="vehMaintChips" class="move-group-pills" style="flex-wrap:wrap;margin-bottom:8px;"></div>
     <div id="vehMaintResults"></div>
+    <div id="vehMaintGeneral"></div>
 
     <div class="veh-subtitle">Estadísticas</div>
     <div class="veh-type-btns">
@@ -1551,6 +1551,7 @@
     await pullFromCloud();
     ensureFinMonthCloses();
     await applyCategoryUpgrades();
+    await migrateSeguros();
     populateFilterOptions();
     renderBanners();
     render();
@@ -1737,6 +1738,32 @@
     scheduleSync();
   }
 
+  // Los seguros (moto, Kangoo, etc.) son un gasto fijo mensual: salen de Vehículo/mantenimiento y pasan a
+  // Servicios, igual que sus pagos fijos. Es idempotente: si ya está migrado no toca nada.
+  async function migrateSeguros(){
+    let movChanged = false, catChanged = false;
+    movements.forEach(mv => {
+      if(mv.isIncome) return;
+      if(mv.vehType === 'maint' && mv.maintType === 'Seguro'){
+        delete mv.vehType; delete mv.maintType; delete mv.km; delete mv.vehicle; // se conserva fuelioId para no reimportarlo
+        mv.category = 'servicios'; movChanged = true;
+      } else if(mv.category === 'vehiculo' && !mv.vehType && /\bseguro/i.test(normalize(mv.raw || ''))){
+        mv.category = 'servicios'; movChanged = true;
+      }
+    });
+    const veh = categories.find(c => c.key === 'vehiculo'), serv = categories.find(c => c.key === 'servicios');
+    if(veh && serv && Array.isArray(veh.words)){
+      const moved = veh.words.filter(w => normalize(String(w)).includes('seguro'));
+      if(moved.length){
+        veh.words = veh.words.filter(w => !moved.includes(w));
+        serv.words = Array.isArray(serv.words) ? serv.words : [];
+        moved.forEach(w => { if(!serv.words.includes(w)) serv.words.push(w); });
+        catChanged = true;
+      }
+    }
+    if(movChanged) await saveMovements();
+    if(catChanged) await saveCategories();
+  }
   async function applyCategoryUpgrades(){
     let changed = false;
     let deletedSuggested = [];
@@ -2289,7 +2316,7 @@
           }
           if(kind === 'toll'){ await saveToll(t.name, t.amount, todayKey()); flashTollMsg('✓ Cargado: ' + t.name + ' · ' + fmt(t.amount)); }
           else {
-            document.getElementById('vehMaintType').value = t.maintType || 'Otro';
+            document.getElementById('vehMaintType').value = (t.maintType && t.maintType !== 'Seguro') ? t.maintType : 'Otro';
             document.getElementById('vehMaintNote').value = t.note || '';
             document.getElementById('vehMaintCost').value = t.amount;
             renderMaintRemBox();
@@ -2542,6 +2569,10 @@
       }
       if(cost > 0 && d){
         if(o.guid && known.has(o.guid)){ skipped++; return; }
+        if(type === 'Seguro'){
+          // los seguros son un gasto fijo mensual, no un mantenimiento: entran como gasto general (Servicios)
+          movements.push({ id: ++idc, amount: Math.round(cost), category: 'servicios', raw: `Seguro${o.CostTitle ? ' — ' + o.CostTitle : ''}`, note: (o.Notes || '').replace(/\s+/g, ' ').trim(), isIncome: false, date: d.toISOString(), fuelioId: o.guid || '' });
+        } else
         movements.push({ id: ++idc, amount: Math.round(cost), category: 'vehiculo', raw: `${type}${o.CostTitle ? ' — ' + o.CostTitle : ''}`, note: (o.Notes || '').replace(/\s+/g, ' ').trim(), isIncome: false, date: d.toISOString(),
           vehType: 'maint', maintType: type, km: parseFloat(o.Odo) || 0, vehicle: name, fuelioId: o.guid || '' });
         nCost++;
@@ -2572,10 +2603,54 @@
     if(!mv.km) return 'sin km registrado en ese momento';
     return `${fmtNum(mv.km, 0)} km · van ${fmtNum(Math.max(0, cur - mv.km), 0)} km desde entonces`;
   }
+  // Gastos del vehículo que se cargaron como frase en Inicio (sin km/vehículo): no están en el historial hasta pasarlos a Vehículo.
+  function renderGeneralVehicleExpenses(){
+    const el = document.getElementById('vehMaintGeneral');
+    if(!el) return;
+    const q = normalize((document.getElementById('vehMaintSearch').value || '').trim());
+    const list = movements.filter(mv => !mv.isIncome && mv.category === 'vehiculo' && !mv.vehType && (!q || normalize(mv.raw || '').includes(q)))
+      .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+    if(list.length === 0){ el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="veh-local-note" style="margin:14px 0 6px;">🧾 Cargados como gasto general (${list.length}): cuentan en tus gastos pero no tienen km ni aparecen en el historial. Pasalos a Vehículo para completarlos.</div>`;
+    list.slice(0, 20).forEach(mv => {
+      const row = document.createElement('div');
+      row.className = 'veh-entry';
+      row.innerHTML = `<div class="veh-entry-icon">🧾</div>
+        <div class="veh-entry-info">
+          <div class="veh-entry-title">${escapeHtml(mv.raw || '')}</div>
+          <div class="veh-entry-sub">${new Date(mv.date).toLocaleDateString('es-AR')} · cargado como gasto general</div>
+        </div>
+        <div class="veh-entry-amount">${fmt(mv.amount)}</div>
+        <button class="veh-type-btn" type="button" style="white-space:nowrap;">→ Vehículo</button>`;
+      row.querySelector('button').addEventListener('click', () => convertToVehicleEntry(mv));
+      el.appendChild(row);
+    });
+    if(list.length > 20){
+      const more = document.createElement('div'); more.className = 'veh-local-note';
+      more.textContent = `Mostrando 20 de ${list.length}: afiná la búsqueda para ver el resto.`;
+      el.appendChild(more);
+    }
+  }
+  function convertToVehicleEntry(mv){
+    openFormModal('Pasar a Vehículo', [
+      { id:'veh', label:'Vehículo', type:'select', value: currentVehicle, options: allVehicles().map(v => ({ value:v, label:v })) },
+      { id:'type', label:'Tipo', type:'select', value:'Repuesto', options: MAINT_TYPE_OPTIONS },
+      { id:'km', label:'Km (opcional)', type:'number', value:'' },
+      { id:'note', label:'Detalle (opcional)', value: (mv.raw || '').replace(/^\s*[\d.,]+\s*/, '') }
+    ], async (v) => {
+      mv.vehType = 'maint'; mv.maintType = v.type; mv.vehicle = v.veh;
+      mv.km = parseEditNum(v.km) || 0; mv.note = v.note.trim(); mv.category = 'vehiculo';
+      mv.raw = `${v.type}${mv.note ? ' — ' + mv.note : ''}`;
+      currentVehicle = v.veh;
+      await saveMovements(); saveVehicleState();
+      renderVehEntries(); renderBanners(); render();
+    }, 'Pasar');
+  }
   function renderMaintHistory(){
     const lastEl = document.getElementById('vehMaintLast');
     if(!lastEl) return;
     const chipsEl = document.getElementById('vehMaintChips'), resEl = document.getElementById('vehMaintResults');
+    renderGeneralVehicleExpenses();
     const cur = currentKm(currentVehicle);
     document.getElementById('vehMaintKmNow').textContent = cur ? `Km actual registrado de ${currentVehicle}: ${fmtNum(cur, 0)} km (el más alto que cargaste)` : '';
     const list = vehMovs().filter(m => m.vehType === 'maint').sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
@@ -2710,7 +2785,6 @@
     { value:'Servicio de gomería', label:'Servicio de gomería' },
     { value:'Frenos', label:'Frenos' },
     { value:'VTV', label:'VTV' },
-    { value:'Seguro', label:'Seguro' },
     { value:'Repuesto', label:'Repuesto' },
     { value:'Otro', label:'Otro' }
   ];
@@ -2993,6 +3067,8 @@
     if(bd.sum > 0) cost = bd.sum; // con desglose, el costo total es la suma de repuestos + mano de obra
     if(!cost){ alert('Cargá el costo.'); return; }
     const d = new Date(); const [yy,mm,dd] = dateStr.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
+    const dup = movements.find(m => !m.isIncome && Math.round(m.amount) === Math.round(cost) && Math.abs(new Date(m.date) - d) <= 3 * 86400000);
+    if(dup && !confirm(`Ya hay un gasto de ${fmt(dup.amount)} el ${new Date(dup.date).toLocaleDateString('es-AR')} ("${dup.raw}").\n\n¿Es el mismo gasto? Aceptar = guardar igual · Cancelar = no guardar (para no duplicarlo)`)) return;
     const entry = {
       id: Date.now(), amount: cost, category: 'vehiculo',
       raw: `${maintType}${note ? ' — ' + note : ''}`, note, isIncome: false, date: d.toISOString(),
