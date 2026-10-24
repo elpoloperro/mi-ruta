@@ -909,6 +909,16 @@
   </div>
 
   <div class="settings-block">
+    <div class="settings-card-title">🔎 Lectura automática de tickets (Gemini)</div>
+    <p class="settings-help">Opcional: pegá tu clave gratis de Gemini (Google AI Studio) para que, al sacarle una foto al ticket de combustible, se completen solos el tipo de combustible, los litros, el precio y el total. Conseguí la tuya gratis en <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Mientras no esté configurado, completás los datos a mano como siempre (no rompe nada).</p>
+    <div class="new-cat-row">
+      <input type="text" class="name-input" id="geminiApiKey" placeholder="Clave de API de Gemini">
+      <button type="button" id="geminiSaveBtn">Guardar</button>
+    </div>
+    <div class="settings-status" id="geminiStatus"></div>
+  </div>
+
+  <div class="settings-block">
     <div class="section-title fp-section-toggle" id="pmSectionToggle" style="margin-top:0;">
       <span>Métodos de pago <span id="pmSectionCaret">▸</span></span>
     </div>
@@ -962,6 +972,7 @@
         <input type="file" accept="image/*" id="vehFuelPhotoFile" style="display:none;">
       </div>
       <div class="veh-photo-preview" id="vehFuelPhotoPreview"></div>
+      <div class="veh-local-note" id="vehFuelReadStatus" style="min-height:14px;"></div>
       <button id="addFuelBtn" style="width:100%;">Guardar carga</button>
     </div>
     <div class="veh-form" id="vehTollForm" style="display:none;">
@@ -1581,6 +1592,7 @@
     setPmSectionOpen(false);
     renderPaymentMethods();
     refreshCloudinaryForm();
+    refreshGeminiForm();
     switchTab('home');
   }
 
@@ -1940,6 +1952,98 @@
       const data = await res.json();
       return { url: data.secure_url || null, error: null };
     }catch(e){ console.error(e); return { url: null, error: e.message || 'error de red' }; }
+  }
+
+  // ---- Gemini: lectura automática del ticket de combustible por foto (localStorage 'geminiApiKey') ----
+  // Mientras no haya clave guardada, esto no se intenta: se sigue completando litros/precio/total a mano
+  // como hasta ahora (fallback automático, no rompe nada). La clave es del usuario (gratis, Google AI Studio)
+  // y queda solo en este dispositivo — nunca se manda a ningún servidor propio.
+  const GEMINI_MODEL = 'gemini-3.8-flash';
+  function getGeminiApiKey(){
+    try{ return (localStorage.getItem('geminiApiKey') || '').trim(); }catch(e){ return ''; }
+  }
+  function isGeminiConfigured(){ return !!getGeminiApiKey(); }
+  function saveGeminiApiKey(key){
+    try{ localStorage.setItem('geminiApiKey', (key || '').trim()); }catch(e){}
+  }
+  // Manda la foto (dataURL ya redimensionado a jpeg) a Gemini y pide los datos del ticket en JSON.
+  // Devuelve { data, error }. data es null si falló la llamada o si la foto no parecía un ticket de combustible;
+  // en ambos casos el que llama simplemente deja los campos para completar a mano, como siempre.
+  async function readFuelPhotoWithGemini(dataURL){
+    const apiKey = getGeminiApiKey();
+    if(!apiKey) return { data: null, error: null };
+    const base64 = (dataURL.split(',')[1] || '').trim();
+    if(!base64) return { data: null, error: null };
+    const prompt = 'Esta foto es de un ticket o surtidor de una estación de servicio argentina. '
+      + 'Extraé estos datos SOLO si se leen con confianza en la imagen: total pagado en pesos argentinos, '
+      + 'precio por litro (o por m³ si es GNC), cantidad de litros (o m³ si es GNC), tipo de combustible, '
+      + 'y la fecha si figura impresa. No inventes ni redondees a ojo un dato que no se lea bien: dejalo en null. '
+      + 'Para tipo_combustible devolvé EXACTAMENTE una de estas claves, según lo que diga el ticket: '
+      + '"nafta_super" (Súper/Super), "nafta_premium" (Infinia, sin la palabra Diesel), '
+      + '"premium" (otra nafta premium que no sea Infinia, ej. V-Power/Quantum), '
+      + '"diesel" (Diesel común, Ultradiesel, Diesel 500), '
+      + '"diesel_premium" (Infinia Diesel, Euro Diesel, Diesel Premium), "gnc" (GNC). '
+      + 'Respondé ÚNICAMENTE con un objeto JSON, sin texto adicional y sin markdown, con exactamente estas claves: '
+      + '{"encontrado": boolean (false si la foto claramente no es un ticket de combustible), '
+      + '"total": número o null, "precio_litro": número o null, "litros": número o null, '
+      + '"tipo_combustible": una de las claves de arriba o null, "fecha": "YYYY-MM-DD" o null}.';
+    try{
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+        method: 'POST',
+        headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: GEMINI_MODEL,
+          input: [
+            { type: 'text', text: prompt },
+            { type: 'image', data: base64, mime_type: 'image/jpeg' }
+          ],
+          response_format: { type: 'text', mime_type: 'application/json' }
+        })
+      });
+      if(!res.ok){
+        let msg = res.status === 429 ? 'límite de uso alcanzado, probá en un rato' : (res.status === 400 || res.status === 401 || res.status === 403) ? 'clave inválida o sin permiso' : ('HTTP ' + res.status);
+        try{ const errData = await res.json(); if(errData && errData.error && errData.error.message) msg = errData.error.message; }catch(e2){}
+        console.error('gemini fuel read failed:', msg);
+        return { data: null, error: msg };
+      }
+      const payload = await res.json();
+      const step = (payload.steps || []).find(s => s.type === 'model_output');
+      const textPart = step && (step.content || []).find(c => c.type === 'text');
+      if(!textPart || !textPart.text) return { data: null, error: 'respuesta sin texto' };
+      let raw = textPart.text.trim();
+      const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if(fence) raw = fence[1].trim();
+      let parsed;
+      try{ parsed = JSON.parse(raw); }catch(e3){ console.error('gemini json parse failed:', raw); return { data: null, error: 'JSON inválido' }; }
+      if(!parsed || parsed.encontrado === false) return { data: null, error: 'no parece un ticket de combustible' };
+      return { data: parsed, error: null };
+    }catch(e){ console.error(e); return { data: null, error: e.message || 'error de red' }; }
+  }
+  // Aplica lo leído por Gemini a los campos del formulario de Combustible (el usuario revisa antes de guardar).
+  function applyFuelPhotoReading(read, statusEl){
+    const filled = [];
+    if(read.tipo_combustible && FUEL_LABELS[read.tipo_combustible]){
+      const sel = document.getElementById('vehFuelType');
+      sel.value = read.tipo_combustible;
+      sel.dispatchEvent(new Event('change'));
+      filled.push('tipo');
+    }
+    const liters = (typeof read.litros === 'number' && read.litros > 0) ? read.litros : null;
+    const price = (typeof read.precio_litro === 'number' && read.precio_litro > 0) ? read.precio_litro : null;
+    let total = (typeof read.total === 'number' && read.total > 0) ? read.total : null;
+    if(total == null && liters != null && price != null) total = Math.round(liters * price);
+    if(liters != null){ document.getElementById('vehFuelLiters').value = liters; filled.push('litros'); }
+    if(price != null){ document.getElementById('vehFuelPrice').value = price; filled.push('precio'); }
+    if(total != null){ document.getElementById('vehFuelTotal').value = total; filled.push('total'); }
+    fuelManualOrder = ['liters','price','total'].filter(f => {
+      const id = 'vehFuel' + f[0].toUpperCase() + f.slice(1);
+      return document.getElementById(id).value !== '';
+    }).slice(0, 2);
+    if(read.fecha && /^\d{4}-\d{2}-\d{2}$/.test(read.fecha)){
+      const d = new Date(read.fecha + 'T00:00:00'), today = new Date();
+      if(!isNaN(d.getTime()) && d <= today){ document.getElementById('vehFuelDate').value = read.fecha; filled.push('fecha'); }
+    }
+    if(statusEl) statusEl.textContent = filled.length ? `✅ Leído del ticket (${filled.join(', ')}) — revisá antes de guardar` : '⚠️ no se encontraron datos claros en la foto; completá a mano';
   }
 
   function resizeImageFile(file, maxDim, quality){
@@ -3035,6 +3139,7 @@
     document.getElementById('vehFuelTotal').value = '';
     document.getElementById('vehFuelPhoto').value = ''; document.getElementById('vehFuelPhotoFile').value = '';
     document.getElementById('vehFuelPhotoPreview').innerHTML = '';
+    document.getElementById('vehFuelReadStatus').textContent = '';
     document.getElementById('vehFuelDate').value = todayKey();
     renderVehEntries();
     renderBanners();
@@ -4937,15 +5042,29 @@
   const onFuelPhoto = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     try{
-      pendingFuelPhoto = await resizeImageFile(file, 900, 0.65);
+      const localDataURL = await resizeImageFile(file, 900, 0.65);
+      pendingFuelPhoto = localDataURL;
       const previewEl = document.getElementById('vehFuelPhotoPreview');
       previewEl.innerHTML = `<img src="${pendingFuelPhoto}">`;
       if(isCloudinaryConfigured()){
         previewEl.innerHTML += '<div class="veh-local-note" id="vehFuelPhotoCloudMsg" style="margin:4px 0 0;">☁️ subiendo…</div>';
-        const { url, error } = await uploadToCloudinary(pendingFuelPhoto);
+      }
+      const readStatusEl = document.getElementById('vehFuelReadStatus');
+      if(isGeminiConfigured() && readStatusEl) readStatusEl.textContent = '🔎 leyendo el ticket…';
+      // Cloudinary y Gemini son independientes entre sí: van en paralelo para no duplicar la espera
+      // cuando están las dos configuradas. Gemini siempre lee del dataURL local (nunca del link de la nube).
+      const [{ url, error }, { data: read, error: readErr }] = await Promise.all([
+        isCloudinaryConfigured() ? uploadToCloudinary(localDataURL) : Promise.resolve({ url: null, error: null }),
+        isGeminiConfigured() ? readFuelPhotoWithGemini(localDataURL) : Promise.resolve({ data: null, error: null })
+      ]);
+      if(isCloudinaryConfigured()){
         const msg = document.getElementById('vehFuelPhotoCloudMsg');
         if(url){ pendingFuelPhoto = url; if(msg) msg.textContent = '☁️ se va a guardar en la nube'; }
         else if(msg) msg.textContent = `⚠️ no se pudo subir a la nube (${error || 'error desconocido'}); se guarda solo en este dispositivo`;
+      }
+      if(isGeminiConfigured() && readStatusEl){
+        if(read) applyFuelPhotoReading(read, readStatusEl);
+        else readStatusEl.textContent = readErr ? `⚠️ no se pudo leer el ticket (${readErr}); completá a mano` : '';
       }
     }catch(err){ console.error(err); alert('No se pudo procesar la foto.'); }
   };
@@ -5195,6 +5314,18 @@
   document.getElementById('cloudSaveBtn').addEventListener('click', () => {
     saveCloudinaryConfig(document.getElementById('cloudCloudName').value, document.getElementById('cloudUploadPreset').value);
     refreshCloudinaryForm();
+  });
+
+  // ---- Gemini: formulario de Ajustes (guarda en localStorage 'geminiApiKey') ----
+  function refreshGeminiForm(){
+    document.getElementById('geminiApiKey').value = getGeminiApiKey();
+    const statusEl = document.getElementById('geminiStatus');
+    if(isGeminiConfigured()){ statusEl.textContent = '🔎 Configurado: las fotos nuevas de combustible se intentan leer solas.'; statusEl.classList.add('ok'); }
+    else { statusEl.textContent = 'Sin configurar todavía: completás los datos a mano (como siempre).'; statusEl.classList.remove('ok'); }
+  }
+  document.getElementById('geminiSaveBtn').addEventListener('click', () => {
+    saveGeminiApiKey(document.getElementById('geminiApiKey').value);
+    refreshGeminiForm();
   });
 
   // ---- Grupos Hogar / Vehículo: separación visual de categorías, sin tocar el modelo de datos ----
