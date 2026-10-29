@@ -551,9 +551,9 @@
   /* ".new-cat-row select" ya trae flex:1 y min-width:100px con más especificidad (clase+etiqueta) que una sola
      clase nueva — se repite el selector completo acá para poder pisarlo sin recurrir a !important. */
   .new-cat-row select.veh-fuel-type-select{ flex:0 1 112px; min-width:84px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  /* Letra más grande (ensayo +10%) en toda la pantalla de Vehículo — zoom escala texto, botones e
-     íconos juntos y de forma proporcional, en vez de tener que subir a mano cada font-size suelto. */
-  #screen-vehicle{ zoom:1.1; }
+  /* Letra más grande en toda la pantalla de Vehículo — zoom escala texto, botones e íconos juntos y de
+     forma proporcional, en vez de tener que subir a mano cada font-size suelto. Subido de 1.1 a 1.2. */
+  #screen-vehicle{ zoom:1.2; }
   .veh-photo-label{
     flex:1; border:1px dashed var(--paper-line); border-radius:10px; padding:9px 10px;
     font-size:12px; color:var(--ink-soft); cursor:pointer; text-align:center;
@@ -658,11 +658,11 @@
   }
   .bottom-nav .nav-item{
     background:none; border:none; color:var(--ink-soft); cursor:pointer;
-    display:flex; flex-direction:column; align-items:center; gap:3px;
-    font-size:9.5px; font-family:'Space Grotesk', sans-serif; font-weight:600;
-    padding:6px 4px; flex:1; max-width:70px; min-width:0;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    font-size:11px; font-family:'Space Grotesk', sans-serif; font-weight:600;
+    padding:6px 4px; flex:1; max-width:76px; min-width:0;
   }
-  .bottom-nav .nav-item span:first-child{ font-size:19px; line-height:1; }
+  .bottom-nav .nav-item span:first-child{ font-size:24px; line-height:1; }
   .bottom-nav .nav-item.active{ color:var(--coin); }
   .fab{
     width:52px; height:52px; border-radius:50%; flex-shrink:0;
@@ -956,6 +956,8 @@
     <div class="veh-form" id="vehFuelForm">
       <div class="new-cat-row">
         <input type="date" id="vehFuelDate">
+      </div>
+      <div class="new-cat-row">
         <input type="text" class="budget-input" id="vehFuelKm" placeholder="Odómetro (km)" inputmode="numeric">
         <select id="vehFuelType" class="veh-fuel-type-select">
           <option value="nafta_super">Nafta Súper</option>
