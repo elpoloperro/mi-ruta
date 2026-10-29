@@ -538,9 +538,11 @@
   .day-body{ overflow:hidden; }
   .day-body.collapsed{ display:none; }
 
-  .veh-type-btns{ display:flex; gap:8px; margin-bottom:12px; }
+  /* flex-wrap + flex-basis en % (no flex:1 a secas) para que, si no entran los 3 botones en una fila
+     (pantallas angostas o con el zoom de Vehículo más alto), pasen prolijo a 2 líneas en vez de desbordar. */
+  .veh-type-btns{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
   .veh-type-btn{
-    flex:1; border:1px solid var(--paper-line); background:var(--paper); color:var(--ink-soft);
+    flex:1 1 30%; min-width:92px; border:1px solid var(--paper-line); background:var(--paper); color:var(--ink-soft);
     border-radius:10px; padding:8px; font-family:'Space Grotesk', sans-serif; font-weight:600;
     font-size:13px; cursor:pointer;
   }
@@ -553,7 +555,7 @@
   .new-cat-row select.veh-fuel-type-select{ flex:0 1 112px; min-width:84px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* Letra más grande en toda la pantalla de Vehículo — zoom escala texto, botones e íconos juntos y de
      forma proporcional, en vez de tener que subir a mano cada font-size suelto. Subido de 1.1 a 1.2. */
-  #screen-vehicle{ zoom:1.2; }
+  #screen-vehicle{ zoom:1.15; }
   .veh-photo-label{
     flex:1; border:1px dashed var(--paper-line); border-radius:10px; padding:9px 10px;
     font-size:12px; color:var(--ink-soft); cursor:pointer; text-align:center;
@@ -575,8 +577,11 @@
   .veh-entry-del:hover{ color:var(--danger); }
   .veh-photo-modal-img{ max-width:100%; max-height:70vh; border-radius:10px; display:block; }
   .veh-local-note{ font-size:11px; color:var(--ink-soft); margin:4px 0 12px 0; line-height:1.4; }
-  .veh-veh-row{ display:flex; gap:8px; margin-bottom:10px; }
-  .veh-veh-row select{ flex:1; }
+  /* Mismo motivo que .veh-type-btns: con el selector de vehículo (nombre + patente + km, puede ser largo)
+     más los botones de Patente/+Vehículo, sin wrap y sin min-width:0 el texto se cortaba en vez de bajar
+     de línea — el <select> no podía achicarse por debajo de su contenido (mínimo implícito de flexbox). */
+  .veh-veh-row{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .veh-veh-row select{ flex:1 1 160px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .veh-rem{ display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--paper-line); }
   .veh-rem-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; background:#3a9a5b; }
   .veh-rem.soon .veh-rem-dot{ background:#d99a00; }
@@ -5096,7 +5101,7 @@
   }
   document.getElementById('vehFuelType').addEventListener('change', (e) => {
     const gnc = e.target.value === 'gnc';
-    document.getElementById('vehFuelLiters').placeholder = gnc ? 'Metros cúbicos (m³)' : 'Litros';
+    document.getElementById('vehFuelLiters').placeholder = gnc ? 'm³' : 'Litros'; // "Metros cúbicos (m³)" no entraba en el campo (80px) y se cortaba a la mitad
     document.getElementById('vehFuelPrice').placeholder = gnc ? 'Precio x m³' : 'Precio x litro';
   });
   document.getElementById('vehFuelLiters').addEventListener('input', () => onFuelFieldInput('liters'));
