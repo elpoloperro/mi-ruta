@@ -2202,13 +2202,17 @@
           <div class="veh-rem-sub">${info.text}</div>
           ${info.pct != null ? `<div class="veh-bar"><i style="width:${Math.round(info.pct * 100)}%"></i></div>` : ''}
           ${r.history && r.history.length ? `<details class="veh-rem-history"><summary>Historial (${r.history.length})</summary>${
-            r.history.slice().reverse().map(h => {
+            r.history.slice().reverse().map((h, revIdx) => {
+              const idx = r.history.length - 1 - revIdx; // índice real en r.history (sin invertir), para poder editar esta línea puntual
               const parts = [];
               if(h.km != null) parts.push(h.km + ' km');
               if(h.date) parts.push(h.date);
-              if(h.overKm != null) parts.push(h.overKm > 0 ? `${h.overKm} km después de lo previsto` : (h.overKm < 0 ? `${-h.overKm} km antes de lo previsto` : 'justo a tiempo'));
-              else if(h.overDays != null) parts.push(h.overDays > 0 ? `${h.overDays} días después de lo previsto` : (h.overDays < 0 ? `${-h.overDays} días antes de lo previsto` : 'justo a tiempo'));
-              return `<div class="veh-rem-sub">${parts.join(' · ')}</div>`;
+              if(h.note) parts.push(escapeHtml(h.note));
+              // Se muestra también el km/fecha "previsto" (h.dueKm/h.dueDate, ya guardados desde antes) entre paréntesis:
+              // así la comparación queda auditable a simple vista en vez de ser una resta oculta que hay que confiar a ciegas.
+              if(h.overKm != null) parts.push((h.overKm > 0 ? `${h.overKm} km después de lo previsto` : (h.overKm < 0 ? `${-h.overKm} km antes de lo previsto` : 'justo a tiempo')) + (h.dueKm != null ? ` (${h.dueKm} km)` : ''));
+              else if(h.overDays != null) parts.push((h.overDays > 0 ? `${h.overDays} días después de lo previsto` : (h.overDays < 0 ? `${-h.overDays} días antes de lo previsto` : 'justo a tiempo')) + (h.dueDate ? ` (${h.dueDate})` : ''));
+              return `<div class="veh-remcheck-row"><span class="veh-rem-sub">${parts.join(' · ')}</span><span class="veh-remcheck-act veh-hist-edit" data-hidx="${idx}" title="Corregir este registro">✎</span></div>`;
             }).join('')
           }</details>` : ''}
         </div>
@@ -2223,8 +2227,32 @@
           saveVehicleState(); renderVehReminders(); renderBanners();
         });
       });
+      row.querySelectorAll('.veh-hist-edit').forEach(btn => {
+        btn.addEventListener('click', () => editHistoryEntry(r, Number(btn.dataset.hidx)));
+      });
       el.appendChild(row);
     });
+  }
+  // Corrige un registro puntual del Historial (cuando quedó cargado con un dato equivocado, ej. un
+  // mantenimiento distinto cerró el recordatorio por error). Recalcula "antes/después de lo previsto"
+  // contra el dueKm/dueDate que esa línea ya tenía guardado — ese punto de comparación no cambia,
+  // solo se corrige el km/fecha/detalle real de lo que pasó.
+  function editHistoryEntry(r, idx){
+    const h = r.history && r.history[idx];
+    if(!h) return;
+    openFormModal('Corregir registro del historial', [
+      { id:'km', label:'Km real', type:'number', value: h.km != null ? h.km : '' },
+      { id:'da', label:'Fecha real (AAAA-MM-DD)', value: h.date || '' },
+      { id:'no', label:'Detalle (opcional)', value: h.note || '' }
+    ], (v) => {
+      const km = parseMoney(v.km);
+      if(km) h.km = km;
+      if(v.da) h.date = v.da;
+      h.note = (v.no || '').trim();
+      if(h.dueKm != null && h.km != null) h.overKm = h.km - h.dueKm;
+      if(h.dueDate && h.date){ const dd = new Date(h.dueDate), rd = new Date(h.date); if(!isNaN(dd) && !isNaN(rd)) h.overDays = Math.round((rd - dd) / 86400000); }
+      saveVehicleState(); renderVehReminders();
+    }, 'Guardar');
   }
   function addReminder(){
     const num = id => parseFloat(document.getElementById(id).value.replace(/[^\d.]/g,'')) || 0;
@@ -2257,12 +2285,13 @@
   // Antes de reiniciar o cerrar un recordatorio, guarda en r.history a qué km/fecha se cumplió realmente
   // esa etapa y cuánto se pasó (o se adelantó) respecto de lo previsto — así queda el registro de que,
   // por ejemplo, un service pautado a los 10.000 km se terminó haciendo a los 12.000.
-  function logReminderCompletion(r, km, dateStr){
+  function logReminderCompletion(r, km, dateStr, note){
     const info = reminderInfo(r);
     if(!r.history) r.history = [];
     r.history.push({
       date: dateStr,
       km: km || null,
+      note: (note || '').trim(),
       dueKm: info.dueKm != null ? info.dueKm : null,
       overKm: (info.dueKm != null && km) ? (km - info.dueKm) : null,
       dueDate: info.dueDate ? info.dueDate.toISOString().slice(0,10) : null,
@@ -2275,7 +2304,7 @@
     vehicleReminders.forEach(r => {
       if(!ids.includes(r.id) || r.done) return;
       const dateStr = localDayKey(entry.date);
-      logReminderCompletion(r, entry.km, dateStr);
+      logReminderCompletion(r, entry.km, dateStr, entry.note);
       if(r.mode === 'repeat'){ r.startKm = entry.km || currentKm(entry.vehicle); r.startDate = dateStr; delete r.dueKm; delete r.dueDate; }
       else r.done = true;
     });
@@ -2288,9 +2317,12 @@
     const matching = list.filter(r => r.type === type);
     let html = '';
     if(list.length){
+      // Antes el checkbox de un recordatorio del mismo tipo arrancaba tildado solo: al guardar el mantenimiento
+      // se cerraba el recordatorio sin que nadie lo haya tildado a propósito, contradiciendo el propio texto de
+      // acá abajo ("tildá los que se hicieron"). Ahora arranca siempre destildado — hay que elegirlo a mano.
       html += '<div class="veh-local-note" style="margin:6px 0 2px;">Este mantenimiento cumple estos recordatorios (tildá los que se hicieron):</div>' +
         list.map(r => `<div class="veh-remcheck-row">
-          <label><input type="checkbox" data-rid="${r.id}"${r.type === type ? ' checked' : ''}> <span>${escapeHtml(r.title || r.type)} <span class="veh-rem-sub">(${escapeHtml(r.type)})</span></span></label>
+          <label><input type="checkbox" data-rid="${r.id}"> <span>${escapeHtml(r.title || r.type)} <span class="veh-rem-sub">(${escapeHtml(r.type)})</span></span></label>
           <span class="veh-remcheck-act" data-act="edit" data-rid="${r.id}" title="Editar">✎</span>
           <span class="veh-remcheck-act" data-act="del" data-rid="${r.id}" title="Quitar">✕</span>
         </div>`).join('');
@@ -2336,19 +2368,20 @@
   function doneReminderNow(r){
     openFormModal('Marcar "' + (r.title || r.type) + '" como hecho', [
       { id:'km', label:'Km actual', type:'number', value: currentKm(r.vehicle) || '' },
-      { id:'mo', label:'Monto (opcional, si también querés registrar el gasto)', type:'number' }
+      { id:'mo', label:'Monto (opcional, si también querés registrar el gasto)', type:'number' },
+      { id:'no', label:'Detalle (opcional)', value: '' }
     ], async (v) => {
       const km = parseMoney(v.km) || currentKm(r.vehicle);
       const amount = parseMoney(v.mo);
       const nowIso = new Date().toISOString();
       if(amount > 0){
-        const entry = { id: Date.now(), amount, category: 'vehiculo', raw: `${r.type} — hecho`, note: '', isIncome: false,
+        const entry = { id: Date.now(), amount, category: 'vehiculo', raw: `${r.type} — hecho`, note: v.no || '', isIncome: false,
           date: nowIso, vehType: 'maint', maintType: r.type, km, vehicle: r.vehicle };
         movements.push(entry);
         await saveMovements();
         renderVehEntries(); renderBanners(); render();
       }
-      logReminderCompletion(r, km, todayKey());
+      logReminderCompletion(r, km, todayKey(), v.no);
       if(r.mode === 'repeat'){ r.startKm = km; r.startDate = todayKey(); delete r.dueKm; delete r.dueDate; }
       else r.done = true;
       saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
@@ -2362,11 +2395,14 @@
       if(!r.startDate && info.dueDate && r.everyMonths){ const d = new Date(info.dueDate); d.setMonth(d.getMonth() - r.everyMonths); r.startDate = d.toISOString().slice(0, 10); }
       openFormModal('Editar recordatorio', [
         { id:'km', label:'Repetir cada cuántos km (vacío = no usar km)', type:'number', value:r.everyKm || '' },
-        { id:'mo', label:'Repetir cada cuántos meses (vacío = no usar meses)', type:'number', value:r.everyMonths || '' }
+        { id:'mo', label:'Repetir cada cuántos meses (vacío = no usar meses)', type:'number', value:r.everyMonths || '' },
+        { id:'sk', label:'Corregir "último hecho a los" (km) — vacío = no tocar', type:'number', value:r.startKm != null ? r.startKm : '' }
       ], (v) => {
         const ek = parseMoney(v.km), em = parseMoney(v.mo);
         if(!ek && !em){ alert('Dejá al menos los km o los meses.'); return false; }
         r.everyKm = ek; r.everyMonths = em;
+        const sk = parseMoney(v.sk);
+        if(sk) r.startKm = sk; // permite corregir el km base cuando un recordatorio se cerró con un dato equivocado
         delete r.dueKm; delete r.dueDate;
         if(r.startKm == null) r.startKm = currentKm(r.vehicle);
         if(!r.startDate) r.startDate = todayKey();
