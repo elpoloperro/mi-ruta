@@ -546,6 +546,14 @@
   }
   .veh-type-btn.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
   .veh-form .new-cat-row{ margin-bottom:8px; }
+  /* Tipo de combustible compartiendo fila con fecha/odómetro: más chico y sin crecer, a diferencia
+     del <select> genérico de .new-cat-row que por defecto ocupa todo el ancho libre. */
+  /* ".new-cat-row select" ya trae flex:1 y min-width:100px con más especificidad (clase+etiqueta) que una sola
+     clase nueva — se repite el selector completo acá para poder pisarlo sin recurrir a !important. */
+  .new-cat-row select.veh-fuel-type-select{ flex:0 1 112px; min-width:84px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Letra más grande (ensayo +10%) en toda la pantalla de Vehículo — zoom escala texto, botones e
+     íconos juntos y de forma proporcional, en vez de tener que subir a mano cada font-size suelto. */
+  #screen-vehicle{ zoom:1.1; }
   .veh-photo-label{
     flex:1; border:1px dashed var(--paper-line); border-radius:10px; padding:9px 10px;
     font-size:12px; color:var(--ink-soft); cursor:pointer; text-align:center;
@@ -949,9 +957,7 @@
       <div class="new-cat-row">
         <input type="date" id="vehFuelDate">
         <input type="text" class="budget-input" id="vehFuelKm" placeholder="Odómetro (km)" inputmode="numeric">
-      </div>
-      <div class="new-cat-row">
-        <select id="vehFuelType">
+        <select id="vehFuelType" class="veh-fuel-type-select">
           <option value="nafta_super">Nafta Súper</option>
           <option value="nafta_premium">Nafta Infinia</option>
           <option value="premium">Nafta Premium</option>
@@ -1577,6 +1583,7 @@
     updateRawHistory();
     composerDate.value = todayKey();
     document.getElementById('vehFuelDate').value = todayKey();
+    applyLastFuelType(currentVehicle);
     // Atajo desde la pantalla de inicio ("Registrar gasto"/"Registrar ingreso"): va directo al input listo para escribir.
     const action = new URLSearchParams(location.search).get('action');
     if(action === 'income'){ input.value = 'cobré '; }
@@ -2123,6 +2130,15 @@
     if(snap !== vehSyncSnap){ vehSyncSnap = snap; markLocalChange(); }
   }
   function entryVehicle(mv){ return mv.vehicle || vehicles[0]; }
+  // Precarga el selector de combustible con el tipo de la última carga real de ESE vehículo
+  // (si nunca cargó combustible todavía, deja el valor que ya tenía el <select>).
+  function applyLastFuelType(vehicle){
+    const mvs = movements.filter(mv => mv.vehType === 'fuel' && entryVehicle(mv) === vehicle);
+    if(!mvs.length) return;
+    const last = mvs.reduce((a, b) => (new Date(b.date) > new Date(a.date) ? b : a));
+    const sel = document.getElementById('vehFuelType');
+    if(last.fuelType && sel.querySelector(`option[value="${last.fuelType}"]`)) sel.value = last.fuelType;
+  }
   function allVehicles(){
     const set = vehicles.slice();
     movements.forEach(mv => { if(mv.vehicle && !set.includes(mv.vehicle)) set.push(mv.vehicle); });
@@ -2243,13 +2259,22 @@
     openFormModal('Corregir registro del historial', [
       { id:'km', label:'Km real', type:'number', value: h.km != null ? h.km : '' },
       { id:'da', label:'Fecha real (AAAA-MM-DD)', value: h.date || '' },
-      { id:'no', label:'Detalle (opcional)', value: h.note || '' }
+      { id:'no', label:'Detalle (opcional)', value: h.note || '' },
+      { id:'dk', label:'Comparar contra — km previsto (vacío = no comparar por km)', type:'number', value: h.dueKm != null ? h.dueKm : '' },
+      { id:'dd', label:'Comparar contra — fecha prevista AAAA-MM-DD (vacío = no comparar por fecha)', value: h.dueDate || '' }
     ], (v) => {
       const km = parseMoney(v.km);
       if(km) h.km = km;
       if(v.da) h.date = v.da;
       h.note = (v.no || '').trim();
-      if(h.dueKm != null && h.km != null) h.overKm = h.km - h.dueKm;
+      // "Comparar contra" es editable y se puede dejar vacío a propósito: un km/fecha "previsto" heredado de
+      // otro origen (ej. un import viejo) puede no corresponder a este registro ya corregido, y mostrar
+      // "antes/después de lo previsto" contra un número que no pinta sería más confuso que no mostrar nada.
+      const dk = parseMoney(v.dk);
+      h.dueKm = dk || null;
+      h.overKm = (h.dueKm != null && h.km != null) ? (h.km - h.dueKm) : null;
+      h.dueDate = v.dd || null;
+      h.overDays = null;
       if(h.dueDate && h.date){ const dd = new Date(h.dueDate), rd = new Date(h.date); if(!isNaN(dd) && !isNaN(rd)) h.overDays = Math.round((rd - dd) / 86400000); }
       saveVehicleState(); renderVehReminders();
     }, 'Guardar');
@@ -5133,6 +5158,7 @@
   ['vehMaintPhoto','vehMaintPhotoFile'].forEach(id => document.getElementById(id).addEventListener('change', onMaintPhoto));
   document.getElementById('vehSelect').addEventListener('change', (e) => {
     currentVehicle = e.target.value; saveVehicleState(); renderVehEntries();
+    applyLastFuelType(currentVehicle);
   });
   document.getElementById('vehAddVehicleBtn').addEventListener('click', () => {
     openFormModal('Nuevo vehículo', [
