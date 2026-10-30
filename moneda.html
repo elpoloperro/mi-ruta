@@ -326,11 +326,16 @@
   .chart-card h3{ margin:0 0 10px 0; font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); font-weight:600; }
   .pie-wrap{ display:flex; align-items:center; gap:14px; }
   .pie{ width:90px; height:90px; border-radius:50%; flex-shrink:0; }
-  .legend{ font-size:11px; display:flex; flex-direction:column; gap:4px; }
+  /* tabular-nums: la leyenda usa la tipografía sans (no la mono), así que sin esto los montos cambian
+     de ancho según los dígitos y las filas "bailan" al cambiar de mes o de grupo. */
+  .legend{ font-size:11px; display:flex; flex-direction:column; gap:4px; font-variant-numeric:tabular-nums; }
   .legend-item{ display:flex; align-items:center; gap:6px; }
   .legend-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   .trend-row{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px; }
-  .trend-row .tr-label{ width:78px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Antes era width:78px fijo con ellipsis, y los nombres largos se cortaban ("Suscrip...", "Impuest..."),
+     al punto de que dos categorías distintas podían verse igual. Ahora la etiqueta puede usar dos
+     renglones en vez de perder palabras, como ya hace .fin-trend-row en Finanzas. */
+  .trend-row .tr-label{ flex:0 1 104px; min-width:76px; white-space:normal; line-height:1.25; }
   /* Igual que .trend-row pero para Finanzas, donde los montos en pesos y las etiquetas son más largos
      que el "↑23%" compacto del gráfico de categorías original — necesitan más ancho para no cortarse. */
   .fin-trend-row{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px; flex-wrap:wrap; }
@@ -344,6 +349,8 @@
   .trend-pct{ font-family:'JetBrains Mono', monospace; font-size:11px; width:44px; text-align:right; flex-shrink:0; }
   .trend-pct.up{ color:var(--danger); }
   .trend-pct.down{ color:var(--income); }
+  .trend-more{ margin-top:6px; text-align:center; }
+  .trend-more span{ color:var(--coin); cursor:pointer; font-size:11px; font-family:'JetBrains Mono', monospace; }
   .empty-chart{ font-size:12px; color:var(--ink-soft); font-family:'JetBrains Mono', monospace; }
 
   .cat-card{ background:var(--card); border:1px solid var(--paper-line); border-radius:10px; padding:12px 14px; margin-bottom:8px; transition:background-color .25s ease, border-color .25s ease; }
@@ -3893,9 +3900,21 @@
     pieChartEl.innerHTML = `<div class="pie-wrap"><div class="donut-wrap"><div class="donut" style="background:${gradient}"></div><div class="donut-hole"><div class="dh-amount">${fmt(groupTotal)}</div><div class="dh-label">${dhLabel}</div></div></div><div class="legend">${legendHtml}</div></div>`;
   }
 
+  // La lista mostraba TODAS las categorías con movimiento, lo que en un mes cargado obliga a scrollear
+  // un montón y hace difícil leer lo importante de un vistazo. Ahora se ordena por monto (el mayor entre
+  // mes actual y anterior) y se muestran solo las primeras TREND_TOP, con un toggle para ver el resto.
+  // Igual que renderPieChart, cachea sus datos para poder re-renderizar sola al tocar el toggle.
+  const TREND_TOP = 6;
+  let trendExpanded = false, lastTrendTotals = null, lastTrendPrev = null;
   function renderTrendChart(totals, prevTotals){
+    if(totals) lastTrendTotals = totals;
+    if(prevTotals) lastTrendPrev = prevTotals;
+    totals = lastTrendTotals || {}; prevTotals = lastTrendPrev || {};
+    const peak = c => Math.max(totals[c.key]||0, prevTotals[c.key]||0);
     const maxVal = Math.max(1, ...categories.map(c => Math.max(totals[c.key]||0, prevTotals[c.key]||0)));
-    const rows = categories.filter(c => (totals[c.key]||0) > 0 || (prevTotals[c.key]||0) > 0).map(cat => {
+    const active = categories.filter(c => (totals[c.key]||0) > 0 || (prevTotals[c.key]||0) > 0)
+      .sort((a, b) => peak(b) - peak(a));
+    const rows = (trendExpanded ? active : active.slice(0, TREND_TOP)).map(cat => {
       const now = totals[cat.key] || 0;
       const prev = prevTotals[cat.key] || 0;
       const nowPct = (now/maxVal)*100;
@@ -3917,7 +3936,14 @@
         <div class="trend-pct ${pctClass}">${pctText}</div>
       </div>`;
     });
-    trendChartEl.innerHTML = rows.length ? rows.join('') : '<div class="empty-chart">Sin datos suficientes.</div>';
+    let html = rows.length ? rows.join('') : '<div class="empty-chart">Sin datos suficientes.</div>';
+    if(active.length > TREND_TOP){
+      const resto = active.length - TREND_TOP;
+      html += `<div class="trend-more"><span id="trendMoreBtn">${trendExpanded ? '− ver menos' : '+ ver todo (' + resto + ' más)'}</span></div>`;
+    }
+    trendChartEl.innerHTML = html;
+    const moreBtn = document.getElementById('trendMoreBtn');
+    if(moreBtn) moreBtn.addEventListener('click', () => { trendExpanded = !trendExpanded; renderTrendChart(); });
   }
 
   // ===================== Finanzas =====================
