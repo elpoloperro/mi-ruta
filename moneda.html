@@ -273,11 +273,13 @@
   .mic-btn.listening{ color:var(--danger); animation:pulse 1s infinite; }
   @keyframes pulse{ 0%{opacity:1;} 50%{opacity:0.4;} 100%{opacity:1;} }
   .composer button.send-btn{
-    background:none; color:var(--coin); border:none; border-radius:0; padding:0 0 4px 0;
-    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:14px; cursor:pointer;
-    transition:opacity .1s ease; flex-shrink:0; height:auto;
+    background:var(--coin); color:#0f1012; border:none; border-radius:999px; padding:8px 18px;
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:13px; cursor:pointer;
+    flex-shrink:0; height:auto; box-shadow:0 2px 8px var(--coin-soft);
+    transition:transform .08s ease, box-shadow .15s ease, filter .15s ease;
   }
-  .composer button.send-btn:active{ opacity:.6; }
+  .composer button.send-btn:hover{ filter:brightness(1.07); }
+  .composer button.send-btn:active{ transform:scale(.92); box-shadow:0 1px 3px var(--coin-soft); filter:brightness(.96); }
   .hint{ font-size:11px; color:var(--ink-soft); margin-top:10px; font-family:'JetBrains Mono', monospace; opacity:.75; }
   .parse-preview{ margin-top:10px; padding-top:10px; border-top:none; font-size:13px; display:none; }
   .parse-preview.show{ display:block; }
@@ -403,6 +405,40 @@
     flex:1 1 100px; min-width:100px; max-width:100%;
   }
   .new-cat-row button{ background:var(--ink); color:var(--paper); border:none; border-radius:8px; padding:0 12px; font-size:13px; cursor:pointer; flex-shrink:0; }
+  /* Botón principal "Guardar X" (combustible/peaje/mantenimiento): antes era un <button> sin ningún
+     estilo propio, por eso tomaba el aspecto nativo del navegador (una barra clara sin relieve).
+     Esta clase le da forma de botón real, color de marca y feedback táctil al tocarlo. */
+  .btn-save{
+    background:var(--coin); color:#0f1012; border:none; border-radius:var(--radius-md);
+    padding:13px; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:15px;
+    letter-spacing:.01em; cursor:pointer; box-shadow:0 3px 10px var(--coin-soft);
+    transition:transform .08s ease, box-shadow .15s ease, filter .15s ease;
+  }
+  .btn-save:hover{ filter:brightness(1.07); }
+  .btn-save:active{ transform:scale(.97); box-shadow:0 1px 3px var(--coin-soft); filter:brightness(.96); }
+  /* #addFuelBtn/#addMaintBtn quedan ocultos: los reemplaza #vehFloatSave (botón flotante, fuera del
+     flujo normal). Se les suma relleno abajo al formulario para que la foto/el estado no queden
+     tapados por el botón flotante cuando se scrollea hasta el final. */
+  #addFuelBtn, #addMaintBtn{ display:none; }
+  #vehFuelForm, #vehMaintForm{ padding-bottom:64px; }
+  .veh-float-save{
+    position:fixed; left:50%; bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom));
+    transform:translateX(-50%); z-index:55; width:calc(100% - 32px); max-width:588px;
+  }
+  .veh-float-save:active{ transform:translateX(-50%) scale(.97); box-shadow:0 1px 3px var(--coin-soft); filter:brightness(.96); }
+  /* Cartelito flotante que confirma qué acción se hizo (ej: "Carga guardada"). Se crea una sola vez
+     por JS (showActionToast) y se reusa para cualquier pantalla; por eso vive position:fixed sobre
+     el nav inferior en vez de depender de dónde esté el botón que lo dispara. */
+  .action-toast{
+    position:fixed; left:50%; bottom:calc(var(--nav-h) + 74px + env(safe-area-inset-bottom)); /* arriba del botón flotante #vehFloatSave, para que no se superpongan */
+    transform:translate(-50%, 10px) scale(.9); background:var(--ink); color:var(--paper);
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13px;
+    padding:10px 18px; border-radius:999px; box-shadow:0 6px 20px rgba(0,0,0,0.25);
+    opacity:0; pointer-events:none; z-index:200;
+    transition:opacity .2s ease, transform .38s cubic-bezier(.34,1.56,.64,1);
+    max-width:86vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .action-toast.show{ opacity:1; transform:translate(-50%, 0) scale(1); }
 
   /* Pagos fijos */
   .fp-card{
@@ -667,6 +703,29 @@
   .veh-stats .veh-kv span{ color:var(--ink-soft); font-weight:400; }
   .veh-stats .veh-kv b{ font-size:14px; font-variant-numeric:tabular-nums; }
   .veh-stats .veh-kv.veh-kv-hl b{ color:var(--coin); }
+  /* Calculadora rápida dentro de cada tarjeta: "si hago X km, cuánto gasto" con el rendimiento de esa tarjeta. */
+  .veh-stats .veh-sim-row{ display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--paper-line); }
+  .veh-stats .veh-sim-km{
+    flex:1 1 60px; min-width:0; font-family:'Space Grotesk', sans-serif; font-size:12px;
+    border:none; border-bottom:1px solid var(--paper-line); background:transparent; color:var(--ink);
+    padding:4px 0; outline:none;
+  }
+  .veh-stats .veh-sim-km:focus{ border-bottom-color:var(--coin); }
+  .veh-stats .veh-sim-km::placeholder{ color:var(--ink-soft); opacity:.7; }
+  .veh-stats .veh-sim-out{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--coin); font-weight:600; text-align:right; flex-shrink:0; }
+  /* Puntos tocables del gráfico de consumo: círculo grande invisible = área de toque cómoda,
+     círculo chico visible = el puntito. El click real se maneja por delegación (ver el addEventListener
+     sobre #vehChart). */
+  .veh-chart-hit{ fill:transparent; cursor:pointer; }
+  .veh-chart-pt{ fill:var(--ink); pointer-events:none; transition:r .12s ease, fill .12s ease; }
+  .veh-chart-hit:hover + .veh-chart-pt, .veh-chart-hit:active + .veh-chart-pt{ r:5; fill:var(--coin); }
+  /* Panel que muestra el detalle de la carga tocada en el gráfico (fecha, litros, precio, total, km). */
+  .veh-chart-detail{
+    display:none; margin-top:8px; background:var(--card); border:1px solid var(--paper-line);
+    border-radius:10px; padding:10px 12px;
+  }
+  .veh-chart-detail.show{ display:block; animation:chartDetailIn .2s ease; }
+  @keyframes chartDetailIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
 
   @media (max-width:400px){
     .logo{ font-size:22px; }
@@ -690,17 +749,30 @@
     display:flex; flex-direction:column; align-items:center; gap:4px;
     font-size:11px; font-family:'Space Grotesk', sans-serif; font-weight:600;
     padding:6px 4px; flex:1; max-width:76px; min-width:0;
+    transition:color .2s ease;
   }
-  .bottom-nav .nav-item span:first-child{ font-size:24px; line-height:1; }
+  /* Antes el ícono era texto plano sin relieve ni respuesta al tocar ("tocar un papel"). Ahora: una
+     píldora de fondo que aparece solo en la pestaña activa, un achique al presionar, y un "pop" de
+     rebote (navPop) cuando se cambia de pestaña — disparado desde switchTab() en el JS. Sin vibración
+     acá a propósito: se navega mucho más seguido que lo que se guarda, y vibrar en cada toque cansa. */
+  .bottom-nav .nav-item span:first-child{
+    font-size:24px; line-height:1; padding:3px 11px; border-radius:12px;
+    transition:transform .15s ease, background-color .2s ease;
+  }
   .bottom-nav .nav-item.active{ color:var(--coin); }
+  .bottom-nav .nav-item.active span:first-child{ background:var(--coin-soft); }
+  .bottom-nav .nav-item:active span:first-child{ transform:scale(.8); }
+  .bottom-nav .nav-item.nav-pop span:first-child{ animation:navPop .34s ease; }
+  @keyframes navPop{ 0%{ transform:scale(1); } 45%{ transform:scale(1.3); } 100%{ transform:scale(1); } }
   .fab{
     width:52px; height:52px; border-radius:50%; flex-shrink:0;
     background:var(--coin); color:#fff; border:none; cursor:pointer;
     font-size:26px; font-weight:400; display:flex; align-items:center; justify-content:center;
     box-shadow:0 6px 18px rgba(34,197,94,0.4); margin-top:-22px;
-    transition:transform .12s ease;
+    transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
   }
-  .fab:active{ transform:scale(0.92); }
+  .fab:hover{ filter:brightness(1.06); }
+  .fab:active{ transform:scale(0.88); box-shadow:0 3px 10px rgba(34,197,94,0.35); }
 
   @media (min-width:900px){
     .app-shell{ display:flex; align-items:flex-start; }
@@ -1010,7 +1082,7 @@
       </div>
       <div class="veh-photo-preview" id="vehFuelPhotoPreview"></div>
       <div class="veh-local-note" id="vehFuelReadStatus" style="min-height:14px;"></div>
-      <button id="addFuelBtn" style="width:100%;">Guardar carga</button>
+      <button id="addFuelBtn" class="btn-save" style="width:100%;">Guardar carga</button>
     </div>
     <div class="veh-form" id="vehTollForm" style="display:none;">
       <div class="veh-local-note" style="margin-top:0;">Tocá una plantilla para cargar el peaje al instante con la fecha de hoy.</div>
@@ -1022,7 +1094,7 @@
       </div>
       <div class="new-cat-row"><input type="text" class="name-input" id="vehTollName" placeholder="Peaje (ej: Rosario - Ruta 33)" list="vehTollNameList"><datalist id="vehTollNameList"></datalist></div>
       <div class="new-cat-row">
-        <button id="addTollBtn" style="flex:1;">Guardar peaje</button>
+        <button id="addTollBtn" class="btn-save" style="flex:1;">Guardar peaje</button>
         <button type="button" class="veh-type-btn" id="saveTollTplBtn" style="flex:1;">★ Guardar como plantilla</button>
       </div>
     </div>
@@ -1066,7 +1138,7 @@
       </div>
       <div class="veh-photo-preview" id="vehMaintPhotoPreview"></div>
       <div id="vehMaintRemBox"></div>
-      <button id="addMaintBtn" style="width:100%;margin-top:6px;">Guardar mantenimiento</button>
+      <button id="addMaintBtn" class="btn-save" style="width:100%;margin-top:6px;">Guardar mantenimiento</button>
       <button type="button" class="veh-type-btn" id="saveMaintTplBtn" style="width:100%;margin-top:6px;">★ Guardar como plantilla</button>
     </div>
     <div id="vehStats"></div>
@@ -1102,6 +1174,7 @@
     </div>
     <div class="veh-veh-row"><select id="vehChartFuel"></select></div>
     <div id="vehChart"></div>
+    <div id="vehChartDetail" class="veh-chart-detail"></div>
 
     <div class="veh-subtitle">Recordatorios</div>
     <div id="vehReminders"></div>
@@ -1298,6 +1371,10 @@
     <button class="nav-item" data-tab="settings"><span>⚙️</span><span>Ajustes</span></button>
   </nav>
 
+  <!-- Botón flotante que reemplaza a #addFuelBtn/#addMaintBtn visualmente: vive FUERA de #screen-vehicle
+       (que tiene zoom:1.15) a propósito, para no depender de cómo zoom afecta a position:fixed. Lo
+       muestra/mueve/renombra updateFloatingSaveBtn() según la sub-pestaña activa del auto. -->
+  <button id="vehFloatSave" class="btn-save veh-float-save" style="display:none;">Guardar carga</button>
   <div id="confirmModalWrap"></div>
   <div id="vehPhotoModalWrap"></div>
 </div>
@@ -1475,6 +1552,21 @@
 
   function monthKeyOf(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
   function fmt(n){ const sign = n < 0 ? '-' : ''; return sign + '$' + Math.round(Math.abs(n)).toLocaleString('es-AR'); }
+  // Vibración corta como feedback táctil al confirmar una acción. No todos los navegadores la
+  // soportan (iOS Safari no), por eso siempre va guardada en try/catch.
+  function vibrate(pattern){ try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} }
+  // Cartelito flotante que confirma qué acción se hizo (ej: "⛽ Carga guardada"). Un solo elemento
+  // reusado para toda la app, creado la primera vez que se llama.
+  let actionToastTimer = null;
+  function showActionToast(msg){
+    let t = document.getElementById('actionToast');
+    if(!t){ t = document.createElement('div'); t.id = 'actionToast'; t.className = 'action-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.classList.remove('show'); void t.offsetWidth; // reinicia la transición si se toca 2 veces seguidas
+    t.classList.add('show');
+    clearTimeout(actionToastTimer);
+    actionToastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
   function monthLabel(d){
     const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
     return meses[d.getMonth()] + ' ' + d.getFullYear();
@@ -2308,6 +2400,8 @@
       h.overDays = null;
       if(h.dueDate && h.date){ const dd = new Date(h.dueDate), rd = new Date(h.date); if(!isNaN(dd) && !isNaN(rd)) h.overDays = Math.round((rd - dd) / 86400000); }
       saveVehicleState(); renderVehReminders();
+      vibrate([15, 40, 15]);
+      showActionToast('✓ Historial corregido');
     }, 'Guardar');
   }
   function addReminder(){
@@ -2336,6 +2430,8 @@
       .forEach(id => document.getElementById(id).value = '');
     document.getElementById('vehRemForm').style.display = 'none';
     renderVehReminders(); renderBanners();
+    vibrate([15, 40, 15]);
+    showActionToast('✓ Recordatorio creado');
   }
 
   // Antes de reiniciar o cerrar un recordatorio, guarda en r.history a qué km/fecha se cumplió realmente
@@ -2415,6 +2511,8 @@
         vehicleReminders.push({ id: Date.now(), vehicle: currentVehicle, mode:'repeat', type, title: v.ti || type,
           note:'', everyKm: ek, everyMonths: em, startKm: currentKm(currentVehicle), startDate: todayKey() });
         saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+        vibrate([15, 40, 15]);
+        showActionToast('✓ Recordatorio creado');
       }, 'Crear');
     });
   }
@@ -2441,6 +2539,8 @@
       if(r.mode === 'repeat'){ r.startKm = km; r.startDate = todayKey(); delete r.dueKm; delete r.dueDate; }
       else r.done = true;
       saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+      vibrate([15, 40, 15]);
+      showActionToast('✓ Recordatorio cumplido');
     }, 'Marcar hecho');
   }
 
@@ -2463,6 +2563,8 @@
         if(r.startKm == null) r.startKm = currentKm(r.vehicle);
         if(!r.startDate) r.startDate = todayKey();
         saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+        vibrate([15, 40, 15]);
+        showActionToast('✓ Recordatorio actualizado');
       });
     } else {
       openFormModal('Editar recordatorio', [
@@ -2474,6 +2576,8 @@
         r.kmTarget = kt; r.dateTarget = v.da;
         delete r.dueKm; delete r.dueDate;
         saveVehicleState(); renderVehReminders(); renderMaintRemBox(); renderBanners();
+        vibrate([15, 40, 15]);
+        showActionToast('✓ Recordatorio actualizado');
       });
     }
   }
@@ -2552,12 +2656,25 @@
       });
     });
   }
+  let vehFormKind = 'fuel'; // sub-pestaña activa del auto (fuel/toll/maint) — la usa updateFloatingSaveBtn()
   function showVehForm(kind){
     [['fuel', 'vehShowFuelBtn', 'vehFuelForm'], ['toll', 'vehShowTollBtn', 'vehTollForm'], ['maint', 'vehShowMaintBtn', 'vehMaintForm']].forEach(([k, b, f]) => {
       document.getElementById(b).classList.toggle('active', k === kind);
       document.getElementById(f).style.display = k === kind ? 'block' : 'none';
     });
+    vehFormKind = kind;
+    updateFloatingSaveBtn();
     if(kind === 'maint') renderMaintRemBox();
+  }
+  // Combustible y Mantenimiento tienen formulario largo, así que su botón "Guardar" real (#addFuelBtn/
+  // #addMaintBtn, ocultos por CSS) se reemplaza por #vehFloatSave, fijo abajo de la pantalla. Peaje
+  // tiene un formulario corto (no hace falta scrollear) y mantiene su botón normal en el formulario.
+  function updateFloatingSaveBtn(){
+    const btn = document.getElementById('vehFloatSave');
+    const onVehicle = document.getElementById('screen-vehicle').classList.contains('active');
+    if(onVehicle && vehFormKind === 'fuel'){ btn.textContent = 'Guardar carga'; btn.style.display = 'block'; }
+    else if(onVehicle && vehFormKind === 'maint'){ btn.textContent = 'Guardar mantenimiento'; btn.style.display = 'block'; }
+    else btn.style.display = 'none';
   }
   function vehIcon(mv){ return mv.vehType === 'fuel' ? '⛽' : (mv.vehType === 'toll' ? '🛣️' : '🔧'); }
 
@@ -2568,6 +2685,21 @@
   function fmtNum(n, d){ return Number(n).toLocaleString('es-AR', { minimumFractionDigits:d, maximumFractionDigits:d }); }
   function unitOf(t){ return t === 'gnc' ? 'm³' : 'L'; }
   function fuelClass(t){ return t === 'gnc' ? 'fuel-gnc' : (t === 'diesel' || t === 'diesel_premium') ? 'fuel-diesel' : 'fuel-nafta'; }
+  // Carga (movimiento) detrás de cada punto del gráfico de consumo actualmente dibujado — en el mismo
+  // orden que los puntos, para que el click delegado (data-idx) encuentre el detalle de la carga tocada.
+  let chartPointMovs = [];
+  function showChartPointDetail(mv){
+    const el = document.getElementById('vehChartDetail');
+    if(!el || !mv) return;
+    const u = mv.unit || unitOf(mv.fuelType);
+    const kv = (k, v) => `<div class="veh-kv"><span>${k}</span><b>${v}</b></div>`;
+    el.innerHTML = `<div class="veh-stat-fuel">${new Date(mv.date).toLocaleDateString('es-AR', { day:'2-digit', month:'long', year:'numeric' })}</div>` +
+      kv('Cargaste', fmtNum(mv.liters, 2) + ' ' + u) +
+      kv('Precio', fmt(Math.round(mv.pricePerLiter || 0)) + '/' + u) +
+      kv('Total', fmt(mv.amount)) +
+      (mv.km ? kv('Odómetro', fmtNum(mv.km, 0) + ' km') : '');
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
   function periodMatch(iso, kind){
     if(kind === 'all') return true;
     const d = new Date(iso), n = new Date();
@@ -2613,6 +2745,13 @@
         html += kv('Consumo prom.', fmtNum(sd / sv, 2) + ' km/' + u);
         if(lastMet) html += kv('Último consumo', fmtNum(met[lastMet.id].kpu, 2) + ' km/' + u);
         html += `<div class="veh-kv veh-kv-hl"><span>Costo por km</span><b>${fmt(Math.round(sc / sd))}</b></div>`;
+        // Calculadora rápida: con el consumo prom. (sd/sv) y el costo por km (sc/sd) de esta misma tarjeta,
+        // estima cuánto combustible y plata va a llevar un recorrido. El input se escucha por delegación
+        // sobre #vehStats (ver el addEventListener más abajo), porque la tarjeta se recrea en cada render.
+        html += `<div class="veh-sim-row">
+          <input type="text" class="veh-sim-km" inputmode="numeric" placeholder="¿Cuántos km?" data-kpu="${sd / sv}" data-cpk="${sc / sd}" data-unit="${u}">
+          <span class="veh-sim-out">—</span>
+        </div>`;
       }
       if(lastP && lastP.pricePerLiter) html += kv('Último precio', fmt(Math.round(lastP.pricePerLiter)) + '/' + u) + `<div class="veh-stat-row" style="text-align:right;">${new Date(lastP.date).toLocaleDateString('es-AR')}</div>`;
       cards.push(`<div class="veh-stat-card ${fc}">${html}</div>`);
@@ -2678,7 +2817,14 @@
     for(let i = 0; i <= 3; i++){ const v = lo + (hi - lo) * i / 3, y = sy(v); grid += `<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" style="stroke:var(--paper-line)"/><text x="${L-4}" y="${y+3}" text-anchor="end" style="fill:var(--ink-soft);font-size:9px">${fmtNum(v, 0)}</text>`; }
     const path = pts.map((p, i) => (i ? 'L' : 'M') + sx(p.x).toFixed(1) + ' ' + sy(p.y).toFixed(1)).join(' ');
     const dl = t => new Date(t).toLocaleDateString('es-AR', { day:'2-digit', month:'short' });
-    return `<svg viewBox="0 0 ${W} ${H}" class="veh-chart">${grid}<line x1="${L}" x2="${W-R}" y1="${sy(avg)}" y2="${sy(avg)}" style="stroke:var(--ink-soft);stroke-dasharray:4 3"/><path d="${path}" style="fill:none;stroke:var(--ink);stroke-width:1.5"/><text x="${L}" y="${H-6}" style="fill:var(--ink-soft);font-size:9px">${dl(x0)}</text><text x="${W-R}" y="${H-6}" text-anchor="end" style="fill:var(--ink-soft);font-size:9px">${dl(x1)}</text></svg>`;
+    // Cada punto son 2 círculos superpuestos: uno grande invisible (radio 11, el que realmente se toca
+    // bien con el dedo) y uno chico visible (radio 3, el puntito). El CSS resalta el chico cuando se
+    // toca/pasa el mouse por el grande. El click se escucha por delegación en #vehChart (ver renderVehChart).
+    const dots = pts.map((p, i) => {
+      const cx = sx(p.x).toFixed(1), cy = sy(p.y).toFixed(1);
+      return `<circle class="veh-chart-hit" data-idx="${i}" cx="${cx}" cy="${cy}" r="11"/><circle class="veh-chart-pt" data-idx="${i}" cx="${cx}" cy="${cy}" r="3"/>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" class="veh-chart">${grid}<line x1="${L}" x2="${W-R}" y1="${sy(avg)}" y2="${sy(avg)}" style="stroke:var(--ink-soft);stroke-dasharray:4 3"/><path d="${path}" style="fill:none;stroke:var(--ink);stroke-width:1.5"/>${dots}<text x="${L}" y="${H-6}" style="fill:var(--ink-soft);font-size:9px">${dl(x0)}</text><text x="${W-R}" y="${H-6}" text-anchor="end" style="fill:var(--ink-soft);font-size:9px">${dl(x1)}</text></svg>`;
   }
   function svgBars(months){
     const W = 340, H = 170, L = 34, R = 8, T = 10, B = 22;
@@ -2704,14 +2850,17 @@
     sel.innerHTML = types.map(t => `<option value="${t}">${FUEL_LABELS[t]}</option>`).join('');
     if(types.includes(prev)) sel.value = prev;
     sel.style.display = (chartTab === 'consumo' && types.length > 1) ? '' : 'none';
+    document.getElementById('vehChartDetail').classList.remove('show'); // la carga tocada antes ya no corresponde al gráfico que se está por dibujar
     if(chartTab === 'consumo'){
       const t = sel.value || types[0];
-      if(!t){ el.innerHTML = '<div class="empty">Todavía no hay cargas.</div>'; return; }
-      const pts = groups[t].filter(m => met[m.id] && met[m.id].kpu).sort((a, b) => a.date.localeCompare(b.date)).map(m => ({ x: new Date(m.date).getTime(), y: met[m.id].kpu }));
-      if(pts.length < 2){ el.innerHTML = '<div class="empty">Con dos cargas más se arma la gráfica.</div>'; return; }
+      if(!t){ el.innerHTML = '<div class="empty">Todavía no hay cargas.</div>'; chartPointMovs = []; return; }
+      const pts = groups[t].filter(m => met[m.id] && met[m.id].kpu).sort((a, b) => a.date.localeCompare(b.date)).map(m => ({ x: new Date(m.date).getTime(), y: met[m.id].kpu, mv: m }));
+      if(pts.length < 2){ el.innerHTML = '<div class="empty">Con dos cargas más se arma la gráfica.</div>'; chartPointMovs = []; return; }
       const avg = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-      el.innerHTML = svgLine(pts, avg) + `<div class="veh-local-note">km por ${unitOf(t)} en cada carga · línea punteada: promedio ${fmtNum(avg, 2)}</div>`;
+      chartPointMovs = pts.map(p => p.mv); // para que el click delegado sepa a qué carga corresponde cada punto
+      el.innerHTML = svgLine(pts, avg) + `<div class="veh-local-note">km por ${unitOf(t)} en cada carga · línea punteada: promedio ${fmtNum(avg, 2)} · tocá un punto para ver el detalle</div>`;
     } else {
+      chartPointMovs = [];
       const now = new Date(), months = [];
       for(let i = 11; i >= 0; i--){
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -3237,6 +3386,8 @@
     renderVehEntries();
     renderBanners();
     render();
+    vibrate([15, 40, 15]);
+    showActionToast('⛽ Carga guardada');
   }
 
   // ---- Desglose de mantenimiento: repuestos (nombre + precio) y mano de obra por separado ----
@@ -3343,6 +3494,8 @@
     renderVehEntries();
     renderBanners();
     render();
+    vibrate([15, 40, 15]);
+    showActionToast('🔧 Mantenimiento guardado');
   }
 
   // Sugerencias del input: en vez del historial de textos ya cargados, muestra las palabras clave
@@ -4833,6 +4986,9 @@
     renderBanners();
     render();
     updateRawHistory();
+    vibrate(15);
+    showActionToast(parsed.isIncome ? '💰 Ingreso anotado' : '💸 Gasto anotado');
+    input.focus(); // listo para dictar/tipear el siguiente gasto sin tener que volver a tocar el campo
     setTimeout(() => { preview.className = 'parse-preview'; }, 2800);
   }
 
@@ -5065,14 +5221,17 @@
     await saveToll(name, amount, document.getElementById('vehTollDate').value);
     document.getElementById('vehTollAmount').value = ''; document.getElementById('vehTollName').value = '';
     document.getElementById('vehTollDate').value = todayKey();
-    flashTollMsg('✓ Peaje guardado');
+    vibrate([15, 40, 15]);
+    showActionToast('🛣 Peaje guardado');
   });
   document.getElementById('saveTollTplBtn').addEventListener('click', () => {
     const amount = parseMoney(document.getElementById('vehTollAmount').value);
     const name = document.getElementById('vehTollName').value.trim();
     if(!amount || !name){ alert('Para guardar una plantilla completá el nombre y el monto.'); return; }
     vehTemplates.push({ id: Date.now(), kind: 'toll', name, amount });
-    saveVehicleState(); renderVehTemplates(); flashTollMsg('★ Plantilla guardada: ' + name);
+    saveVehicleState(); renderVehTemplates();
+    vibrate([15, 40, 15]);
+    showActionToast('★ Plantilla guardada: ' + name);
   });
   document.getElementById('saveMaintTplBtn').addEventListener('click', () => {
     const cost = parseMoney(document.getElementById('vehMaintCost').value);
@@ -5081,6 +5240,8 @@
     if(!cost){ alert('Para guardar una plantilla cargá al menos el costo.'); return; }
     vehTemplates.push({ id: Date.now(), kind: 'maint', name: maintType + (note ? ' — ' + note : ''), maintType, note, amount: cost });
     saveVehicleState(); renderVehTemplates();
+    vibrate([15, 40, 15]);
+    showActionToast('★ Plantilla guardada: ' + maintType);
   });
   document.getElementById('vehPlateBtn').addEventListener('click', () => {
     openFormModal('Patente de ' + currentVehicle, [
@@ -5223,6 +5384,19 @@
   document.getElementById('vehChartConsumoBtn').addEventListener('click', () => { chartTab = 'consumo'; renderVehChart(); });
   document.getElementById('vehChartCostosBtn').addEventListener('click', () => { chartTab = 'costos'; renderVehChart(); });
   document.getElementById('vehChartFuel').addEventListener('change', renderVehChart);
+  document.getElementById('vehStats').addEventListener('input', (e) => {
+    if(!e.target.classList.contains('veh-sim-km')) return;
+    const km = parseFloat(e.target.value.replace(/[^\d.]/g, '')) || 0;
+    const kpu = parseFloat(e.target.dataset.kpu), cpk = parseFloat(e.target.dataset.cpk);
+    const out = e.target.closest('.veh-sim-row').querySelector('.veh-sim-out');
+    out.textContent = (km && kpu) ? `≈ ${fmtNum(km / kpu, 1)} ${e.target.dataset.unit} · ${fmt(Math.round(km * cpk))}` : '—';
+  });
+  document.getElementById('vehChart').addEventListener('click', (e) => {
+    const hit = e.target.closest('.veh-chart-hit');
+    if(!hit) return;
+    const mv = chartPointMovs[Number(hit.dataset.idx)];
+    if(mv) showChartPointDetail(mv);
+  });
   document.getElementById('vehImportBtn').addEventListener('click', () => document.getElementById('vehImportFile').click());
   document.getElementById('vehImportFile').addEventListener('change', async (e) => {
     const f = e.target.files[0]; if(f) await importFuelio(f); e.target.value = '';
@@ -5502,12 +5676,21 @@
   // ---- Navegación por pestañas: bottom-nav (móvil) + sidebar (escritorio) ----
   function switchTab(tab){
     document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.dataset.screen === tab));
-    document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('[data-tab]').forEach(b => {
+      const nowActive = b.dataset.tab === tab;
+      if(nowActive && !b.classList.contains('active')){ b.classList.remove('nav-pop'); void b.offsetWidth; b.classList.add('nav-pop'); }
+      b.classList.toggle('active', nowActive);
+    });
     document.getElementById('monthNavBar').style.display = (tab === 'home' || tab === 'movements' || tab === 'finanzas') ? 'flex' : 'none';
     window.scrollTo({ top:0 });
+    updateFloatingSaveBtn();
   }
   document.querySelectorAll('[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+  document.getElementById('vehFloatSave').addEventListener('click', () => {
+    if(vehFormKind === 'fuel') addFuelEntry();
+    else if(vehFormKind === 'maint') addMaintEntry();
   });
   document.getElementById('fabAdd').addEventListener('click', () => {
     switchTab('home');
