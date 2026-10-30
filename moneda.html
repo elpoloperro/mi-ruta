@@ -423,6 +423,9 @@
   }
   .btn-save:hover{ filter:brightness(1.07); }
   .btn-save:active{ transform:scale(.97); box-shadow:0 1px 3px var(--coin-soft); filter:brightness(.96); }
+  /* Aire entre el final del formulario (el botón Guardar) y el bloque de tarjetas por combustible que
+     viene justo abajo: sin esto el botón queda calzado contra las tarjetas, sin separación ninguna. */
+  #vehFuelForm, #vehTollForm, #vehMaintForm{ padding-bottom:18px; }
   /* Cartelito flotante que confirma qué acción se hizo (ej: "Carga guardada"). Se crea una sola vez
      por JS (showActionToast) y se reusa para cualquier pantalla; por eso vive position:fixed sobre
      el nav inferior en vez de depender de dónde esté el botón que lo dispara. */
@@ -702,16 +705,20 @@
   .veh-stats .veh-kv span{ color:var(--ink-soft); font-weight:400; }
   .veh-stats .veh-kv b{ font-size:14px; font-variant-numeric:tabular-nums; }
   .veh-stats .veh-kv.veh-kv-hl b{ color:var(--coin); }
-  /* Calculadora rápida dentro de cada tarjeta: "si hago X km, cuánto gasto" con el rendimiento de esa tarjeta. */
-  .veh-stats .veh-sim-row{ display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--paper-line); }
+  /* Calculadora rápida dentro de cada tarjeta: "si hago X km, cuánto gasto" con el rendimiento de esa tarjeta.
+     El input tenía min-width:0 y el resultado flex-shrink:0, así que a medida que el resultado crecía
+     ("—" ocupa 8px, "≈ 115,0 m³ · $110.170" ocupa 160px) le comía todo el ancho al input hasta dejarlo
+     en 0px: se escribía a ciegas. Ahora el input tiene un piso de ancho y la fila puede pasar el
+     resultado al renglón de abajo cuando los dos no entran juntos. */
+  .veh-stats .veh-sim-row{ display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--paper-line); flex-wrap:wrap; }
   .veh-stats .veh-sim-km{
-    flex:1 1 60px; min-width:0; font-family:'Space Grotesk', sans-serif; font-size:12px;
+    flex:1 1 84px; min-width:84px; font-family:'Space Grotesk', sans-serif; font-size:12px;
     border:none; border-bottom:1px solid var(--paper-line); background:transparent; color:var(--ink);
     padding:4px 0; outline:none;
   }
   .veh-stats .veh-sim-km:focus{ border-bottom-color:var(--coin); }
   .veh-stats .veh-sim-km::placeholder{ color:var(--ink-soft); opacity:.7; }
-  .veh-stats .veh-sim-out{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--coin); font-weight:600; text-align:right; flex-shrink:0; }
+  .veh-stats .veh-sim-out{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--coin); font-weight:600; text-align:right; flex:1 1 auto; white-space:nowrap; }
   /* Puntos tocables del gráfico de consumo: círculo grande invisible = área de toque cómoda,
      círculo chico visible = el puntito. El click real se maneja por delegación (ver el addEventListener
      sobre #vehChart). */
@@ -1059,7 +1066,7 @@
       </div>
       <div class="new-cat-row">
         <input type="text" class="budget-input veh-prev-odo" id="vehFuelPrevKm" placeholder="Ant. (km)" readonly>
-        <input type="text" class="budget-input" id="vehFuelKm" placeholder="Odómetro (km)" inputmode="numeric">
+        <input type="text" class="budget-input" id="vehFuelKm" placeholder="Odómetro" inputmode="numeric">
         <select id="vehFuelType" class="veh-fuel-type-select">
           <option value="nafta_super">Nafta Súper</option>
           <option value="nafta_premium">Nafta Infinia</option>
