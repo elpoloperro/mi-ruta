@@ -416,21 +416,11 @@
   }
   .btn-save:hover{ filter:brightness(1.07); }
   .btn-save:active{ transform:scale(.97); box-shadow:0 1px 3px var(--coin-soft); filter:brightness(.96); }
-  /* #addFuelBtn/#addMaintBtn quedan ocultos: los reemplaza #vehFloatSave (botón flotante, fuera del
-     flujo normal). Se les suma relleno abajo al formulario para que la foto/el estado no queden
-     tapados por el botón flotante cuando se scrollea hasta el final. */
-  #addFuelBtn, #addMaintBtn{ display:none; }
-  #vehFuelForm, #vehMaintForm{ padding-bottom:64px; }
-  .veh-float-save{
-    position:fixed; left:50%; bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom));
-    transform:translateX(-50%); z-index:55; width:calc(100% - 32px); max-width:588px;
-  }
-  .veh-float-save:active{ transform:translateX(-50%) scale(.97); box-shadow:0 1px 3px var(--coin-soft); filter:brightness(.96); }
   /* Cartelito flotante que confirma qué acción se hizo (ej: "Carga guardada"). Se crea una sola vez
      por JS (showActionToast) y se reusa para cualquier pantalla; por eso vive position:fixed sobre
      el nav inferior en vez de depender de dónde esté el botón que lo dispara. */
   .action-toast{
-    position:fixed; left:50%; bottom:calc(var(--nav-h) + 74px + env(safe-area-inset-bottom)); /* arriba del botón flotante #vehFloatSave, para que no se superpongan */
+    position:fixed; left:50%; bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom));
     transform:translate(-50%, 10px) scale(.9); background:var(--ink); color:var(--paper);
     font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13px;
     padding:10px 18px; border-radius:999px; box-shadow:0 6px 20px rgba(0,0,0,0.25);
@@ -598,6 +588,8 @@
   /* ".new-cat-row select" ya trae flex:1 y min-width:100px con más especificidad (clase+etiqueta) que una sola
      clase nueva — se repite el selector completo acá para poder pisarlo sin recurrir a !important. */
   .new-cat-row select.veh-fuel-type-select{ flex:0 1 112px; min-width:84px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Odómetro de la carga anterior: solo lectura, de referencia junto al odómetro actual. */
+  .new-cat-row input.veh-prev-odo{ background:transparent; color:var(--ink-soft); border-style:dashed; cursor:default; }
   /* Letra más grande en toda la pantalla de Vehículo — zoom escala texto, botones e íconos juntos y de
      forma proporcional, en vez de tener que subir a mano cada font-size suelto. Subido de 1.1 a 1.2. */
   #screen-vehicle{ zoom:1.15; }
@@ -1059,6 +1051,7 @@
         <input type="date" id="vehFuelDate">
       </div>
       <div class="new-cat-row">
+        <input type="text" class="budget-input veh-prev-odo" id="vehFuelPrevKm" placeholder="Ant. (km)" readonly>
         <input type="text" class="budget-input" id="vehFuelKm" placeholder="Odómetro (km)" inputmode="numeric">
         <select id="vehFuelType" class="veh-fuel-type-select">
           <option value="nafta_super">Nafta Súper</option>
@@ -1371,10 +1364,6 @@
     <button class="nav-item" data-tab="settings"><span>⚙️</span><span>Ajustes</span></button>
   </nav>
 
-  <!-- Botón flotante que reemplaza a #addFuelBtn/#addMaintBtn visualmente: vive FUERA de #screen-vehicle
-       (que tiene zoom:1.15) a propósito, para no depender de cómo zoom afecta a position:fixed. Lo
-       muestra/mueve/renombra updateFloatingSaveBtn() según la sub-pestaña activa del auto. -->
-  <button id="vehFloatSave" class="btn-save veh-float-save" style="display:none;">Guardar carga</button>
   <div id="confirmModalWrap"></div>
   <div id="vehPhotoModalWrap"></div>
 </div>
@@ -2656,25 +2645,12 @@
       });
     });
   }
-  let vehFormKind = 'fuel'; // sub-pestaña activa del auto (fuel/toll/maint) — la usa updateFloatingSaveBtn()
   function showVehForm(kind){
     [['fuel', 'vehShowFuelBtn', 'vehFuelForm'], ['toll', 'vehShowTollBtn', 'vehTollForm'], ['maint', 'vehShowMaintBtn', 'vehMaintForm']].forEach(([k, b, f]) => {
       document.getElementById(b).classList.toggle('active', k === kind);
       document.getElementById(f).style.display = k === kind ? 'block' : 'none';
     });
-    vehFormKind = kind;
-    updateFloatingSaveBtn();
     if(kind === 'maint') renderMaintRemBox();
-  }
-  // Combustible y Mantenimiento tienen formulario largo, así que su botón "Guardar" real (#addFuelBtn/
-  // #addMaintBtn, ocultos por CSS) se reemplaza por #vehFloatSave, fijo abajo de la pantalla. Peaje
-  // tiene un formulario corto (no hace falta scrollear) y mantiene su botón normal en el formulario.
-  function updateFloatingSaveBtn(){
-    const btn = document.getElementById('vehFloatSave');
-    const onVehicle = document.getElementById('screen-vehicle').classList.contains('active');
-    if(onVehicle && vehFormKind === 'fuel'){ btn.textContent = 'Guardar carga'; btn.style.display = 'block'; }
-    else if(onVehicle && vehFormKind === 'maint'){ btn.textContent = 'Guardar mantenimiento'; btn.style.display = 'block'; }
-    else btn.style.display = 'none';
   }
   function vehIcon(mv){ return mv.vehType === 'fuel' ? '⛽' : (mv.vehType === 'toll' ? '🛣️' : '🔧'); }
 
@@ -3099,6 +3075,17 @@
   document.getElementById('vehMaintHistToggle').addEventListener('click', () => setMaintHistOpen(document.getElementById('vehMaintHistWrap').style.display === 'none'));
   try{ setMaintHistOpen(localStorage.getItem('moneda_mainthist_open') === '1'); }catch(e){}
 
+  // Odómetro de la última carga (de cualquier combustible) del vehículo actual: solo de referencia en
+  // el formulario de nueva carga, para verificar continuidad al escribir el odómetro actual. No se lee
+  // en addFuelEntry(), así que no afecta lo que se guarda.
+  function updatePrevOdoDisplay(){
+    const el = document.getElementById('vehFuelPrevKm');
+    if(!el) return;
+    const lastFuel = vehMovs().filter(m => m.vehType === 'fuel' && m.km)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)[0];
+    el.value = lastFuel ? fmtNum(lastFuel.km, 0) : '';
+    el.placeholder = lastFuel ? 'Ant. (km)' : 'Sin datos';
+  }
   function renderVehEntries(){
     setVehEntriesOpen(vehEntriesOpen);
     renderVehStats();
@@ -3109,6 +3096,7 @@
     renderVehTemplates();
     renderMaintRemBox();
     renderMaintHistory();
+    updatePrevOdoDisplay();
     const met = fuelMetrics();
     const all = vehMovs().sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     if(all.length === 0){ vehEntriesEl.innerHTML = '<div class="empty">Todavía no cargaste combustible ni mantenimiento.</div>'; return; }
@@ -5683,14 +5671,9 @@
     });
     document.getElementById('monthNavBar').style.display = (tab === 'home' || tab === 'movements' || tab === 'finanzas') ? 'flex' : 'none';
     window.scrollTo({ top:0 });
-    updateFloatingSaveBtn();
   }
   document.querySelectorAll('[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-  });
-  document.getElementById('vehFloatSave').addEventListener('click', () => {
-    if(vehFormKind === 'fuel') addFuelEntry();
-    else if(vehFormKind === 'maint') addMaintEntry();
   });
   document.getElementById('fabAdd').addEventListener('click', () => {
     switchTab('home');
