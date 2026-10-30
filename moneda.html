@@ -328,9 +328,17 @@
   .pie{ width:90px; height:90px; border-radius:50%; flex-shrink:0; }
   /* tabular-nums: la leyenda usa la tipografía sans (no la mono), así que sin esto los montos cambian
      de ancho según los dígitos y las filas "bailan" al cambiar de mes o de grupo. */
-  .legend{ font-size:11px; display:flex; flex-direction:column; gap:4px; font-variant-numeric:tabular-nums; }
-  .legend-item{ display:flex; align-items:center; gap:6px; }
-  .legend-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .legend{ font-size:11px; display:flex; flex-direction:column; gap:6px; font-variant-numeric:tabular-nums; flex:1 1 150px; min-width:0; }
+  /* Cada categoría en su propio cuadrito gris, con el color de su porción de la dona como borde
+     izquierdo — el mismo recurso que usan las tarjetas por combustible en Vehículo. Antes era una fila
+     plana de una línea ("🍽️ Comida · 17% · $1.000.000") y los montos se leían todos pegados. */
+  .legend-item{
+    display:flex; flex-direction:column; gap:1px;
+    background:var(--card-2); border-left:3px solid var(--ink-soft);
+    border-radius:8px; padding:7px 9px;
+  }
+  .legend-item .li-top{ color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .legend-item .li-amount{ font-weight:700; font-size:12px; color:var(--ink); }
   .trend-row{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px; }
   /* Antes era width:78px fijo con ellipsis, y los nombres largos se cortaban ("Suscrip...", "Impuest..."),
      al punto de que dos categorías distintas podían verse igual. Ahora la etiqueta puede usar dos
@@ -3901,7 +3909,7 @@
     }
     const gradient = `conic-gradient(${stops.join(', ')})`;
     const legendHtml = legendItems.sort((a,b)=>b.pct-a.pct).slice(0,6).map(li =>
-      `<div class="legend-item"><span class="legend-dot" style="background:${li.color}"></span>${li.icon} ${li.label} · ${li.pct}% · ${fmt(li.amount)}</div>`
+      `<div class="legend-item" style="border-left-color:${li.color}"><div class="li-top">${li.icon} ${li.label} ${li.pct}%</div><div class="li-amount">${fmt(li.amount)}</div></div>`
     ).join('');
     const dhLabel = donutGroup === 'hogar' ? 'Hogar' : (donutGroup === 'vehiculo' ? 'Vehículo' : 'Total');
     pieChartEl.innerHTML = `<div class="pie-wrap"><div class="donut-wrap"><div class="donut" style="background:${gradient}"></div><div class="donut-hole"><div class="dh-amount">${fmt(groupTotal)}</div><div class="dh-label">${dhLabel}</div></div></div><div class="legend">${legendHtml}</div></div>`;
