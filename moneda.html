@@ -40,6 +40,9 @@
     --radius-md: 13px;
     --radius-sm: 9px;
     --nav-h: 64px;
+    --fuel-gnc: #0f766e;
+    --fuel-nafta: #b45309;
+    --fuel-diesel: #4338ca;
   }
   html[data-theme="dark"]{
     --paper: #0f1012;
@@ -60,6 +63,9 @@
     --card-2: #232428;
     --shadow-ink: transparent;
     --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 10px 28px rgba(0,0,0,0.35);
+    --fuel-gnc: #2dd4bf;
+    --fuel-nafta: #fbbf24;
+    --fuel-diesel: #818cf8;
   }
   html[data-theme="light"]{
     --paper: #f4f5f7; --card: #ffffff;
@@ -83,6 +89,9 @@
       --card: #1b1c1f;
       --card-2: #232428;
       --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 10px 28px rgba(0,0,0,0.35);
+      --fuel-gnc: #2dd4bf;
+      --fuel-nafta: #fbbf24;
+      --fuel-diesel: #818cf8;
     }
   }
 
@@ -643,6 +652,21 @@
   .veh-stat-fuel{ font-size:11px; font-weight:600; margin-bottom:4px; }
   .veh-stat-row{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink-soft); }
   .veh-stat-row b{ color:var(--ink); }
+  /* Tarjetas de consumo (GNC / Nafta, pantalla Vehículo): panel tipo dashboard con acento de color
+     por combustible — solo dentro de .veh-stats, así no toca las tarjetas de Cargas/Gastos/Distancia
+     que reusan las mismas clases base más abajo en la pantalla. */
+  .veh-stats .veh-stat-card{ padding:10px 10px 10px 12px; border-left:3px solid var(--ink-soft); }
+  .veh-stats .veh-stat-card.fuel-gnc{ border-left-color:var(--fuel-gnc); }
+  .veh-stats .veh-stat-card.fuel-nafta{ border-left-color:var(--fuel-nafta); }
+  .veh-stats .veh-stat-card.fuel-diesel{ border-left-color:var(--fuel-diesel); }
+  .veh-stats .veh-stat-fuel{ font-size:13px; font-weight:700; letter-spacing:.01em; margin-bottom:6px; }
+  .veh-stats .veh-stat-fuel.fuel-gnc{ color:var(--fuel-gnc); }
+  .veh-stats .veh-stat-fuel.fuel-nafta{ color:var(--fuel-nafta); }
+  .veh-stats .veh-stat-fuel.fuel-diesel{ color:var(--fuel-diesel); }
+  .veh-stats .veh-kv{ padding:4px 0; align-items:baseline; }
+  .veh-stats .veh-kv span{ color:var(--ink-soft); font-weight:400; }
+  .veh-stats .veh-kv b{ font-size:14px; font-variant-numeric:tabular-nums; }
+  .veh-stats .veh-kv.veh-kv-hl b{ color:var(--coin); }
 
   @media (max-width:400px){
     .logo{ font-size:22px; }
@@ -2543,6 +2567,7 @@
   // km recorridos = diferencia de odómetro; costo/km = costo de la carga ÷ km; consumo = volumen ÷ km × 100.
   function fmtNum(n, d){ return Number(n).toLocaleString('es-AR', { minimumFractionDigits:d, maximumFractionDigits:d }); }
   function unitOf(t){ return t === 'gnc' ? 'm³' : 'L'; }
+  function fuelClass(t){ return t === 'gnc' ? 'fuel-gnc' : (t === 'diesel' || t === 'diesel_premium') ? 'fuel-diesel' : 'fuel-nafta'; }
   function periodMatch(iso, kind){
     if(kind === 'all') return true;
     const d = new Date(iso), n = new Date();
@@ -2577,20 +2602,20 @@
     const kv = (k, v) => `<div class="veh-kv"><span>${k}</span><b>${v}</b></div>`;
     const cards = [];
     Object.keys(groups).forEach(t => {
-      const arr = groups[t], u = unitOf(t);
+      const arr = groups[t], u = unitOf(t), fc = fuelClass(t);
       let sd = 0, sv = 0, sc = 0;
       arr.forEach(mv => { const m = met[mv.id]; if(m){ sd += m.dist; sv += mv.liters || 0; sc += mv.amount; } });
       const byDate = arr.slice().sort((a, b) => b.date.localeCompare(a.date));
       const lastMet = byDate.find(mv => met[mv.id] && met[mv.id].kpu);
       const lastP = byDate[0];
-      let html = `<div class="veh-stat-fuel">${FUEL_LABELS[t] || t}</div>`;
+      let html = `<div class="veh-stat-fuel ${fc}">${FUEL_LABELS[t] || t}</div>`;
       if(sd > 0){
         html += kv('Consumo prom.', fmtNum(sd / sv, 2) + ' km/' + u);
         if(lastMet) html += kv('Último consumo', fmtNum(met[lastMet.id].kpu, 2) + ' km/' + u);
-        html += kv('Costo por km', fmt(Math.round(sc / sd)));
+        html += `<div class="veh-kv veh-kv-hl"><span>Costo por km</span><b>${fmt(Math.round(sc / sd))}</b></div>`;
       }
       if(lastP && lastP.pricePerLiter) html += kv('Último precio', fmt(Math.round(lastP.pricePerLiter)) + '/' + u) + `<div class="veh-stat-row" style="text-align:right;">${new Date(lastP.date).toLocaleDateString('es-AR')}</div>`;
-      cards.push(`<div class="veh-stat-card">${html}</div>`);
+      cards.push(`<div class="veh-stat-card ${fc}">${html}</div>`);
     });
     el.innerHTML = cards.length ? `<div class="veh-stats">${cards.join('')}</div>` : '';
   }
