@@ -665,6 +665,23 @@
   #screen-vehicle .new-cat-row input#vehFuelKm{ flex:1 1 76px; min-width:68px; }
   #screen-vehicle .new-cat-row select.veh-fuel-type-select{ flex:0 0 94px; min-width:94px; }
   #vehFuelDate{ font-weight:600; }
+  /* El campo que estás tipeando agranda el número, para poder leerlo de un vistazo al sol y con el
+     teclado abierto. Crece donde está, en vez de abrir un panel flotante: así el odómetro anterior
+     sigue a la vista para comparar, y nada queda anclado cerca del teclado (que en la web no se sabe
+     dónde termina — por eso mismo se sacó antes el botón flotante de Guardar). */
+  #screen-vehicle .new-cat-row input{ transition:font-size .12s ease, flex-grow .12s ease; }
+  #screen-vehicle .new-cat-row input:focus{ font-size:25px; font-weight:700; padding-left:6px; padding-right:6px; flex-grow:3; }
+  /* Mientras escribís el odómetro, el tipo de combustible cede ancho (le sobra: dice "GNC") y el campo
+     toma ese sobrante. El ancho de base va justo: si pide de más, el <select> no entra y se cae al
+     renglón de abajo, que es lo que había que evitar. */
+  #screen-vehicle .new-cat-row:focus-within select.veh-fuel-type-select{ flex:0 1 70px; min-width:66px; }
+  #screen-vehicle .new-cat-row input#vehFuelKm:focus{ flex:1 1 108px; }
+  /* En pantallas angostas no entran los tres en un renglón con 25px, así que ahí el número crece un
+     poco menos. Sigue siendo bastante más grande que los 14px de un campo en reposo. */
+  @media (max-width:380px){
+    #screen-vehicle .new-cat-row input:focus{ font-size:21px; }
+    #screen-vehicle .new-cat-row input#vehFuelKm:focus{ flex:1 1 96px; }
+  }
   .veh-rem{ display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--paper-line); }
   .veh-rem-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; background:#3a9a5b; }
   .veh-rem.soon .veh-rem-dot{ background:#d99a00; }
