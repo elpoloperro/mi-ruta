@@ -3606,31 +3606,29 @@
     const mk = monthKeyOf(d);
     return movements.filter(mv => mv.date.startsWith(mk));
   }
+  // Un gasto cuenta como pago de este pago fijo si lo nombra, si el monto coincide con el esperado,
+  // o —para los de monto variable— si cae en una categoría que es exclusiva de ese pago fijo.
+  // Sin esa última regla, un pago fijo de monto variable solo se detectaba escribiendo su nombre
+  // exacto: el "GYM" no se marcaba al cargar el gasto como "gimnasio", y al no tener monto fijo
+  // tampoco podía entrar por la comparación de importe. Quedaba sin ninguna forma automática.
+  function fixedPaymentMatch(fp, mv){
+    if(mv.isIncome) return false;
+    const nameNorm = normalize(fp.name);
+    if(nameNorm && containsWholeWord(normalize(mv.raw), nameNorm)) return true;
+    if(mv.category !== fp.category) return false;
+    if(fp.amount > 0) return Math.abs(mv.amount - fp.amount) <= Math.max(fp.amount * 0.15, 500);
+    // Monto variable: solo vale si ninguna otra cuenta fija comparte la categoría. Si no, un único
+    // gasto de "Servicios" daría por pagados de una a Luz, Claro, Ppay y gas al mismo tiempo.
+    return !fixedPayments.some(o => o.id !== fp.id && o.category === fp.category);
+  }
   function fixedPaymentPaid(fp, forDate){
     const d = forDate || viewDate;
     const mk = monthKeyOf(d);
     if((fp.paidMonths||[]).includes(mk)) return true;
-    const nameNorm = normalize(fp.name);
-    return monthMovements(d).some(mv => {
-      if(mv.isIncome) return false;
-      if(nameNorm && containsWholeWord(normalize(mv.raw), nameNorm)) return true;
-      if(fp.amount > 0 && mv.category === fp.category){
-        return Math.abs(mv.amount - fp.amount) <= Math.max(fp.amount * 0.15, 500);
-      }
-      return false;
-    });
+    return monthMovements(d).some(mv => fixedPaymentMatch(fp, mv));
   }
   function fixedPaymentActualAmount(fp, forDate){
-    const d = forDate || viewDate;
-    const nameNorm = normalize(fp.name);
-    const match = monthMovements(d).find(mv => {
-      if(mv.isIncome) return false;
-      if(nameNorm && containsWholeWord(normalize(mv.raw), nameNorm)) return true;
-      if(fp.amount > 0 && mv.category === fp.category){
-        return Math.abs(mv.amount - fp.amount) <= Math.max(fp.amount * 0.15, 500);
-      }
-      return false;
-    });
+    const match = monthMovements(forDate || viewDate).find(mv => fixedPaymentMatch(fp, mv));
     return match ? match.amount : null;
   }
   // Suma de todos los pagos fijos, usando el monto configurado o (si es variable) lo efectivamente
