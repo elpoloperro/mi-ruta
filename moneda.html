@@ -302,6 +302,9 @@
     letter-spacing:0.08em; color:var(--ink-soft); margin:26px 0 10px 2px;
     display:flex; justify-content:space-between; align-items:center;
   }
+  /* Ese margen de arriba separa una sección de la anterior, pero cuando el título es lo primero de la
+     pantalla no hay nada de qué separarse: dejaba un hueco grande entre el encabezado y el contenido. */
+  .screen > .section-title:first-child{ margin-top:0; }
   .section-title .add-link{ color:var(--coin); cursor:pointer; text-transform:none; letter-spacing:0; font-size:12px; }
   .cat-section-toggle > span:first-child, .fp-section-toggle > span:first-child, .veh-section-toggle > span:first-child{ cursor:pointer; }
   #catSectionCaret, #fpSectionCaret, #vehSectionCaret{ display:inline-block; transition:transform .2s ease; font-size:10px; }
@@ -657,6 +660,12 @@
   /* El select ocupa el ancho libre que queda después de "Patente": así el nombre y los kilómetros
      entran completos en vez de cortarse, que es para lo que estaba ese espacio vacío. */
   #vehSelect{ flex:0 1 auto; min-width:0; }
+  .veh-oculto{ display:none; }
+  /* min-width:0 anula los 92px que .veh-type-btn impone para los botones grandes: este solo tiene "⋮"
+     y, si ocupa de más, le roba al nombre del vehículo y la fila se parte en dos. */
+  .veh-menu-btn{ min-width:0; padding:9px 13px; font-size:17px; line-height:1; }
+  .veh-menu-acciones{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+  .veh-menu-acciones .veh-type-btn{ width:100%; text-align:left; }
   /* El selector lleva el #vehSectionBody adelante porque .veh-veh-row vuelve a declarar gap:8px más
      abajo en la hoja y, a igual especificidad, ganaba la última. */
   #vehSectionBody .veh-veh-row{ gap:6px; }
@@ -1126,8 +1135,12 @@
     <div class="veh-head-box">
       <div class="veh-veh-row">
         <select id="vehSelect"></select>
-        <button type="button" class="veh-type-btn" id="vehPlateBtn" style="flex:0 0 auto;">✎ Patente</button>
-        <button type="button" class="veh-type-btn" id="vehAddVehicleBtn" style="flex:0 0 auto;">+ Vehículo</button>
+        <button type="button" class="veh-type-btn veh-menu-btn" id="vehMenuBtn" style="flex:0 0 auto;" title="Patente y vehículos">⋮</button>
+        <!-- Patente y alta de vehículo son cosas que se tocan muy de vez en cuando, así que dejan de
+             ocupar un renglón fijo y pasan al menú de arriba. Los botones siguen acá, ocultos, con sus
+             manejadores intactos: el menú los dispara en vez de repetir su lógica. -->
+        <button type="button" class="veh-type-btn veh-oculto" id="vehPlateBtn">✎ Patente</button>
+        <button type="button" class="veh-type-btn veh-oculto" id="vehAddVehicleBtn">+ Vehículo</button>
       </div>
     </div>
     <div class="veh-type-btns">
@@ -5403,6 +5416,28 @@
     saveVehicleState(); renderVehTemplates();
     vibrate([15, 40, 15]);
     showActionToast('★ Plantilla guardada: ' + maintType);
+  });
+  // Menú del vehículo: reúne patente y alta de vehículo, que antes ocupaban un renglón fijo pese a
+  // usarse muy de vez en cuando. Dispara los botones originales (ocultos) para no duplicar su lógica.
+  document.getElementById('vehMenuBtn').addEventListener('click', () => {
+    const patente = vehiclePlates[currentVehicle];
+    confirmModalWrap.innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal-card">
+          <div class="modal-title">${escapeHtml(currentVehicle)}</div>
+          <div class="veh-menu-acciones">
+            <button type="button" class="veh-type-btn" id="vmPatente">✎ Patente${patente ? ' · ' + escapeHtml(patente) : ' (sin cargar)'}</button>
+            <button type="button" class="veh-type-btn" id="vmNuevo">+ Agregar otro vehículo</button>
+          </div>
+          <div class="modal-btns"><button class="modal-btn-cancel" id="vmCerrar">Cerrar</button></div>
+        </div>
+      </div>`;
+    const close = () => { confirmModalWrap.innerHTML = ''; };
+    document.getElementById('vmCerrar').addEventListener('click', close);
+    confirmModalWrap.querySelector('.modal-overlay')
+      .addEventListener('click', (e) => { if(e.target.classList.contains('modal-overlay')) close(); });
+    document.getElementById('vmPatente').addEventListener('click', () => { close(); document.getElementById('vehPlateBtn').click(); });
+    document.getElementById('vmNuevo').addEventListener('click', () => { close(); document.getElementById('vehAddVehicleBtn').click(); });
   });
   document.getElementById('vehPlateBtn').addEventListener('click', () => {
     openFormModal('Patente de ' + currentVehicle, [
