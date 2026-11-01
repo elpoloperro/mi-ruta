@@ -610,7 +610,10 @@
     border-radius:10px; padding:8px; font-family:'Space Grotesk', sans-serif; font-weight:600;
     font-size:13px; cursor:pointer;
   }
-  .veh-type-btn.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  /* El estado activo invertía los colores de texto y fondo (background:--ink / color:--paper). En tema
+     claro daba un negro elegante, pero en oscuro --ink ES casi blanco, así que el botón quedaba como un
+     parche blanco. Se usa el acento, igual que .side-nav .nav-item.active y las pastillas de grupo. */
+  .veh-type-btn.active{ background:var(--coin-soft); color:var(--coin); border-color:var(--coin); }
   .veh-form .new-cat-row{ margin-bottom:8px; }
   /* Tipo de combustible compartiendo fila con fecha/odómetro: más chico y sin crecer, a diferencia
      del <select> genérico de .new-cat-row que por defecto ocupa todo el ancho libre. */
@@ -647,7 +650,21 @@
      más los botones de Patente/+Vehículo, sin wrap y sin min-width:0 el texto se cortaba en vez de bajar
      de línea — el <select> no podía achicarse por debajo de su contenido (mínimo implícito de flexbox). */
   .veh-veh-row{ display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
-  .veh-veh-row select{ flex:1 1 160px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Este select quedaba fuera de .new-cat-row, el único lugar donde la app estiliza los <select>, así
+     que mostraba el estilo nativo del navegador: fondo blanco en medio del tema oscuro. */
+  .veh-veh-row select{
+    flex:1 1 160px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-family:'Space Grotesk', sans-serif; font-size:15px; padding:10px 12px;
+    background:var(--card); color:var(--ink); border:1px solid var(--paper-line); border-radius:8px;
+  }
+  /* Campos del formulario del vehículo: más grandes y cómodos de tocar. Los tres de la fila del
+     odómetro llevan ancho fijo para que entren siempre en un solo renglón. */
+  #screen-vehicle .new-cat-row input, #screen-vehicle .new-cat-row select{ font-size:14px; padding:9px 9px; }
+  #screen-vehicle .new-cat-row input.budget-input{ width:auto; flex:1 1 80px; min-width:70px; }
+  #screen-vehicle .new-cat-row input#vehFuelPrevKm{ flex:0 0 104px; min-width:104px; font-size:13px; }
+  #screen-vehicle .new-cat-row input#vehFuelKm{ flex:1 1 76px; min-width:68px; }
+  #screen-vehicle .new-cat-row select.veh-fuel-type-select{ flex:0 0 94px; min-width:94px; }
+  #vehFuelDate{ font-weight:600; }
   .veh-rem{ display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--paper-line); }
   .veh-rem-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; background:#3a9a5b; }
   .veh-rem.soon .veh-rem-dot{ background:#d99a00; }
@@ -2320,7 +2337,10 @@
     const list = allVehicles();
     if(!list.includes(currentVehicle)) currentVehicle = list[0];
     const sel = document.getElementById('vehSelect');
-    sel.innerHTML = list.map(v => `<option value="${escapeHtml(v)}"${v === currentVehicle ? ' selected' : ''}>${escapeHtml(v)}${vehiclePlates[v] ? ' · ' + escapeHtml(vehiclePlates[v]) : ''} · ${currentKm(v) ? currentKm(v) + ' km' : 'sin km'}</option>`).join('');
+    // Nombre + kilómetros. La patente se saca de acá porque los tres datos juntos no entraban y el
+    // texto se cortaba justo en los kilómetros ("Kangoo 21 · AE948YL · 4…"); se sigue viendo y
+    // editando con el botón "Patente" que está al lado.
+    sel.innerHTML = list.map(v => `<option value="${escapeHtml(v)}"${v === currentVehicle ? ' selected' : ''}>${escapeHtml(v)} · ${currentKm(v) ? fmtNum(currentKm(v), 0) + ' km' : 'sin km'}</option>`).join('');
   }
 
   // Estado de un recordatorio: calcula vencimiento por km y/o fecha
@@ -3139,7 +3159,7 @@
     if(!el) return;
     const lastFuel = vehMovs().filter(m => m.vehType === 'fuel' && m.km)
       .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)[0];
-    el.value = lastFuel ? fmtNum(lastFuel.km, 0) : '';
+    el.value = lastFuel ? 'ant. ' + fmtNum(lastFuel.km, 0) : '';
     el.placeholder = lastFuel ? 'Ant. (km)' : 'Sin datos';
   }
   function renderVehEntries(){
