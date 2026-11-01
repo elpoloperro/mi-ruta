@@ -646,6 +646,17 @@
   .veh-entry-del:hover{ color:var(--danger); }
   .veh-photo-modal-img{ max-width:100%; max-height:70vh; border-radius:10px; display:block; }
   .veh-local-note{ font-size:11px; color:var(--ink-soft); margin:4px 0 12px 0; line-height:1.4; }
+  /* Mismo lenguaje que el "Historial" de los recordatorios: resumen en el color de acento y el
+     contenido plegado. */
+  .veh-note-det{ margin-bottom:10px; }
+  .veh-note-det summary{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--coin); cursor:pointer; }
+  .veh-note-det .veh-local-note{ margin-top:6px; }
+  /* El select se estiraba a todo el ancho disponible aunque el nombre sea corto, y eso tiraba
+     "+ Vehículo" a un renglón propio. Ahora toma el ancho que necesita y los tres entran juntos. */
+  #vehSelect{ flex:0 1 auto; max-width:58%; }
+  /* El selector lleva el #vehSectionBody adelante porque .veh-veh-row vuelve a declarar gap:8px más
+     abajo en la hoja y, a igual especificidad, ganaba la última. */
+  #vehSectionBody .veh-veh-row{ gap:6px; }
   /* Mismo motivo que .veh-type-btns: con el selector de vehículo (nombre + patente + km, puede ser largo)
      más los botones de Patente/+Vehículo, sin wrap y sin min-width:0 el texto se cortaba en vez de bajar
      de línea — el <select> no podía achicarse por debajo de su contenido (mínimo implícito de flexbox). */
@@ -1102,7 +1113,11 @@
     <span>Vehículo <span id="vehSectionCaret">▸</span></span>
   </div>
   <div id="vehSectionBody" style="display:block;">
-    <div class="veh-local-note">Si tenés Cloudinary configurado, las fotos se suben a la nube y el link se sincroniza entre dispositivos. Sin Cloudinary, las fotos quedan guardadas solo en este dispositivo. Los datos numéricos siempre se sincronizan como cualquier movimiento. Los recordatorios, las plantillas y las patentes también se sincronizan entre dispositivos.</div>
+    <!-- Es información que hay que tener a mano pero que no se consulta casi nunca, así que va
+         plegada: ocupaba cuatro renglones fijos arriba del formulario que sí se usa todos los días. -->
+    <details class="veh-note-det"><summary>ⓘ Fotos y sincronización</summary>
+      <div class="veh-local-note">Si tenés Cloudinary configurado, las fotos se suben a la nube y el link se sincroniza entre dispositivos. Sin Cloudinary, las fotos quedan guardadas solo en este dispositivo. Los datos numéricos siempre se sincronizan como cualquier movimiento. Los recordatorios, las plantillas y las patentes también se sincronizan entre dispositivos.</div>
+    </details>
     <div class="veh-veh-row">
       <select id="vehSelect"></select>
       <button type="button" class="veh-type-btn" id="vehPlateBtn" style="flex:0 0 auto;">✎ Patente</button>
@@ -2357,7 +2372,11 @@
     // Nombre + kilómetros. La patente se saca de acá porque los tres datos juntos no entraban y el
     // texto se cortaba justo en los kilómetros ("Kangoo 21 · AE948YL · 4…"); se sigue viendo y
     // editando con el botón "Patente" que está al lado.
-    sel.innerHTML = list.map(v => `<option value="${escapeHtml(v)}"${v === currentVehicle ? ' selected' : ''}>${escapeHtml(v)} · ${currentKm(v) ? fmtNum(currentKm(v), 0) + ' km' : 'sin km'}</option>`).join('');
+    // Los kilómetros solo se muestran si hay más de un vehículo, que es cuando sirven para
+    // distinguirlos. Con uno solo repetían el dato que ya está al lado del odómetro ("ant. 461.325")
+    // y encima hacían que el nombre se cortara.
+    const varios = list.length > 1;
+    sel.innerHTML = list.map(v => `<option value="${escapeHtml(v)}"${v === currentVehicle ? ' selected' : ''}>${escapeHtml(v)}${varios ? ' · ' + (currentKm(v) ? fmtNum(currentKm(v), 0) + ' km' : 'sin km') : ''}</option>`).join('');
   }
 
   // Estado de un recordatorio: calcula vencimiento por km y/o fecha
