@@ -651,9 +651,12 @@
   .veh-note-det{ margin-bottom:10px; }
   .veh-note-det summary{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--coin); cursor:pointer; }
   .veh-note-det .veh-local-note{ margin-top:6px; }
-  /* El select se estiraba a todo el ancho disponible aunque el nombre sea corto, y eso tiraba
-     "+ Vehículo" a un renglón propio. Ahora toma el ancho que necesita y los tres entran juntos. */
-  #vehSelect{ flex:0 1 auto; max-width:58%; }
+  /* Recuadro del vehículo: solo borde, sin fondo propio, para no competir con los controles que
+     tiene adentro (que ya usan var(--card)). */
+  .veh-head-box{ border:1px solid var(--paper-line); border-radius:10px; padding:10px 10px 2px 10px; margin-bottom:12px; }
+  /* El select ocupa el ancho libre que queda después de "Patente": así el nombre y los kilómetros
+     entran completos en vez de cortarse, que es para lo que estaba ese espacio vacío. */
+  #vehSelect{ flex:0 1 auto; min-width:0; }
   /* El selector lleva el #vehSectionBody adelante porque .veh-veh-row vuelve a declarar gap:8px más
      abajo en la hoja y, a igual especificidad, ganaba la última. */
   #vehSectionBody .veh-veh-row{ gap:6px; }
@@ -1118,10 +1121,14 @@
     <details class="veh-note-det"><summary>ⓘ Fotos y sincronización</summary>
       <div class="veh-local-note">Si tenés Cloudinary configurado, las fotos se suben a la nube y el link se sincroniza entre dispositivos. Sin Cloudinary, las fotos quedan guardadas solo en este dispositivo. Los datos numéricos siempre se sincronizan como cualquier movimiento. Los recordatorios, las plantillas y las patentes también se sincronizan entre dispositivos.</div>
     </details>
-    <div class="veh-veh-row">
-      <select id="vehSelect"></select>
-      <button type="button" class="veh-type-btn" id="vehPlateBtn" style="flex:0 0 auto;">✎ Patente</button>
-      <button type="button" class="veh-type-btn" id="vehAddVehicleBtn" style="flex:0 0 auto;">+ Vehículo</button>
+    <!-- Qué vehículo y sus datos, en su propio recuadro: separa de un vistazo "de qué auto estamos
+         hablando" de lo que viene abajo, que es qué se le carga (combustible, peaje o mantenimiento). -->
+    <div class="veh-head-box">
+      <div class="veh-veh-row">
+        <select id="vehSelect"></select>
+        <button type="button" class="veh-type-btn" id="vehPlateBtn" style="flex:0 0 auto;">✎ Patente</button>
+        <button type="button" class="veh-type-btn" id="vehAddVehicleBtn" style="flex:0 0 auto;">+ Vehículo</button>
+      </div>
     </div>
     <div class="veh-type-btns">
       <button type="button" class="veh-type-btn active" id="vehShowFuelBtn">⛽ Combustible</button>
