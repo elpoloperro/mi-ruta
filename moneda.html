@@ -339,6 +339,17 @@
   }
   .legend-item .li-top{ color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .legend-item .li-amount{ font-weight:700; font-size:12px; color:var(--ink); }
+  /* Cuadrito "Otras": junta los rubros que no entran en los 6 más grandes, para que la suma de la
+     leyenda cierre en 100%. Se toca y abre el detalle en el flotante de siempre (.modal-overlay). */
+  .legend-item.legend-otras{ cursor:pointer; }
+  .legend-item.legend-otras:active{ filter:brightness(1.15); }
+  .otras-list{ display:flex; flex-direction:column; overflow-y:auto; margin-bottom:16px; }
+  .otras-row{ display:flex; align-items:center; gap:9px; font-size:13px; padding:8px 0; border-bottom:1px solid var(--paper-line); }
+  .otras-row:last-child{ border-bottom:none; }
+  .otras-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .otras-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft); }
+  .otras-pct{ color:var(--ink-soft); font-size:11px; font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .otras-amount{ font-variant-numeric:tabular-nums; flex-shrink:0; }
   .trend-row{ display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px; }
   /* Antes era width:78px fijo con ellipsis, y los nombres largos se cortaban ("Suscrip...", "Impuest..."),
      al punto de que dos categorías distintas podían verse igual. Ahora la etiqueta puede usar dos
@@ -3896,6 +3907,31 @@
     return subs;
   }
   // donutGroup ('todo'|'hogar'|'vehiculo') filtra qué categorías entran en la dona, vía catGroup(cat.key).
+  // Rubros que quedaron fuera de los 6 de la leyenda; los muestra openOtrasModal() al tocar "Otras".
+  let otrasItems = [];
+  function openOtrasModal(){
+    if(!otrasItems.length) return;
+    const suma = otrasItems.reduce((s, x) => s + x.amount, 0);
+    confirmModalWrap.innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal-card">
+          <div class="modal-title">Otras categorías</div>
+          <div class="modal-text">${otrasItems.length} rubros · ${fmt(suma)} en total</div>
+          <div class="otras-list">${otrasItems.map(li => `
+            <div class="otras-row">
+              <span class="otras-dot" style="background:${li.color}"></span>
+              <span class="otras-name">${li.icon} ${escapeHtml(li.label)}</span>
+              <span class="otras-pct">${li.pct}%</span>
+              <b class="otras-amount">${fmt(li.amount)}</b>
+            </div>`).join('')}</div>
+          <div class="modal-btns"><button class="modal-btn-cancel" id="otrasCloseBtn">Cerrar</button></div>
+        </div>
+      </div>`;
+    const close = () => { confirmModalWrap.innerHTML = ''; };
+    document.getElementById('otrasCloseBtn').addEventListener('click', close);
+    confirmModalWrap.querySelector('.modal-overlay')
+      .addEventListener('click', (e) => { if(e.target.classList.contains('modal-overlay')) close(); });
+  }
   function renderPieChart(totals, totalExpense, monthMoves){
     lastPieTotals = totals || {}; lastPieTotalExpense = totalExpense || 0;
     if(monthMoves) lastPieMoves = monthMoves;
@@ -3931,9 +3967,21 @@
       });
     }
     const gradient = `conic-gradient(${stops.join(', ')})`;
-    const legendHtml = legendItems.sort((a,b)=>b.pct-a.pct).slice(0,6).map(li =>
-      `<div class="legend-item" style="border-left-color:${li.color}"><div class="li-top">${li.icon} ${li.label} ${li.pct}%</div><div class="li-amount">${fmt(li.amount)}</div></div>`
-    ).join('');
+    // Se muestran las 6 más grandes; el resto se junta en un cuadrito "Otras" para que la leyenda
+    // cierre en 100% (antes faltaba ese pedazo y no se entendía a qué correspondía).
+    // Ordena por monto y no por el porcentaje ya redondeado: si no, dos rubros que redondean al mismo
+    // 1% quedan en cualquier orden y se ve $30.000 arriba de $60.000.
+    const ordenados = legendItems.sort((a,b)=>b.amount-a.amount);
+    const cuadrito = (borde, top, amount, extra) =>
+      `<div class="legend-item${extra || ''}" style="border-left-color:${borde}"><div class="li-top">${top}</div><div class="li-amount">${fmt(amount)}</div></div>`;
+    let legendHtml = ordenados.slice(0, 6)
+      .map(li => cuadrito(li.color, `${li.icon} ${li.label} ${li.pct}%`, li.amount)).join('');
+    otrasItems = ordenados.slice(6);
+    if(otrasItems.length){
+      const suma = otrasItems.reduce((s, x) => s + x.amount, 0);
+      const pctOtras = Math.round((suma / groupTotal) * 100);
+      legendHtml += cuadrito('var(--ink-soft)', `▸ Otras (${otrasItems.length}) ${pctOtras}%`, suma, ' legend-otras');
+    }
     const dhLabel = donutGroup === 'hogar' ? 'Hogar' : (donutGroup === 'vehiculo' ? 'Vehículo' : 'Total');
     pieChartEl.innerHTML = `<div class="pie-wrap"><div class="donut-wrap"><div class="donut" style="background:${gradient}"></div><div class="donut-hole"><div class="dh-amount">${fmt(groupTotal)}</div><div class="dh-label">${dhLabel}</div></div></div><div class="legend">${legendHtml}</div></div>`;
   }
@@ -5713,6 +5761,11 @@
       document.querySelectorAll('#movGroupToggle .group-pill').forEach(b => b.classList.toggle('active', b === btn));
       renderMovements();
     });
+  });
+
+  // Delegado sobre #pieChart porque la leyenda se vuelve a dibujar en cada render.
+  pieChartEl.addEventListener('click', (e) => {
+    if(e.target.closest('.legend-otras')) openOtrasModal();
   });
 
   // ---- Toggle Hogar/Vehículo en la dona de Inicio ----
