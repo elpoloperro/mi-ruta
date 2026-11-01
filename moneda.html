@@ -1601,6 +1601,28 @@
     const pad = n => String(n).padStart(2,'0');
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${String(d.getMilliseconds()).padStart(3,'0')}`;
   }
+  // Arregla los movimientos que quedaron guardados en hora UTC (terminan en "Z") de cuando se usaba
+  // toISOString(). Un gasto cargado a las 21:00 o más tarde se guardaba con la fecha del día SIGUIENTE,
+  // y como monthMovements() filtra comparando el texto de la fecha, un gasto del 31 de octubre caía
+  // dentro de noviembre (aunque la fila siguiera diciendo "31 de octubre", que se calcula en hora local).
+  // Reinterpreta cada fecha UTC en hora local y la reescribe en el formato local: solo cambian de día
+  // las que estaban mal, las demás quedan igual.
+  function migrarFechasUTC(){
+    let tocados = 0;
+    movements.forEach(mv => {
+      if(typeof mv.date === 'string' && mv.date.endsWith('Z')){
+        const d = new Date(mv.date);
+        if(!isNaN(d)){ mv.date = toLocalISOString(d); tocados++; }
+      }
+    });
+    if(tocados){
+      try{
+        localStorage.setItem('moneda_movements', JSON.stringify(movements));
+        localStorage.setItem('moneda_updated_at', new Date().toISOString());
+      }catch(e){ console.error(e); }
+    }
+    return tocados;
+  }
   function catColor(key){
     const idx = categories.findIndex(c => c.key === key);
     return PALETTE[idx % PALETTE.length] || '#999';
@@ -1677,6 +1699,7 @@
   async function loadData(){
     try{ const m = localStorage.getItem('moneda_movements'); movements = m ? JSON.parse(m) : []; }
     catch(e){ movements = []; }
+    migrarFechasUTC();
     try{ deletedIds = JSON.parse(localStorage.getItem('moneda_deleted_ids') || '[]'); }catch(e){ deletedIds = []; }
     prevIds = new Set(movements.map(m => m.id));
     try{ const c = localStorage.getItem('moneda_categories'); categories = c ? JSON.parse(c) : JSON.parse(JSON.stringify(DEFAULT_CATS)); }
@@ -2338,7 +2361,7 @@
     list.forEach(r => {
       const info = reminderInfo(r);
       const dueParts = [];
-      if(info.dueDate) dueParts.push(info.dueDate.toISOString().slice(0,10));
+      if(info.dueDate) dueParts.push(localDayKey(info.dueDate));
       if(info.dueKm != null) dueParts.push(info.dueKm + ' km');
       const rep = r.mode === 'repeat' ? 'Repetir cada: ' + [r.everyKm ? r.everyKm + ' km' : '', r.everyMonths ? r.everyMonths + (r.everyMonths === 1 ? ' mes' : ' meses') : ''].filter(Boolean).join(', ') : '';
       const row = document.createElement('div');
@@ -2457,7 +2480,7 @@
       note: (note || '').trim(),
       dueKm: info.dueKm != null ? info.dueKm : null,
       overKm: (info.dueKm != null && km) ? (km - info.dueKm) : null,
-      dueDate: info.dueDate ? info.dueDate.toISOString().slice(0,10) : null,
+      dueDate: info.dueDate ? localDayKey(info.dueDate) : null,
       overDays: (info.dueDate && dateStr) ? Math.round((new Date(dateStr) - info.dueDate) / 86400000) : null
     });
     if(r.history.length > 24) r.history = r.history.slice(-24); // no crecer sin límite
@@ -2559,7 +2582,7 @@
     const info = reminderInfo(r);
     if(r.mode === 'repeat'){
       if(r.startKm == null && info.dueKm != null && r.everyKm) r.startKm = info.dueKm - r.everyKm;
-      if(!r.startDate && info.dueDate && r.everyMonths){ const d = new Date(info.dueDate); d.setMonth(d.getMonth() - r.everyMonths); r.startDate = d.toISOString().slice(0, 10); }
+      if(!r.startDate && info.dueDate && r.everyMonths){ const d = new Date(info.dueDate); d.setMonth(d.getMonth() - r.everyMonths); r.startDate = localDayKey(d); }
       openFormModal('Editar recordatorio', [
         { id:'km', label:'Repetir cada cuántos km (vacío = no usar km)', type:'number', value:r.everyKm || '' },
         { id:'mo', label:'Repetir cada cuántos meses (vacío = no usar meses)', type:'number', value:r.everyMonths || '' },
@@ -2923,7 +2946,7 @@
       const tt = tank === 2 ? veh.Tank2Type : veh.Tank1Type;
       const ft = tt === '500' ? 'gnc' : (tt && tt.startsWith('2') ? 'diesel' : gasType);
       const unit = unitOf(ft);
-      movements.push({ id: ++idc, amount: Math.round(price), category: 'vehiculo', raw: `${FUEL_LABELS[ft]} ${vol} ${unit}`, note: '', isIncome: false, date: d.toISOString(),
+      movements.push({ id: ++idc, amount: Math.round(price), category: 'vehiculo', raw: `${FUEL_LABELS[ft]} ${vol} ${unit}`, note: '', isIncome: false, date: toLocalISOString(d),
         vehType: 'fuel', km, liters: vol, pricePerLiter: parseFloat(o.VolumePrice) || price / vol, fuelType: ft, unit, vehicle: name, place: o['City (optional)'] || '', fuelioId: o.guid || '' });
       nFuel++;
     });
@@ -2937,7 +2960,7 @@
         else {
           const rk = parseFloat(o.RepeatOdo) || 0, rm = parseFloat(o.RepeatMonths) || 0;
           vehicleReminders.push({ id: ++idc, vehicle: name, mode: (rk || rm) ? 'repeat' : 'once', type, title: o.CostTitle, note: (o.Notes || '').replace(/\s+/g, ' ').trim(),
-            dueKm: remOdo || null, dueDate: validRemD ? remD.toISOString().slice(0, 10) : null, everyKm: rk, everyMonths: rm, fuelioId: o.guid || '' });
+            dueKm: remOdo || null, dueDate: validRemD ? localDayKey(remD) : null, everyKm: rk, everyMonths: rm, fuelioId: o.guid || '' });
           nRem++;
         }
       }
@@ -2945,9 +2968,9 @@
         if(o.guid && known.has(o.guid)){ skipped++; return; }
         if(type === 'Seguro'){
           // los seguros son un gasto fijo mensual, no un mantenimiento: entran como gasto general (Servicios)
-          movements.push({ id: ++idc, amount: Math.round(cost), category: 'servicios', raw: `Seguro${o.CostTitle ? ' — ' + o.CostTitle : ''}`, note: (o.Notes || '').replace(/\s+/g, ' ').trim(), isIncome: false, date: d.toISOString(), fuelioId: o.guid || '' });
+          movements.push({ id: ++idc, amount: Math.round(cost), category: 'servicios', raw: `Seguro${o.CostTitle ? ' — ' + o.CostTitle : ''}`, note: (o.Notes || '').replace(/\s+/g, ' ').trim(), isIncome: false, date: toLocalISOString(d), fuelioId: o.guid || '' });
         } else
-        movements.push({ id: ++idc, amount: Math.round(cost), category: 'vehiculo', raw: `${type}${o.CostTitle ? ' — ' + o.CostTitle : ''}`, note: (o.Notes || '').replace(/\s+/g, ' ').trim(), isIncome: false, date: d.toISOString(),
+        movements.push({ id: ++idc, amount: Math.round(cost), category: 'vehiculo', raw: `${type}${o.CostTitle ? ' — ' + o.CostTitle : ''}`, note: (o.Notes || '').replace(/\s+/g, ' ').trim(), isIncome: false, date: toLocalISOString(d),
           vehType: 'maint', maintType: type, km: parseFloat(o.Odo) || 0, vehicle: name, fuelioId: o.guid || '' });
         nCost++;
       }
@@ -3266,7 +3289,7 @@
         mv.tollName = v.name.trim();
         mv.raw = 'Peaje' + (mv.tollName ? ' — ' + mv.tollName : '');
         const d = new Date(mv.date); const [yy,mm,dd] = v.date.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
-        mv.date = d.toISOString();
+        mv.date = toLocalISOString(d);
         await saveMovements();
         renderVehEntries(); renderBanners(); render();
       }, 'Guardar');
@@ -3295,7 +3318,7 @@
         mv.km = parseEditNum(v.km) || 0;
         mv.raw = `${mv.maintType}${mv.note ? ' — ' + mv.note : ''}`;
         const d = new Date(mv.date); const [yy,mm,dd] = v.date.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
-        mv.date = d.toISOString();
+        mv.date = toLocalISOString(d);
         await saveMovements();
         renderVehEntries(); renderBanners(); render();
       }, 'Guardar');
@@ -3352,7 +3375,7 @@
       mv.amount = Math.round(total);
       mv.raw = `${FUEL_LABELS[fuelType]} ${liters} ${unit}`;
       const d = new Date(mv.date); const [yy,mm,dd] = v.date.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
-      mv.date = d.toISOString();
+      mv.date = toLocalISOString(d);
       await saveMovements();
       renderVehEntries(); renderBanners(); render();
     }, 'Guardar');
@@ -3377,7 +3400,7 @@
     const d = new Date(); const [yy,mm,dd] = dateStr.split('-').map(Number); d.setFullYear(yy, mm-1, dd);
     const entry = {
       id: Date.now(), amount: total, category: 'vehiculo',
-      raw: `${FUEL_LABELS[fuelType]} ${liters} ${unit}`, note: '', isIncome: false, date: d.toISOString(),
+      raw: `${FUEL_LABELS[fuelType]} ${liters} ${unit}`, note: '', isIncome: false, date: toLocalISOString(d),
       vehType: 'fuel', km, liters, pricePerLiter: price, fuelType, unit, vehicle: currentVehicle
     };
     movements.push(entry);
@@ -3474,7 +3497,7 @@
     if(dup && !confirm(`Ya hay un gasto de ${fmt(dup.amount)} el ${new Date(dup.date).toLocaleDateString('es-AR')} ("${dup.raw}").\n\n¿Es el mismo gasto? Aceptar = guardar igual · Cancelar = no guardar (para no duplicarlo)`)) return;
     const entry = {
       id: Date.now(), amount: cost, category: 'vehiculo',
-      raw: `${maintType}${note ? ' — ' + note : ''}`, note, isIncome: false, date: d.toISOString(),
+      raw: `${maintType}${note ? ' — ' + note : ''}`, note, isIncome: false, date: toLocalISOString(d),
       vehType: 'maint', maintType, km, vehicle: currentVehicle
     };
     if(bd.parts.length) entry.parts = bd.parts;
@@ -3758,7 +3781,7 @@
       chip.className = 'sugg-chip';
       chip.textContent = `+ ${cat.icon} ${s.raw} · ${fmt(s.amount)}`;
       chip.addEventListener('click', async () => {
-        const entry = { id: Date.now(), amount:s.amount, category:s.category, raw:s.raw, isIncome:s.isIncome, date:new Date().toISOString() };
+        const entry = { id: Date.now(), amount:s.amount, category:s.category, raw:s.raw, isIncome:s.isIncome, date:toLocalISOString(new Date()) };
         movements.push(entry);
         if(expandedDays) expandedDays.add(localDayKey(entry.date));
         await saveMovements();
@@ -3840,7 +3863,7 @@
       const d = new Date();
       const [yy,mm,dd] = dateStr.split('-').map(Number);
       d.setFullYear(yy, mm-1, dd);
-      const entry = { id: Date.now(), amount:qb.amount, category:cat, raw:qb.name, isIncome:false, date:d.toISOString() };
+      const entry = { id: Date.now(), amount:qb.amount, category:cat, raw:qb.name, isIncome:false, date:toLocalISOString(d) };
       movements.push(entry);
       if(expandedDays) expandedDays.add(localDayKey(entry.date));
       await saveMovements();
@@ -4864,7 +4887,7 @@
         const oldTime = new Date(mvObj.date);
         const [yy,mm,dd] = rawValue.split('-').map(Number);
         oldTime.setFullYear(yy, mm-1, dd);
-        mvObj.date = oldTime.toISOString();
+        mvObj.date = toLocalISOString(oldTime);
       } else if(field === 'note'){
         mvObj.note = String(rawValue).trim();
       } else if(field === 'raw'){
@@ -4994,7 +5017,7 @@
     const d = new Date();
     const [yy,mm,dd] = dateStr.split('-').map(Number);
     d.setFullYear(yy, mm-1, dd);
-    const entry = { id: Date.now(), amount:parsed.amount, category: parsed.isIncome ? parsed.category : chosenCat, raw:parsed.raw, note, isIncome:parsed.isIncome, date:d.toISOString() };
+    const entry = { id: Date.now(), amount:parsed.amount, category: parsed.isIncome ? parsed.category : chosenCat, raw:parsed.raw, note, isIncome:parsed.isIncome, date:toLocalISOString(d) };
     if(method) entry.method = method;
     movements.push(entry);
     if(expandedDays) expandedDays.add(localDayKey(entry.date));
