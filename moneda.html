@@ -623,8 +623,17 @@
   /* ".new-cat-row select" ya trae flex:1 y min-width:100px con más especificidad (clase+etiqueta) que una sola
      clase nueva — se repite el selector completo acá para poder pisarlo sin recurrir a !important. */
   .new-cat-row select.veh-fuel-type-select{ flex:0 1 112px; min-width:84px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  /* Odómetro de la carga anterior: solo lectura, de referencia junto al odómetro actual. */
-  .new-cat-row input.veh-prev-odo{ background:transparent; color:var(--ink-soft); border-style:dashed; cursor:default; }
+  /* Recuadro de carga: fondo propio para distinguir de un vistazo "lo que estoy cargando" del
+     vehículo (arriba) y las estadísticas (abajo). Los campos usan var(--card), más oscuro, así que
+     se recortan contra este fondo en vez de confundirse con él. */
+  .veh-carga-box{
+    background:var(--card-2); border:1px solid var(--paper-line); border-radius:12px;
+    padding:8px 8px 2px 8px; margin-bottom:14px;
+  }
+  .veh-carga-box .veh-type-btns{ margin-bottom:10px; gap:6px; }
+  /* El recuadro come ancho con su relleno, así que acá las tres pestañas van algo más ajustadas
+     para seguir entrando en un renglón. */
+  .veh-carga-box .veh-type-btns .veh-type-btn{ min-width:0; padding:8px 4px; }
   /* Letra más grande en toda la pantalla de Vehículo — zoom escala texto, botones e íconos juntos y de
      forma proporcional, en vez de tener que subir a mano cada font-size suelto. Subido de 1.1 a 1.2. */
   #screen-vehicle{ zoom:1.15; }
@@ -684,9 +693,19 @@
      odómetro llevan ancho fijo para que entren siempre en un solo renglón. */
   #screen-vehicle .new-cat-row input, #screen-vehicle .new-cat-row select{ font-size:14px; padding:9px 9px; }
   #screen-vehicle .new-cat-row input.budget-input{ width:auto; flex:1 1 80px; min-width:70px; }
-  #screen-vehicle .new-cat-row input#vehFuelPrevKm{ flex:0 0 104px; min-width:104px; font-size:13px; }
+  /* Fecha, odómetro y combustible en una sola fila. Va en grilla y no en flex porque el <input date>
+     y el <select> tienen anchos propios grandes (160px el date) que hacían saltar el tercero al
+     renglón de abajo; con columnas fijas el reparto es nuestro y no se parte nunca.
+     Al escribir, la fecha y el combustible ceden para que el número grande entre completo. */
+  #screen-vehicle .new-cat-row.veh-row-odo{ display:grid; grid-template-columns:108px 1fr 84px; gap:6px; align-items:center; }
+  #screen-vehicle .new-cat-row.veh-row-odo:focus-within{ grid-template-columns:92px 1fr 74px; }
+  #screen-vehicle .new-cat-row.veh-row-odo > *{ min-width:0; width:auto; }
+  #screen-vehicle .new-cat-row input#vehFuelDate{ font-size:13px; padding:9px 4px; }
+  /* El texto de ayuda ("ant. 461.325") es más largo que cualquier odómetro que escribas, así que va
+     un punto más chico para entrar entero; lo que tipeás mantiene su tamaño normal. */
+  #vehFuelKm::placeholder{ font-size:12px; }
   #screen-vehicle .new-cat-row input#vehFuelKm{ flex:1 1 76px; min-width:68px; }
-  #screen-vehicle .new-cat-row select.veh-fuel-type-select{ flex:0 0 94px; min-width:94px; }
+  #screen-vehicle .new-cat-row select.veh-fuel-type-select{ flex:0 0 88px; min-width:88px; }
   #vehFuelDate{ font-weight:600; }
   /* El campo que estás tipeando agranda el número, para poder leerlo de un vistazo al sol y con el
      teclado abierto. Crece donde está, en vez de abrir un panel flotante: así el odómetro anterior
@@ -1143,18 +1162,21 @@
         <button type="button" class="veh-type-btn veh-oculto" id="vehAddVehicleBtn">+ Vehículo</button>
       </div>
     </div>
+    <!-- Todo lo que es "cargar algo" vive en un recuadro con fondo propio: de un vistazo se distingue
+         del resto de la pantalla (el vehículo arriba, las estadísticas abajo). -->
+    <div class="veh-carga-box">
     <div class="veh-type-btns">
       <button type="button" class="veh-type-btn active" id="vehShowFuelBtn">⛽ Combustible</button>
       <button type="button" class="veh-type-btn" id="vehShowTollBtn">🛣️ Peaje</button>
       <button type="button" class="veh-type-btn" id="vehShowMaintBtn">🔧 Mant.</button>
     </div>
     <div class="veh-form" id="vehFuelForm">
-      <div class="new-cat-row">
+      <div class="new-cat-row veh-row-odo">
+        <!-- La fecha comparte renglón con el odómetro: sola dejaba media fila vacía. El odómetro de la
+             última carga pasó a ser el texto de ayuda de este mismo campo, en vez de ocupar un cuadro
+             aparte (ese cuadro repetía el número que ya está arriba, en el selector del vehículo). -->
         <input type="date" id="vehFuelDate">
-      </div>
-      <div class="new-cat-row">
-        <input type="text" class="budget-input veh-prev-odo" id="vehFuelPrevKm" placeholder="Ant. (km)" readonly>
-        <input type="text" class="budget-input" id="vehFuelKm" placeholder="Odómetro" inputmode="numeric">
+        <input type="text" class="budget-input veh-odo-input" id="vehFuelKm" placeholder="Odómetro" inputmode="numeric">
         <select id="vehFuelType" class="veh-fuel-type-select">
           <option value="nafta_super">Nafta Súper</option>
           <option value="nafta_premium">Nafta Infinia</option>
@@ -1236,6 +1258,7 @@
       <button id="addMaintBtn" class="btn-save" style="width:100%;margin-top:6px;">Guardar mantenimiento</button>
       <button type="button" class="veh-type-btn" id="saveMaintTplBtn" style="width:100%;margin-top:6px;">★ Guardar como plantilla</button>
     </div>
+    </div><!-- /.veh-carga-box -->
     <div id="vehStats"></div>
     <div class="veh-section-toggle" id="vehEntriesToggle" style="cursor:pointer;margin:16px 0 4px;">
       <span style="display:flex;align-items:center;gap:6px;">Últimas cargas <span id="vehEntriesCaret" style="font-size:10px;transition:transform .2s ease;">▸</span></span>
@@ -3211,12 +3234,14 @@
   // el formulario de nueva carga, para verificar continuidad al escribir el odómetro actual. No se lee
   // en addFuelEntry(), así que no afecta lo que se guarda.
   function updatePrevOdoDisplay(){
-    const el = document.getElementById('vehFuelPrevKm');
+    const el = document.getElementById('vehFuelKm');
     if(!el) return;
     const lastFuel = vehMovs().filter(m => m.vehType === 'fuel' && m.km)
       .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)[0];
-    el.value = lastFuel ? 'ant. ' + fmtNum(lastFuel.km, 0) : '';
-    el.placeholder = lastFuel ? 'Ant. (km)' : 'Sin datos';
+    // Ojo: este es el odómetro de la última CARGA, que no siempre coincide con los kilómetros del
+    // selector del vehículo (esos son el máximo de cualquier movimiento, service y peaje incluidos).
+    // Para saber cuánto rindió el tanque hay que comparar contra la carga anterior, no contra el máximo.
+    el.placeholder = lastFuel ? 'ant. ' + fmtNum(lastFuel.km, 0) : 'Odómetro';
   }
   function renderVehEntries(){
     setVehEntriesOpen(vehEntriesOpen);
