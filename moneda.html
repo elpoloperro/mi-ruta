@@ -433,6 +433,12 @@
     border-radius:8px; padding:6px 8px; background:var(--card); color:var(--ink);
     flex:1 1 100px; min-width:100px; max-width:100%;
   }
+  /* Las <option> no heredan el fondo del <select>: al desplegarlo, el navegador de escritorio las
+     dibuja con el estilo del sistema (fondo blanco) mientras el texto sí tomaba el color claro del
+     tema oscuro, y quedaban casi ilegibles. En el celular el desplegable lo dibuja el sistema
+     operativo y esto no lo afecta, pero tampoco molesta. */
+  select option{ background:var(--card); color:var(--ink); }
+  select option:disabled{ color:var(--ink-soft); }
   .new-cat-row button{ background:var(--ink); color:var(--paper); border:none; border-radius:8px; padding:0 12px; font-size:13px; cursor:pointer; flex-shrink:0; }
   /* Botón principal "Guardar X" (combustible/peaje/mantenimiento): antes era un <button> sin ningún
      estilo propio, por eso tomaba el aspecto nativo del navegador (una barra clara sin relieve).
