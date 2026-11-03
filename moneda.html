@@ -2164,7 +2164,12 @@
       if(ico !== '📌'){ fp.icon = ico; tocados++; }
     });
     if(tocados){
-      try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); }catch(e){ console.error(e); }
+      try{
+        localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments));
+        // Marca el cambio como más nuevo para la sincronización. Sin esto, el dispositivo que asigna
+        // los íconos no avisa que cambió algo, y el otro puede pisarlo con su copia todavía con 📌.
+        localStorage.setItem('moneda_updated_at', new Date().toISOString());
+      }catch(e){ console.error(e); }
     }
     return tocados;
   }
