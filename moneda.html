@@ -2398,12 +2398,25 @@
   function entryVehicle(mv){ return mv.vehicle || vehicles[0]; }
   // Precarga el selector de combustible con el tipo de la última carga real de ESE vehículo
   // (si nunca cargó combustible todavía, deja el valor que ya tenía el <select>).
+  // El GNC se mide en m³ y el resto en litros, así que los rótulos de los campos acompañan al tipo
+  // elegido. Vive en una función y no solo en el 'change' del <select> porque el valor también se
+  // asigna por código (al recordar el último combustible del vehículo, al leer la foto del ticket) y
+  // ahí el evento no se dispara: la pantalla abría en GNC y los campos seguían diciendo "litros".
+  function actualizarUnidadFuel(){
+    const sel = document.getElementById('vehFuelType');
+    if(!sel) return;
+    const gnc = sel.value === 'gnc';
+    // "Metros cúbicos (m³)" no entra en el campo y se corta a la mitad, por eso va "m³" a secas.
+    document.getElementById('vehFuelLiters').placeholder = gnc ? 'm³' : 'Litros';
+    document.getElementById('vehFuelPrice').placeholder = gnc ? 'Precio x m³' : 'Precio x litro';
+  }
   function applyLastFuelType(vehicle){
     const mvs = movements.filter(mv => mv.vehType === 'fuel' && entryVehicle(mv) === vehicle);
-    if(!mvs.length) return;
+    if(!mvs.length){ actualizarUnidadFuel(); return; }
     const last = mvs.reduce((a, b) => (new Date(b.date) > new Date(a.date) ? b : a));
     const sel = document.getElementById('vehFuelType');
     if(last.fuelType && sel.querySelector(`option[value="${last.fuelType}"]`)) sel.value = last.fuelType;
+    actualizarUnidadFuel();
   }
   function allVehicles(){
     const set = vehicles.slice();
@@ -5512,11 +5525,7 @@
     if(result == null) return;
     document.getElementById(fieldIds[target]).value = String(result);
   }
-  document.getElementById('vehFuelType').addEventListener('change', (e) => {
-    const gnc = e.target.value === 'gnc';
-    document.getElementById('vehFuelLiters').placeholder = gnc ? 'm³' : 'Litros'; // "Metros cúbicos (m³)" no entraba en el campo (80px) y se cortaba a la mitad
-    document.getElementById('vehFuelPrice').placeholder = gnc ? 'Precio x m³' : 'Precio x litro';
-  });
+  document.getElementById('vehFuelType').addEventListener('change', actualizarUnidadFuel);
   document.getElementById('vehFuelLiters').addEventListener('input', () => onFuelFieldInput('liters'));
   document.getElementById('vehFuelPrice').addEventListener('input', () => onFuelFieldInput('price'));
   document.getElementById('vehFuelTotal').addEventListener('input', () => onFuelFieldInput('total'));
