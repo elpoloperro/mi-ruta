@@ -2114,37 +2114,41 @@
   // viene por defecto (📌) es igual para todos y no distingue nada. Esto lo deduce del nombre.
   // El orden importa: gana la primera que coincide, así que lo específico va antes que lo general
   // (si no, "seguro del auto" caería en 🛡️ antes de llegar a 🚗).
+  // Cada entrada admite el plural: "impuestos municipales" tiene que caer en la misma regla que
+  // "impuesto municipal", y sin esto no pasaba (el \b de cierre cortaba justo antes de la "es").
   const ICONOS_PAGO_FIJO = [
-    [/\b(edesur|edenor|epe|edelap|electricidad|luz)\b/, '💡'],
-    [/\b(metrogas|camuzzi|naturgy|garrafa|gas)\b/, '🔥'],
-    [/\b(aysa|assa|agua)\b/, '💧'],
-    [/\b(fibertel|telecentro|flow|wifi|internet|fibra)\b/, '📶'],
-    [/\b(netflix|disney|hbo|max|prime|star|paramount|crunchyroll)\b/, '📺'],
-    [/\b(directv|cablevision|cable|tv)\b/, '📡'],
-    [/\b(spotify|deezer|tidal|musica)\b/, '🎵'],
-    [/\b(osde|swiss|galeno|medife|sancor salud|prepaga|obra social|medicina)\b/, '🏥'],
-    [/\b(patente|vtv|peaje|cochera|estacionamiento)\b/, '🚗'],
-    [/\b(seguro|poliza|caucion)\b/, '🛡️'],
-    [/\b(alquiler|renta)\b/, '🏠'],
-    [/\b(expensas|consorcio|administracion)\b/, '🏢'],
-    [/\b(gym|gimnasio|club|pilates|crossfit|natacion)\b/, '🏋️'],
-    [/\b(colegio|escuela|universidad|facultad|curso|cuota escolar)\b/, '🎓'],
-    [/\b(arca|afip|rentas|monotributo|municipal|abl|impuesto|impuestos|tasa)\b/, '🏛️'],
-    [/\b(contador|gestoria|abogado|estudio)\b/, '🧾'],
-    [/\b(visa|mastercard|amex|naranja|tarjeta|resumen)\b/, '💳'],
-    [/\b(ppay|personal pay|mercado pago|uala|brubank|billetera)\b/, '💳'],
-    [/\b(claro|personal|movistar|tuenti|celular|telefono|linea)\b/, '📱'],
-    [/\b(prestamo|credito|cuota|banco|hipoteca)\b/, '🏦'],
-    [/\b(nafta|combustible|gnc|ypf|shell|axion)\b/, '⛽'],
-    [/\b(veterinaria|mascota|perro|gato|alimento balanceado)\b/, '🐾'],
-    [/\b(diario|revista|suscripcion)\b/, '📰'],
-    [/\b(chatgpt|claude|openai|google one|icloud|dropbox|hosting|dominio)\b/, '🤖'],
-    [/\b(limpieza|empleada|jardinero|service)\b/, '🧹'],
-    [/\b(vianda|almuerzo|comedor|catering|comida)\b/, '🍽️'],
+    ['edesur|edenor|epe|edelap|electricidad|luz', '💡'],
+    ['metrogas|camuzzi|naturgy|garrafa|gas', '🔥'],
+    ['aysa|assa|obras sanitarias|sanitaria|cloaca|agua', '💧'],
+    ['fibertel|telecentro|flow|wifi|internet|fibra', '📶'],
+    ['netflix|disney|hbo|max|prime|star|paramount|crunchyroll', '📺'],
+    ['directv|cablevision|cable|tv', '📡'],
+    ['spotify|deezer|tidal|musica', '🎵'],
+    ['osde|swiss|galeno|medife|sancor salud|prepaga|obra social|medicina', '🏥'],
+    ['patente|vtv|peaje|cochera|estacionamiento', '🚗'],
+    ['seguro|poliza|caucion', '🛡️'],
+    ['alquiler|renta', '🏠'],
+    ['expensas|consorcio|administracion', '🏢'],
+    ['gym|gimnasio|club|pilates|crossfit|natacion', '🏋️'],
+    ['colegio|escuela|universidad|facultad|curso|cuota escolar', '🎓'],
+    // API es la Administración Provincial de Impuestos (Santa Fe); ARCA, la ex AFIP.
+    ['arca|afip|api|rentas|monotributo|municipal|abl|impuesto|tasa', '🏛️'],
+    ['contador|gestoria|abogado|estudio', '🧾'],
+    ['visa|mastercard|amex|naranja|tarjeta|resumen', '💳'],
+    ['ppay|personal pay|mercado pago|uala|brubank|billetera', '💳'],
+    ['claro|personal|movistar|tuenti|celular|telefono|linea', '📱'],
+    ['radio|publicidad|aviso|pauta|cartel', '📻'],
+    ['prestamo|credito|cuota|banco|hipoteca', '🏦'],
+    ['nafta|combustible|gnc|ypf|shell|axion', '⛽'],
+    ['veterinaria|mascota|perro|gato|alimento balanceado', '🐾'],
+    ['diario|revista|suscripcion', '📰'],
+    ['chatgpt|claude|openai|google one|icloud|dropbox|hosting|dominio', '🤖'],
+    ['limpieza|empleada|jardinero|service', '🧹'],
+    ['vianda|almuerzo|comedor|catering|comida', '🍽️'],
     // Planes de ahorro de auto. Va último para no ganarle a reglas más específicas que usen "plan"
     // (un "Plan Claro" ya cayó en 📱 bastante antes de llegar acá).
-    [/\b(plan|ahorro|peugeot|renault|citroen|chevrolet|fiat|volkswagen|toyota|ford)\b/, '🚗'],
-  ];
+    ['plan|ahorro|peugeot|renault|citroen|chevrolet|fiat|volkswagen|toyota|ford|kangoo|moto', '🚗'],
+  ].map(([palabras, ico]) => [new RegExp('\\b(?:' + palabras + ')(?:es|s)?\\b'), ico]);
   function iconoSugerido(nombre){
     const n = normalize(nombre || '');
     for(const [re, ico] of ICONOS_PAGO_FIJO) if(re.test(n)) return ico;
