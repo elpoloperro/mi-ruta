@@ -1819,6 +1819,7 @@
     catch(e){ quickButtons = []; }
     try{ const f = localStorage.getItem('moneda_fixedpayments'); fixedPayments = f ? JSON.parse(f) : []; }
     catch(e){ fixedPayments = []; }
+    migrarIconosPagosFijos();
     try{ const pm = localStorage.getItem('moneda_payment_methods'); paymentMethods = pm ? JSON.parse(pm) : ['Efectivo','Débito','Crédito','Transferencia']; }
     catch(e){ paymentMethods = ['Efectivo','Débito','Crédito','Transferencia']; }
     try{ const vp = localStorage.getItem('moneda_vehicle_photos'); vehiclePhotos = vp ? JSON.parse(vp) : {}; }
@@ -2109,6 +2110,60 @@
   async function saveMovements(){ try{ trackDeletions(); localStorage.setItem('moneda_movements', JSON.stringify(movements)); markLocalChange(); } catch(e){ console.error(e); alert('No se pudo guardar. Puede que el navegador esté sin espacio o en modo incógnito.'); } }
   async function saveCategories(){ try{ localStorage.setItem('moneda_categories', JSON.stringify(categories)); markLocalChange(); updateRawHistory(); } catch(e){ console.error(e); } }
   async function saveQuickButtons(){ try{ localStorage.setItem('moneda_quickbuttons', JSON.stringify(quickButtons)); markLocalChange(); } catch(e){ console.error(e); } }
+  // El ícono de un pago fijo sirve para reconocerlo de un vistazo en el resumen plegado, pero el que
+  // viene por defecto (📌) es igual para todos y no distingue nada. Esto lo deduce del nombre.
+  // El orden importa: gana la primera que coincide, así que lo específico va antes que lo general
+  // (si no, "seguro del auto" caería en 🛡️ antes de llegar a 🚗).
+  const ICONOS_PAGO_FIJO = [
+    [/\b(edesur|edenor|epe|edelap|electricidad|luz)\b/, '💡'],
+    [/\b(metrogas|camuzzi|naturgy|garrafa|gas)\b/, '🔥'],
+    [/\b(aysa|assa|agua)\b/, '💧'],
+    [/\b(fibertel|telecentro|flow|wifi|internet|fibra)\b/, '📶'],
+    [/\b(netflix|disney|hbo|max|prime|star|paramount|crunchyroll)\b/, '📺'],
+    [/\b(directv|cablevision|cable|tv)\b/, '📡'],
+    [/\b(spotify|deezer|tidal|musica)\b/, '🎵'],
+    [/\b(osde|swiss|galeno|medife|sancor salud|prepaga|obra social|medicina)\b/, '🏥'],
+    [/\b(patente|vtv|peaje|cochera|estacionamiento)\b/, '🚗'],
+    [/\b(seguro|poliza|caucion)\b/, '🛡️'],
+    [/\b(alquiler|renta)\b/, '🏠'],
+    [/\b(expensas|consorcio|administracion)\b/, '🏢'],
+    [/\b(gym|gimnasio|club|pilates|crossfit|natacion)\b/, '🏋️'],
+    [/\b(colegio|escuela|universidad|facultad|curso|cuota escolar)\b/, '🎓'],
+    [/\b(arca|afip|rentas|monotributo|municipal|abl|impuesto|impuestos|tasa)\b/, '🏛️'],
+    [/\b(contador|gestoria|abogado|estudio)\b/, '🧾'],
+    [/\b(visa|mastercard|amex|naranja|tarjeta|resumen)\b/, '💳'],
+    [/\b(ppay|personal pay|mercado pago|uala|brubank|billetera)\b/, '💳'],
+    [/\b(claro|personal|movistar|tuenti|celular|telefono|linea)\b/, '📱'],
+    [/\b(prestamo|credito|cuota|banco|hipoteca)\b/, '🏦'],
+    [/\b(nafta|combustible|gnc|ypf|shell|axion)\b/, '⛽'],
+    [/\b(veterinaria|mascota|perro|gato|alimento balanceado)\b/, '🐾'],
+    [/\b(diario|revista|suscripcion)\b/, '📰'],
+    [/\b(chatgpt|claude|openai|google one|icloud|dropbox|hosting|dominio)\b/, '🤖'],
+    [/\b(limpieza|empleada|jardinero|service)\b/, '🧹'],
+    [/\b(vianda|almuerzo|comedor|catering|comida)\b/, '🍽️'],
+    // Planes de ahorro de auto. Va último para no ganarle a reglas más específicas que usen "plan"
+    // (un "Plan Claro" ya cayó en 📱 bastante antes de llegar acá).
+    [/\b(plan|ahorro|peugeot|renault|citroen|chevrolet|fiat|volkswagen|toyota|ford)\b/, '🚗'],
+  ];
+  function iconoSugerido(nombre){
+    const n = normalize(nombre || '');
+    for(const [re, ico] of ICONOS_PAGO_FIJO) if(re.test(n)) return ico;
+    return '📌';
+  }
+  // Una sola vez: a los pagos fijos que quedaron con el ícono genérico les pone el que corresponde a
+  // su nombre. No toca los que ya tienen uno elegido, y cualquiera se puede cambiar a mano después.
+  function migrarIconosPagosFijos(){
+    let tocados = 0;
+    fixedPayments.forEach(fp => {
+      if(fp.icon && fp.icon !== '📌') return;
+      const ico = iconoSugerido(fp.name);
+      if(ico !== '📌'){ fp.icon = ico; tocados++; }
+    });
+    if(tocados){
+      try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); }catch(e){ console.error(e); }
+    }
+    return tocados;
+  }
   async function saveFixedPayments(){ try{ localStorage.setItem('moneda_fixedpayments', JSON.stringify(fixedPayments)); markLocalChange(); } catch(e){ console.error(e); } }
   async function savePaymentMethods(){ try{ localStorage.setItem('moneda_payment_methods', JSON.stringify(paymentMethods)); markLocalChange(); } catch(e){ console.error(e); } }
   function saveFinConfig(){ try{ localStorage.setItem('moneda_fin_config', JSON.stringify(finConfig)); markLocalChange(); }catch(e){} }
@@ -5385,8 +5440,9 @@
     newFpRow.style.display = opening ? 'flex' : 'none';
   });
   addFpBtn.addEventListener('click', async () => {
-    const icon = document.getElementById('newFpIcon').value.trim() || '📌';
     const name = document.getElementById('newFpName').value.trim();
+    // Si no elegiste ícono, se deduce del nombre en vez de dejar el pin genérico.
+    const icon = document.getElementById('newFpIcon').value.trim() || iconoSugerido(name);
     const amount = parseFloat(document.getElementById('newFpAmount').value.replace(/[^\d.]/g,'')) || 0;
     const dueDay = parseInt(document.getElementById('newFpDueDay').value.replace(/[^\d]/g,''), 10) || 0;
     const category = document.getElementById('newFpCat').value;
