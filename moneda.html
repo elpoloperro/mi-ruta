@@ -319,6 +319,7 @@
   }
   .cat-summary-chip .dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
   .cat-summary-chip.over{ border-color:var(--danger); color:var(--danger); }
+  .cat-summary-chip.ok{ border-color:var(--ok); color:var(--ok); }
 
   /* Pie chart + trend */
   .charts-row{ display:flex; gap:14px; margin-bottom:6px; flex-wrap:wrap; }
@@ -4688,10 +4689,15 @@
       const totalFixed = totalFixedPerMonth();
       const totalChip = `<span class="cat-summary-chip" style="cursor:default;">💰 Total: ${fmt(totalFixed)}/mes</span>`;
       const summaryChip = `<span class="cat-summary-chip" style="cursor:default;">${paidCount}/${fixedPayments.length} al día</span>`;
-      const chips = results.map(({fp, paid, overdue}) => {
-        const mark = paid ? '✅' : (overdue ? '⚠️' : '⏳');
-        return `<span class="cat-summary-chip ${overdue ? 'over' : ''}">${fp.icon} ${mark}</span>`;
-      }).join('');
+      // Solo los que faltan pagar, y con el nombre. Antes iban los 17, sin nombre: como el ícono por
+      // defecto es el mismo para todos, quedaban chips idénticos que no decían cuál era cual, y los ya
+      // pagados ocupaban más de la mitad del espacio sin aportar (de esos ya informa "N/M al día").
+      // `results` viene ordenado por estado, así que los vencidos quedan primero.
+      const pendientes = results.filter(r => !r.paid);
+      const chips = pendientes.length
+        ? pendientes.map(({fp, overdue}) =>
+            `<span class="cat-summary-chip ${overdue ? 'over' : ''}">${fp.icon} ${escapeHtml(fp.name)} ${overdue ? '⚠️' : '⏳'}</span>`).join('')
+        : '<span class="cat-summary-chip ok" style="cursor:default;">✅ Todo al día</span>';
       fpSummary.innerHTML = totalChip + summaryChip + chips;
     }
 
