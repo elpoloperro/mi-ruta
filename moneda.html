@@ -770,7 +770,15 @@
     background:transparent; color:var(--ink-soft);
   }
   .composer-row2 select#composerMethod:focus{ outline:none; border-bottom-color:var(--coin); color:var(--ink); }
-  .move-method{ font-size:10px; color:var(--ink-soft); opacity:.75; }
+  /* El método de pago pasó de texto a <select> para poder cambiarlo desde la propia fila, igual que
+     la categoría. Se le saca el aspecto de caja para que se siga leyendo como el texto chiquito que
+     era, y recién al pasarle el dedo o el mouse se nota que es tocable. */
+  .move-method{
+    font-size:10px; color:var(--ink-soft); opacity:.75;
+    background:none; border:none; padding:0; margin:0; cursor:pointer;
+    font-family:inherit; text-align:right; max-width:120px; direction:rtl;
+  }
+  .move-method:hover, .move-method:focus{ opacity:1; color:var(--coin); outline:none; }
   .veh-remcheck-row{ display:flex; align-items:center; gap:6px; }
   .veh-remcheck-row label{ display:flex; gap:8px; align-items:center; flex:1; min-width:0; }
   .veh-remcheck-act{ color:var(--ink-soft); font-size:12px; padding:2px 3px; cursor:pointer; flex-shrink:0; }
@@ -5187,6 +5195,12 @@
         : d.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' });
       const catObj = categories.find(c => c.key === mv.category);
       const catIcon = mv.isIncome ? '💰' : (catObj ? catObj.icon : '🏷️');
+      // Si el movimiento tiene un método que ya no está en la lista (porque se renombró o se borró),
+      // se agrega igual como opción: si no, el <select> no podría mostrarlo y lo perderíamos al tocarlo.
+      const metodos = paymentMethods.slice();
+      if(mv.method && !metodos.includes(mv.method)) metodos.push(mv.method);
+      const methodOptions = '<option value="">— método</option>' +
+        metodos.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
       const row = document.createElement('div');
       row.className = 'move';
       row.innerHTML = `
@@ -5200,7 +5214,7 @@
         <div class="move-right">
           <div class="move-amount ${mv.isIncome ? 'income' : ''}" title="Tocá para editar">${mv.isIncome ? '+' : ''}${fmt(mv.amount)}</div>
           <div class="move-date" title="Tocá para editar">${momento}</div>
-          ${mv.method ? `<div class="move-method">${escapeHtml(mv.method)}</div>` : ''}
+          <select class="move-method" data-id="${mv.id}" title="Método de pago">${methodOptions}</select>
         </div>
         <button class="move-del" data-id="${mv.id}" title="Borrar">✕</button>
       `;
@@ -5213,6 +5227,16 @@
           if(mvObj){ mvObj.category = e.target.value; await saveMovements(); render(); }
         });
       }
+      const msel = row.querySelector('.move-method');
+      msel.value = mv.method || '';
+      msel.addEventListener('change', async (e) => {
+        const mvObj = movements.find(m => m.id === mv.id);
+        if(!mvObj) return;
+        const val = e.target.value;
+        if(val) mvObj.method = val; else delete mvObj.method;
+        await saveMovements();
+        render();
+      });
       makeInlineEditable(row.querySelector('.move-raw'), mv, 'raw', 'text', 'Detalle');
       makeInlineEditable(row.querySelector('.move-note'), mv, 'note', 'text', 'Nota opcional');
       makeInlineEditable(row.querySelector('.move-date'), mv, 'date', 'date');
